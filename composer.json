@@ -1,0 +1,92 @@
+{
+  "name": "artisanpack-ui/ecommerce-storefront-livewire",
+  "description": "Livewire storefront for the ArtisanPack UI ecommerce engine.",
+  "type": "library",
+  "license": "GPL-3.0-or-later",
+  "version": "1.0.0",
+  "keywords": [
+    "laravel",
+    "livewire",
+    "ecommerce",
+    "storefront",
+    "checkout",
+    "artisanpack-ui"
+  ],
+  "autoload": {
+    "psr-4": {
+      "ArtisanPackUI\\EcommerceStorefrontLivewire\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Jacob Martella",
+      "email": "me@jacobmartella.com"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../ecommerce",
+      "options": {
+        "symlink": true
+      }
+    }
+  ],
+  "require": {
+    "php": "^8.3",
+    "ext-bcmath": "*",
+    "illuminate/support": "^12.0|^13.0",
+    "livewire/livewire": "^3.6|^4.0",
+    "artisanpack-ui/ecommerce": "^1.0",
+    "artisanpack-ui/livewire-ui-components": "^2.1",
+    "artisanpack-ui/core": "^1.0",
+    "artisanpack-ui/hooks": "^1.2",
+    "artisanpack-ui/security": "^1.0|^2.0"
+  },
+  "require-dev": {
+    "pestphp/pest": "^4.0",
+    "pestphp/pest-plugin-laravel": "^4.0",
+    "pestphp/pest-plugin-livewire": "^4.0",
+    "pestphp/pest-plugin-browser": "^4.0",
+    "artisanpack-ui/code-style": "^1.1",
+    "artisanpack-ui/code-style-pint": "^1.1",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "laravel/pint": "^1.26",
+    "orchestra/testbench": "^10.2|^11.0",
+    "friendsofphp/php-cs-fixer": "^3.75"
+  },
+  "suggest": {
+    "artisanpack-ui/visual-editor": "Commerce blocks (product grid, single product, add to cart, cart contents, checkout steps, and more) and editable product/category templates.",
+    "artisanpack-ui/media-library": "Responsive product, variant, and category images from the media library's conversions.",
+    "artisanpack-ui/livewire-drag-and-drop": "Reorderable lists, such as a wishlist when a wishlist satellite is installed."
+  },
+  "scripts": {
+    "lint": [
+      "./vendor/bin/php-cs-fixer fix --dry-run --diff",
+      "./vendor/bin/phpcs"
+    ],
+    "fix": "./vendor/bin/php-cs-fixer fix",
+    "cs": "./vendor/bin/phpcs",
+    "cs:fix": "./vendor/bin/phpcbf",
+    "test": "./vendor/bin/pest --testsuite=Unit,Feature"
+  },
+  "config": {
+    "sort-packages": false,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "ArtisanPackUI\\EcommerceStorefrontLivewire\\EcommerceStorefrontLivewireServiceProvider"
+      ]
+    }
+  }
+}

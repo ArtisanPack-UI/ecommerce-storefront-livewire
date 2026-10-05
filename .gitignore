@@ -1,0 +1,10 @@
+vendor/
+.idea/
+composer.lock
+.php-cs-fixer.cache
+.phpunit.result.cache
+.phpunit.cache/
+build/
+node_modules/
+tests/Browser/Screenshots/
+tests/Browser/workbench/public/vendor/
