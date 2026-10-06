@@ -16,7 +16,16 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\MergePrompt;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
+use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 /**
  * Bootstraps the Livewire storefront satellite.
@@ -60,7 +69,50 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     public const VIEW_NAMESPACE = 'ecommerce-storefront';
 
     /**
-     * Registers the package configuration.
+     * The view every page extends unless `storefront.layout` names another.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const DEFAULT_LAYOUT = 'ecommerce-storefront::layouts.app';
+
+    /**
+     * The composed Blade components, keyed by their name after the
+     * `artisanpack-ec-` prefix (spec §8.1). `money`, `address`,
+     * `address-form`, and `empty-state` share their names and base props
+     * with the admin's copies.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, class-string>
+     */
+    public const BLADE_COMPONENTS = [
+        'address'         => Components\Address::class,
+        'address-form'    => Components\AddressForm::class,
+        'empty-state'     => Components\EmptyState::class,
+        'money'           => Components\Money::class,
+        'price'           => Components\Price::class,
+        'rating-summary'  => Components\RatingSummary::class,
+        'sf-product-card' => Components\ProductCard::class,
+        'skeleton'        => Components\Skeleton::class,
+        'stock-status'    => Components\StockStatus::class,
+    ];
+
+    /**
+     * The package's Livewire components, keyed by component name.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, class-string>
+     */
+    public const LIVEWIRE_COMPONENTS = [
+        'artisanpack-ecommerce-storefront-catalog'           => Catalog\Index::class,
+        'artisanpack-ecommerce-storefront-cart-merge-prompt' => MergePrompt::class,
+    ];
+
+    /**
+     * Registers the package configuration and the per-request cart resolver.
      *
      * @since 1.0.0
      *
@@ -72,6 +124,8 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
             __DIR__ . '/../config/artisanpack/ecommerce-storefront-livewire.php',
             'artisanpack.ecommerce-storefront-livewire',
         );
+
+        $this->app->scoped( StorefrontCart::class );
     }
 
     /**
@@ -90,6 +144,11 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerPublishing();
         $this->registerViews();
         $this->registerTranslations();
+        $this->registerCommands();
+        $this->registerBladeComponents();
+        $this->registerLayoutResolver();
+        $this->registerLivewireComponents();
+        $this->registerRoutes();
     }
 
     /**
@@ -115,6 +174,60 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
             'columns'         => [],
             'product_types'   => [],
         ];
+    }
+
+    /**
+     * The middleware classes behind `account.middleware`, without groups
+     * (`web`), which Livewire's update route already has.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, class-string>
+     */
+    public static function accountPersistentMiddleware(): array
+    {
+        $router  = app( 'router' );
+        $aliases = $router->getMiddleware();
+        $groups  = $router->getMiddlewareGroups();
+        $classes = [];
+
+        foreach ( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ) as $entry ) {
+            if ( ! is_string( $entry ) || '' === $entry ) {
+                continue;
+            }
+
+            $name = explode( ':', $entry, 2 )[0];
+
+            if ( isset( $groups[ $name ] ) ) {
+                continue;
+            }
+
+            $class = $aliases[ $name ] ?? $name;
+
+            if ( is_string( $class ) && class_exists( $class ) ) {
+                $classes[] = $class;
+            }
+        }
+
+        return array_values( array_unique( $classes ) );
+    }
+
+    /**
+     * Makes the account middleware (`auth`, `verified`, ...) persistent, so
+     * Livewire re-runs it on every update request from an account page
+     * (spec §6).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function registerPersistentMiddleware(): void
+    {
+        $middleware = self::accountPersistentMiddleware();
+
+        if ( [] !== $middleware ) {
+            Livewire::addPersistentMiddleware( $middleware );
+        }
     }
 
     /**
@@ -186,5 +299,96 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     {
         $this->loadJsonTranslationsFrom( __DIR__ . '/../lang' );
         $this->loadJsonTranslationsFrom( $this->app->langPath( 'vendor/' . self::VIEW_NAMESPACE ) );
+    }
+
+    /**
+     * Registers the Artisan commands.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerCommands(): void
+    {
+        if ( ! $this->app->runningInConsole() ) {
+            return;
+        }
+
+        $this->commands( [
+            InstallCommand::class,
+        ] );
+    }
+
+    /**
+     * Registers the `<x-artisanpack-ec-…>` Blade components.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerBladeComponents(): void
+    {
+        foreach ( self::BLADE_COMPONENTS as $name => $class ) {
+            Blade::component( 'artisanpack-ec-' . $name, $class );
+        }
+    }
+
+    /**
+     * Shares the layout every page view extends (spec §5.3): the configured
+     * `storefront.layout`, or the package's standalone layout.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerLayoutResolver(): void
+    {
+        View::composer( self::VIEW_NAMESPACE . '::pages.*', static function ( ViewContract $view ): void {
+            $layout = config( 'artisanpack.ecommerce-storefront-livewire.storefront.layout' );
+
+            $view->with( 'ecommerceStorefrontLayout', is_string( $layout ) && '' !== $layout ? $layout : self::DEFAULT_LAYOUT );
+        } );
+    }
+
+    /**
+     * Registers the Livewire components and, once every middleware alias is
+     * known, the account middleware as persistent.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerLivewireComponents(): void
+    {
+        foreach ( self::LIVEWIRE_COMPONENTS as $name => $class ) {
+            Livewire::component( $name, $class );
+        }
+
+        $this->app->booted( fn () => $this->registerPersistentMiddleware() );
+    }
+
+    /**
+     * Registers the storefront and account routes.
+     *
+     * Skipped when the routes are cached (the cache already holds them) or
+     * when `storefront.routes_enabled` is false, for hosts that route and
+     * embed the components themselves.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerRoutes(): void
+    {
+        if ( $this->app->routesAreCached() ) {
+            return;
+        }
+
+        if ( ! (bool) config( 'artisanpack.ecommerce-storefront-livewire.storefront.routes_enabled', true ) ) {
+            return;
+        }
+
+        $this->loadRoutesFrom( __DIR__ . '/../routes/storefront.php' );
+        $this->loadRoutesFrom( __DIR__ . '/../routes/account.php' );
     }
 }

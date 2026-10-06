@@ -8,6 +8,7 @@ use ArtisanPack\LivewireUiComponents\LivewireUiComponentsServiceProvider;
 use ArtisanPackUI\Core\CoreServiceProvider;
 use ArtisanPackUI\Ecommerce\Providers\EcommerceServiceProvider;
 use ArtisanPackUI\EcommerceStorefrontLivewire\EcommerceStorefrontLivewireServiceProvider;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\Hooks\Providers\HooksServiceProvider;
 use ArtisanPackUI\Security\SecurityServiceProvider;
 use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
@@ -27,6 +28,16 @@ use Rebing\GraphQL\GraphQLServiceProvider;
  */
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * Resets static state between tests.
+     */
+    protected function tearDown(): void
+    {
+        ProductImages::fake( null );
+
+        parent::tearDown();
+    }
+
     /**
      * Gets package providers.
      *
@@ -55,6 +66,14 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * Loads the fixture `users` table migration.
+     */
+    protected function defineDatabaseMigrations(): void
+    {
+        $this->loadMigrationsFrom( __DIR__ . '/Fixtures/migrations' );
+    }
+
+    /**
      * Defines environment setup.
      *
      * @since 1.0.0
@@ -72,5 +91,7 @@ abstract class TestCase extends BaseTestCase
             'prefix'                  => '',
             'foreign_key_constraints' => true,
         ] );
+
+        $app['config']->set( 'auth.providers.users.model', Fixtures\User::class );
     }
 }
