@@ -76,6 +76,11 @@ it( 'registers the Livewire components', function ( string $name, string $class 
         default                                                               => [],
     };
 
+    // The checkout sends an empty cart back to the cart page.
+    if ( str_ends_with( $name, '-storefront-checkout' ) ) {
+        app( ArtisanPackUI\Ecommerce\Services\StorefrontCartService::class )->addItem( app( StorefrontCart::class )->current( true ), makeProduct()->id, null, 1 );
+    }
+
     expect( Livewire::test( $name, $params )->instance() )->toBeInstanceOf( $class );
 } )->with( fn (): array => collect( EcommerceStorefrontLivewireServiceProvider::LIVEWIRE_COMPONENTS )->map( fn ( string $class, string $name ): array => [ $name, $class ] )->values()->all() );
 

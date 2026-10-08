@@ -22,7 +22,8 @@ beforeEach( function (): void {
 } );
 
 /**
- * Every storefront route with its parameters.
+ * Every storefront route with its parameters. The checkout routes need a
+ * cart, so tests/Feature/Http/CheckoutRoutesTest.php covers them.
  *
  * @return array<string, array{0: string, 1: array<string, string>}>
  */
@@ -36,8 +37,6 @@ function storefrontRoutes(): array
         'product'         => [ 'artisanpack.ecommerce.storefront.product', [ 'product' => 'linen-shirt' ] ],
         'search'          => [ 'artisanpack.ecommerce.storefront.search', [] ],
         'cart'            => [ 'artisanpack.ecommerce.storefront.cart', [] ],
-        'checkout'        => [ 'artisanpack.ecommerce.storefront.checkout', [] ],
-        'checkout return' => [ 'artisanpack.ecommerce.storefront.checkout.return', [] ],
         'confirmation'    => [ 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => '1001' ] ],
         'lookup'          => [ 'artisanpack.ecommerce.storefront.lookup', [] ],
     ];

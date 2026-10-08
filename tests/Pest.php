@@ -151,3 +151,94 @@ if ( ! function_exists( 'makeVariableProduct' ) ) {
         return [ 'product' => $product, 'groups' => [ 'colour' => $colour, 'size' => $size ], 'values' => $values, 'variants' => $made ];
     }
 }
+
+if ( ! function_exists( 'checkoutCart' ) ) {
+    /**
+     * The shopper's cart, holding `$quantity` of each product (a new $19
+     * product when none are given).
+     *
+     * @param  array<int, Product>  $products  Products to add.
+     */
+    function checkoutCart( array $products = [], int $quantity = 1 ): ArtisanPackUI\Ecommerce\Models\Cart
+    {
+        $cart = app( ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart::class )->current( true );
+
+        foreach ( [] === $products ? [ makeProduct( 1900, [ 'name' => 'Mug' ] ) ] : $products as $product ) {
+            app( ArtisanPackUI\Ecommerce\Services\StorefrontCartService::class )->addItem( $cart, $product->id, null, $quantity );
+        }
+
+        return $cart->refresh();
+    }
+}
+
+if ( ! function_exists( 'checkoutShipping' ) ) {
+    /**
+     * A shipping zone for `$countries` with flat-rate methods, label =>
+     * amount (or [ amount, delivery estimate ]).
+     *
+     * @param  array<string, array{0: int, 1: string}|int>  $methods    Methods.
+     * @param  array<int, string>                           $countries  Country codes.
+     */
+    function checkoutShipping( array $methods = [ 'Standard' => 500 ], array $countries = [ 'US', 'CA' ] ): void
+    {
+        $zone = ArtisanPackUI\Ecommerce\Models\ShippingZone::factory()->create( [ 'name' => implode( '/', $countries ), 'country_codes' => $countries ] );
+
+        foreach ( array_keys( $methods ) as $position => $label ) {
+            [ $amount, $estimate ] = is_array( $methods[ $label ] ) ? $methods[ $label ] : [ $methods[ $label ], null ];
+
+            ArtisanPackUI\Ecommerce\Models\ShippingMethod::factory()->create( [
+                'zone_id'  => $zone->id,
+                'key'      => 'flat-rate',
+                'label'    => $label,
+                'config'   => array_filter( [ 'amount' => $amount, 'delivery_estimate' => $estimate ], static fn ( mixed $value ): bool => null !== $value ),
+                'position' => $position,
+            ] );
+        }
+    }
+}
+
+if ( ! function_exists( 'checkoutGateway' ) ) {
+    /**
+     * Registers a fake gateway whose payment UI is the fake driver
+     * (registered as `fake-driver`).
+     */
+    function checkoutGateway( string $key = 'fake', string $label = 'Fake card', string $driver = 'fake-driver' ): Tests\Fixtures\Gateways\FakeClientGateway
+    {
+        $gateway = new Tests\Fixtures\Gateways\FakeClientGateway( $key, $label, $driver );
+
+        app( ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry::class )->register( $key, $gateway );
+
+        if ( ! app( ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry::class )->has( 'fake-driver' ) ) {
+            Livewire\Livewire::component( 'fake-payment-driver', Tests\Fixtures\Livewire\FakePaymentDriver::class );
+            app( ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry::class )->register( 'fake-driver', 'fake-payment-driver' );
+        }
+
+        return $gateway;
+    }
+}
+
+if ( ! function_exists( 'checkoutAddress' ) ) {
+    /**
+     * A complete US address for the checkout's address form.
+     *
+     * @param  array<string, string>  $overrides  Fields to change.
+     *
+     * @return array<string, string>
+     */
+    function checkoutAddress( array $overrides = [] ): array
+    {
+        return $overrides + [
+            'first_name'   => 'Ada',
+            'last_name'    => 'Lovelace',
+            'company'      => '',
+            'phone'        => '',
+            'country_code' => 'US',
+            'address1'     => '1 Main Street',
+            'address2'     => '',
+            'city'         => 'Springfield',
+            'region'       => '',
+            'region_code'  => 'IL',
+            'postal_code'  => '62701',
+        ];
+    }
+}

@@ -16,11 +16,18 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
 
 /**
  * Returns the page view for each storefront and account screen (spec §5.1).
@@ -144,28 +151,70 @@ class StorefrontPageController extends Controller
     }
 
     /**
-     * The checkout.
+     * The checkout. Never cached or indexed: it holds the shopper's details.
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function checkout(): View
+    public function checkout(): Response
     {
-        return view( 'ecommerce-storefront::pages.checkout' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.checkout' ) );
     }
 
     /**
-     * Where the payment provider sends the shopper back (redirects, 3-D
-     * Secure).
+     * Where the payment provider sends the shopper back (a redirect
+     * gateway, 3-D Secure, or a payment method that redirects).
+     *
+     * The cart's payment session is checked with its gateway: confirmed
+     * (authorized, succeeded, processing) resumes checkout at the next
+     * step; anything else goes back to the payment step with the reason.
+     * A `reference` (or Stripe's `payment_intent`) in the query string
+     * must be the cart's session. Without a session there's nothing to
+     * resume, so the shopper lands on checkout as it is.
      *
      * @since 1.0.0
      *
-     * @return View
+     * @param  Request                 $request   The request.
+     * @param  StorefrontCart          $carts     The shopper's cart.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
      */
-    public function checkoutReturn(): View
+    public function checkoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
     {
-        return view( 'ecommerce-storefront::pages.checkout-return' );
+        $cart      = $carts->current();
+        $reference = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
+        $gateway   = null === $cart || null === $cart->payment_gateway_key ? null : $gateways->find( (string) $cart->payment_gateway_key );
+
+        if ( '' === $reference || null === $gateway ) {
+            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
+        }
+
+        $given = $request->query( 'reference', $request->query( 'payment_intent' ) );
+
+        if ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) {
+            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
+        }
+
+        if ( ! $session->isConfirmed() ) {
+            return $this->backToPayment(
+                __( 'Your payment wasn\'t completed.' ),
+                $session->requiresAction() ? __( 'Your bank needs you to confirm this payment. Try again.' ) : __( 'Try again or use another payment method.' ),
+            );
+        }
+
+        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'review' ] ) );
     }
 
     /**
@@ -280,5 +329,42 @@ class StorefrontPageController extends Controller
     public function accountClaim(): View
     {
         return view( 'ecommerce-storefront::pages.account.claim' );
+    }
+
+    /**
+     * Back to the checkout's payment step, with a warning.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $title        What happened.
+     * @param  string  $description  What to do.
+     *
+     * @return RedirectResponse
+     */
+    protected function backToPayment( string $title, string $description ): RedirectResponse
+    {
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+    }
+
+    /**
+     * Marks a checkout response private: not stored by any cache and not
+     * indexed (spec §12).
+     *
+     * @since 1.0.0
+     *
+     * @template TResponse of SymfonyResponse
+     *
+     * @param  TResponse  $response  The response.
+     *
+     * @return TResponse
+     */
+    protected function keepPrivate( SymfonyResponse $response ): SymfonyResponse
+    {
+        $response->headers->set( 'Cache-Control', 'no-store, private' );
+        $response->headers->set( 'X-Robots-Tag', 'noindex, nofollow' );
+
+        return $response;
     }
 }

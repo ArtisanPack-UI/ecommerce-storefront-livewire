@@ -97,6 +97,22 @@ trait SendsToasts
     }
 
     /**
+     * Shows a warning toast on the next page the shopper sees, for actions
+     * that redirect (the checkout sending an empty cart back to the cart).
+     *
+     * @since 1.0.0
+     *
+     * @param  string       $title        The title.
+     * @param  string|null  $description  The description.
+     *
+     * @return void
+     */
+    protected function flashToastWarning( string $title, ?string $description = null ): void
+    {
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+    }
+
+    /**
      * Dispatches the toast to the browser.
      *
      * @since 1.0.0

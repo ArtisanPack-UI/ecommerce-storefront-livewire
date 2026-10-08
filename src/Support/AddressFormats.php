@@ -104,6 +104,43 @@ final class AddressFormats
     ];
 
     /**
+     * Postcode formats (PCRE, case-insensitive) for the countries the
+     * checkout validates, keyed by country code. Filterable with
+     * `ap.ecommerceStorefrontLivewire.address.postcodePatterns`; a country
+     * without a pattern takes any postcode, or none.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const POSTCODE_PATTERNS = [
+        'AT' => '/^\d{4}$/',
+        'AU' => '/^\d{4}$/',
+        'BE' => '/^\d{4}$/',
+        'BR' => '/^\d{5}-?\d{3}$/',
+        'CA' => '/^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$/i',
+        'CH' => '/^\d{4}$/',
+        'DE' => '/^\d{5}$/',
+        'DK' => '/^\d{4}$/',
+        'ES' => '/^\d{5}$/',
+        'FI' => '/^\d{5}$/',
+        'FR' => '/^\d{5}$/',
+        'GB' => '/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i',
+        'IE' => '/^[A-Z]\d[\dW] ?[A-Z\d]{4}$/i',
+        'IN' => '/^\d{6}$/',
+        'IT' => '/^\d{5}$/',
+        'JP' => '/^\d{3}-?\d{4}$/',
+        'MX' => '/^\d{5}$/',
+        'NL' => '/^\d{4} ?[A-Z]{2}$/i',
+        'NO' => '/^\d{4}$/',
+        'NZ' => '/^\d{4}$/',
+        'PL' => '/^\d{2}-\d{3}$/',
+        'PT' => '/^\d{4}-\d{3}$/',
+        'SE' => '/^\d{3} ?\d{2}$/',
+        'US' => '/^\d{5}(-\d{4})?$/',
+    ];
+
+    /**
      * Countries that call it a ZIP code or a postcode rather than a postal
      * code.
      *
@@ -206,5 +243,41 @@ final class AddressFormats
         $example  = $examples[ strtoupper( (string) $country ) ] ?? null;
 
         return is_string( $example ) && '' !== $example ? __( 'For example: :example', [ 'example' => $example ] ) : null;
+    }
+
+    /**
+     * The postcode format for a country, or null when any postcode (or
+     * none) is accepted.
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $country  ISO 3166-1 alpha-2 code.
+     *
+     * @return string|null A PCRE pattern.
+     */
+    public static function postcodePattern( ?string $country ): ?string
+    {
+        $patterns = (array) applyFilters( 'ap.ecommerceStorefrontLivewire.address.postcodePatterns', self::POSTCODE_PATTERNS );
+        $pattern  = $patterns[ strtoupper( trim( (string) $country ) ) ] ?? null;
+
+        return is_string( $pattern ) && '' !== $pattern && false !== @preg_match( $pattern, '' ) ? $pattern : null;
+    }
+
+    /**
+     * Whether `$postcode` is in the country's format (always true for a
+     * country without one).
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $country   ISO 3166-1 alpha-2 code.
+     * @param  string       $postcode  Postcode.
+     *
+     * @return bool
+     */
+    public static function postcodeIsValid( ?string $country, string $postcode ): bool
+    {
+        $pattern = self::postcodePattern( $country );
+
+        return null === $pattern || 1 === preg_match( $pattern, trim( $postcode ) );
     }
 }

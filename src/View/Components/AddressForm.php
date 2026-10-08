@@ -73,6 +73,7 @@ class AddressForm extends Component
      * @param  bool         $withName  Include the name, company, and phone fields.
      * @param  string|null  $country   The selected ISO 3166-1 alpha-2 country.
      * @param  string|null  $section   The autocomplete section (`shipping`, `billing`).
+     * @param  bool         $requireName  Mark the first and last name required (checkout).
      */
     public function __construct(
         public string $model,
@@ -81,6 +82,7 @@ class AddressForm extends Component
         public bool $withName = true,
         public ?string $country = null,
         public ?string $section = null,
+        public bool $requireName = false,
     ) {
         $this->country = '' === trim( (string) $this->country ) ? null : strtoupper( trim( (string) $this->country ) );
     }
@@ -96,8 +98,8 @@ class AddressForm extends Component
     public function fields(): array
     {
         $fields = [
-            'first_name' => [ 'label' => __( 'First name' ), 'autocomplete' => 'given-name', 'required' => false, 'wide' => false ],
-            'last_name'  => [ 'label' => __( 'Last name' ), 'autocomplete' => 'family-name', 'required' => false, 'wide' => false ],
+            'first_name' => [ 'label' => __( 'First name' ), 'autocomplete' => 'given-name', 'required' => $this->requireName, 'wide' => false ],
+            'last_name'  => [ 'label' => __( 'Last name' ), 'autocomplete' => 'family-name', 'required' => $this->requireName, 'wide' => false ],
             'company'    => [ 'label' => __( 'Company' ), 'autocomplete' => 'organization', 'required' => false, 'wide' => true ],
             'phone'      => [ 'label' => __( 'Phone' ), 'autocomplete' => 'tel', 'required' => false, 'wide' => true ],
             'address1'   => [ 'label' => __( 'Address' ), 'autocomplete' => 'address-line1', 'required' => true, 'wide' => true ],
@@ -151,6 +153,18 @@ class AddressForm extends Component
     public function postcodeLabel(): string
     {
         return AddressFormats::postcodeLabel( $this->country );
+    }
+
+    /**
+     * Whether the selected country needs a postcode (it has a format).
+     *
+     * @since 1.0.0
+     *
+     * @return bool
+     */
+    public function postcodeRequired(): bool
+    {
+        return null !== AddressFormats::postcodePattern( $this->country );
     }
 
     /**
