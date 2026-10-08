@@ -12,8 +12,8 @@
     Vite build or dev server is present; the host adds this package's views
     to its Tailwind `@source` list (see `php artisan ecommerce-storefront:install`).
 
-    Header actions (account, cart, and anything a satellite adds, such as a
-    wishlist) come from the `ap.ecommerceStorefrontLivewire.header.actions`
+    Header actions (currency switcher, account, cart, and anything a
+    satellite adds, such as a wishlist) come from the `ap.ecommerceStorefrontLivewire.header.actions`
     filter: key => view name or Htmlable.
 
     Publish with `php artisan vendor:publish --tag=ecommerce-storefront-views`.
@@ -28,8 +28,9 @@
     use Illuminate\Support\Facades\Route;
 
     $ecommerceHeaderActions = (array) applyFilters( 'ap.ecommerceStorefrontLivewire.header.actions', [
-        'account' => 'ecommerce-storefront::partials.header.account',
-        'cart'    => 'ecommerce-storefront::partials.header.cart',
+        'currency' => 'ecommerce-storefront::partials.header.currency',
+        'account'  => 'ecommerce-storefront::partials.header.account',
+        'cart'     => 'ecommerce-storefront::partials.header.cart',
     ] );
     $ecommerceHasCatalog = Route::has( 'artisanpack.ecommerce.storefront.catalog' );
     $ecommerceHasSearch  = Route::has( 'artisanpack.ecommerce.storefront.search' );

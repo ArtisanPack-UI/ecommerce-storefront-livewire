@@ -17,8 +17,9 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
-use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\MergePrompt;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
@@ -99,6 +100,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'price'           => Components\Price::class,
         'price-range'     => Components\PriceRange::class,
         'quantity'        => Components\Quantity::class,
+        'rating-input'    => Components\RatingInput::class,
         'rating-summary'  => Components\RatingSummary::class,
         'sf-product-card' => Components\ProductCard::class,
         'skeleton'        => Components\Skeleton::class,
@@ -118,13 +120,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'artisanpack-ecommerce-storefront-category-show'         => Catalog\CategoryShow::class,
         'artisanpack-ecommerce-storefront-tag-show'              => Catalog\TagShow::class,
         'artisanpack-ecommerce-storefront-product-show'          => Product\Show::class,
+        'artisanpack-ecommerce-storefront-product-reviews'       => Product\Reviews::class,
+        'artisanpack-ecommerce-storefront-related-products'      => Product\RelatedProducts::class,
         'artisanpack-ecommerce-storefront-product-form-simple'   => Product\Forms\SimpleForm::class,
         'artisanpack-ecommerce-storefront-product-form-variable' => Product\Forms\VariableForm::class,
         'artisanpack-ecommerce-storefront-product-form-grouped'  => Product\Forms\GroupedForm::class,
         'artisanpack-ecommerce-storefront-product-form-bundled'  => Product\Forms\BundledForm::class,
         'artisanpack-ecommerce-storefront-product-form-digital'  => Product\Forms\DigitalForm::class,
         ProductFormRegistry::OPTIONS_FORM                        => Product\Forms\OptionsForm::class,
-        'artisanpack-ecommerce-storefront-cart-merge-prompt'     => MergePrompt::class,
+        'artisanpack-ecommerce-storefront-cart'                  => Cart\Index::class,
+        'artisanpack-ecommerce-storefront-cart-drawer'           => Cart\Drawer::class,
+        'artisanpack-ecommerce-storefront-cart-button'           => Cart\HeaderButton::class,
+        'artisanpack-ecommerce-storefront-cart-merge-prompt'     => Cart\MergePrompt::class,
+        'artisanpack-ecommerce-storefront-currency-switcher'     => Currency\Switcher::class,
     ];
 
     /**

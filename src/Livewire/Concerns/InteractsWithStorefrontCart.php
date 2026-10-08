@@ -66,4 +66,28 @@ trait InteractsWithStorefrontCart
 
         $this->dispatch( 'ecommerce-cart-updated', count: $carts->count() );
     }
+
+    /**
+     * Gives feedback after an "Add to cart", per `cart.after_add`:
+     * `drawer` (the default) dispatches `ecommerce-cart-open` for the cart
+     * drawer, `toast` shows a toast naming the product, `none` does nothing
+     * (the header count still updates). Needs {@see SendsToasts}.
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $productName  The product added, for the toast.
+     *
+     * @return void
+     */
+    protected function afterAddToCart( ?string $productName ): void
+    {
+        match ( (string) config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'drawer' ) ) {
+            'toast' => $this->toastSuccess(
+                __( 'Added to your cart' ),
+                null === $productName ? null : __( ':name is in your cart.', [ 'name' => $productName ] ),
+            ),
+            'none'  => null,
+            default => $this->dispatch( 'ecommerce-cart-open' ),
+        };
+    }
 }

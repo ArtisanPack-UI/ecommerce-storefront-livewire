@@ -67,9 +67,6 @@ trait AddsToCart
 
         $this->cartChanged( $item->cart );
 
-        $this->toastSuccess(
-            __( 'Added to your cart' ),
-            null === $item->product ? null : __( ':name is in your cart.', [ 'name' => $item->product->name ] ),
-        );
+        $this->afterAddToCart( null === $item->product ? null : (string) $item->product->name );
     }
 }
