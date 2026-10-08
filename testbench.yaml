@@ -4,7 +4,6 @@
 providers:
   - Laravel\Sanctum\SanctumServiceProvider
   - Laravel\Scout\ScoutServiceProvider
-  - Rebing\GraphQL\GraphQLServiceProvider
   - ArtisanPackUI\Hooks\Providers\HooksServiceProvider
   - ArtisanPackUI\Ecommerce\Providers\EcommerceServiceProvider
   - Livewire\LivewireServiceProvider

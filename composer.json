@@ -28,15 +28,6 @@
       "email": "me@jacobmartella.com"
     }
   ],
-  "repositories": [
-    {
-      "type": "path",
-      "url": "../ecommerce",
-      "options": {
-        "symlink": true
-      }
-    }
-  ],
   "require": {
     "php": "^8.3",
     "ext-bcmath": "*",
