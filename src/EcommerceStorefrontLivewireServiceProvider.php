@@ -19,6 +19,9 @@ use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\MergePrompt;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -91,12 +94,16 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'address'         => Components\Address::class,
         'address-form'    => Components\AddressForm::class,
         'empty-state'     => Components\EmptyState::class,
+        'gallery'         => Components\Gallery::class,
         'money'           => Components\Money::class,
         'price'           => Components\Price::class,
+        'price-range'     => Components\PriceRange::class,
+        'quantity'        => Components\Quantity::class,
         'rating-summary'  => Components\RatingSummary::class,
         'sf-product-card' => Components\ProductCard::class,
         'skeleton'        => Components\Skeleton::class,
         'stock-status'    => Components\StockStatus::class,
+        'swatches'        => Components\Swatches::class,
     ];
 
     /**
@@ -107,8 +114,32 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
      * @var array<string, class-string>
      */
     public const LIVEWIRE_COMPONENTS = [
-        'artisanpack-ecommerce-storefront-catalog'           => Catalog\Index::class,
-        'artisanpack-ecommerce-storefront-cart-merge-prompt' => MergePrompt::class,
+        'artisanpack-ecommerce-storefront-catalog'               => Catalog\Index::class,
+        'artisanpack-ecommerce-storefront-category-show'         => Catalog\CategoryShow::class,
+        'artisanpack-ecommerce-storefront-tag-show'              => Catalog\TagShow::class,
+        'artisanpack-ecommerce-storefront-product-show'          => Product\Show::class,
+        'artisanpack-ecommerce-storefront-product-form-simple'   => Product\Forms\SimpleForm::class,
+        'artisanpack-ecommerce-storefront-product-form-variable' => Product\Forms\VariableForm::class,
+        'artisanpack-ecommerce-storefront-product-form-grouped'  => Product\Forms\GroupedForm::class,
+        'artisanpack-ecommerce-storefront-product-form-bundled'  => Product\Forms\BundledForm::class,
+        'artisanpack-ecommerce-storefront-product-form-digital'  => Product\Forms\DigitalForm::class,
+        ProductFormRegistry::OPTIONS_FORM                        => Product\Forms\OptionsForm::class,
+        'artisanpack-ecommerce-storefront-cart-merge-prompt'     => MergePrompt::class,
+    ];
+
+    /**
+     * The purchase forms for the engine's core product types (spec §8.2).
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const PRODUCT_FORMS = [
+        'simple'   => 'artisanpack-ecommerce-storefront-product-form-simple',
+        'variable' => 'artisanpack-ecommerce-storefront-product-form-variable',
+        'grouped'  => 'artisanpack-ecommerce-storefront-product-form-grouped',
+        'bundled'  => 'artisanpack-ecommerce-storefront-product-form-bundled',
+        'digital'  => 'artisanpack-ecommerce-storefront-product-form-digital',
     ];
 
     /**
@@ -126,6 +157,8 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         );
 
         $this->app->scoped( StorefrontCart::class );
+        $this->app->scoped( CategoryPaths::class );
+        $this->app->singleton( ProductFormRegistry::class );
     }
 
     /**
@@ -148,6 +181,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerBladeComponents();
         $this->registerLayoutResolver();
         $this->registerLivewireComponents();
+        $this->registerProductForms();
         $this->registerRoutes();
     }
 
@@ -365,6 +399,25 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         }
 
         $this->app->booted( fn () => $this->registerPersistentMiddleware() );
+    }
+
+    /**
+     * Registers the core product types' purchase forms, leaving any a
+     * satellite registered first in place.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerProductForms(): void
+    {
+        $registry = $this->app->make( ProductFormRegistry::class );
+
+        foreach ( self::PRODUCT_FORMS as $type => $component ) {
+            if ( ! $registry->has( $type ) ) {
+                $registry->register( $type, $component );
+            }
+        }
     }
 
     /**

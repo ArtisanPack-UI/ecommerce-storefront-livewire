@@ -11,9 +11,5 @@
 @section( 'title', $product->name )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ $product->name }}</h1>
-
-        @include( 'ecommerce-storefront::partials.screen-pending' )
-    </div>
+    <livewire:artisanpack-ecommerce-storefront-product-show :product="$product" />
 @endsection

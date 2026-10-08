@@ -143,13 +143,22 @@ it( 'answers 404 for a product that is unknown, not visible, or of a missing typ
     'missing type' => fn (): string => Product::factory()->create( [ 'type' => 'uninstalled-satellite-type' ] )->slug,
 ] );
 
-it( 'answers 404 for an unknown category path, a broken chain, or an unknown tag', function ( string $name, array $parameters ): void {
+it( 'answers 404 for an unknown category or tag', function ( string $name, array $parameters ): void {
     $this->get( route( $name, $parameters ) )->assertNotFound();
 } )->with( [
-    'unknown category'   => [ 'artisanpack.ecommerce.storefront.category', [ 'path' => 'nope' ] ],
-    'child without root' => [ 'artisanpack.ecommerce.storefront.category', [ 'path' => 'shirts' ] ],
-    'wrong parent'       => [ 'artisanpack.ecommerce.storefront.category', [ 'path' => 'shirts/clothing' ] ],
-    'unknown tag'        => [ 'artisanpack.ecommerce.storefront.tag', [ 'tag' => 'winter' ] ],
+    'unknown category'      => [ 'artisanpack.ecommerce.storefront.category', [ 'path' => 'nope' ] ],
+    'unknown leaf in chain' => [ 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing/nope' ] ],
+    'unknown tag'           => [ 'artisanpack.ecommerce.storefront.tag', [ 'tag' => 'winter' ] ],
+] );
+
+it( 'redirects a wrong category chain to the canonical path of its last slug, keeping the query string', function ( string $path, string $canonical ): void {
+    $this->get( route( 'artisanpack.ecommerce.storefront.category', [ 'path' => $path, 'sort' => 'name' ] ) )
+        ->assertStatus( 301 )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.category', [ 'path' => $canonical, 'sort' => 'name' ] ) );
+} )->with( [
+    'child without root' => [ 'shirts', 'clothing/shirts' ],
+    'unknown parent'     => [ 'nope/shirts', 'clothing/shirts' ],
+    'root under a child' => [ 'shirts/clothing', 'clothing' ],
 ] );
 
 it( 'uses the configured prefixes and middleware', function (): void {

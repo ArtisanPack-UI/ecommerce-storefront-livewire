@@ -44,6 +44,17 @@ final class ProductImages
     public const CARD_SIZES = [ 'medium', 'large' ];
 
     /**
+     * The media-library sizes offered in a product page gallery's `srcset`,
+     * smallest first. The first one is also the `src`; the lightbox and
+     * zoom use the `full` size.
+     *
+     * @since 1.0.0
+     *
+     * @var array<int, string>
+     */
+    public const DETAIL_SIZES = [ 'medium', 'large' ];
+
+    /**
      * Override for tests: true/false forces the answer, null detects.
      *
      * @since 1.0.0
@@ -137,16 +148,91 @@ final class ProductImages
     }
 
     /**
-     * A media-library image with its `srcset`, or null.
+     * Every image a product page gallery shows, featured image first, then
+     * the gallery in position order (duplicates of the featured image
+     * dropped). Each image's alternative text is its own, else the product
+     * name.
+     *
+     * @since 1.0.0
+     *
+     * @param  Product  $product  Product (eager-load `images` to avoid a query).
+     *
+     * @return array<int, array{key: string, url: string, srcset: string|null, full: string, alt: string, media_id: int|null}>
+     */
+    public static function gallery( Product $product ): array
+    {
+        $name   = (string) $product->name;
+        $images = [];
+        $seen   = [];
+
+        $add = static function ( ?array $image, ?int $mediaId, string $key ) use ( &$images, &$seen ): void {
+            if ( null === $image || isset( $seen[ $image['url'] ] ) ) {
+                return;
+            }
+
+            $seen[ $image['url'] ] = true;
+            $images[]              = $image + [ 'key' => $key, 'media_id' => $mediaId ];
+        };
+
+        $featuredId = null === $product->featured_image_media_id ? null : (int) $product->featured_image_media_id;
+        $featured   = self::fromMedia( $featuredId, $name, self::DETAIL_SIZES );
+
+        if ( null === $featured && null !== ( $url = self::safeUrl( $product->meta['featured_image_url'] ?? null ) ) ) {
+            $featured = [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $name ];
+        }
+
+        $add( $featured, $featuredId, 'featured' );
+
+        $gallery = $product->relationLoaded( 'images' ) ? $product->images : $product->images()->get();
+
+        foreach ( $gallery as $image ) {
+            if ( ! $image instanceof ProductImage ) {
+                continue;
+            }
+
+            $alt     = '' !== trim( (string) $image->alt_text ) ? (string) $image->alt_text : $name;
+            $mediaId = null === $image->media_id ? null : (int) $image->media_id;
+            $url     = self::safeUrl( $image->image_url );
+
+            $add(
+                self::fromMedia( $mediaId, $alt, self::DETAIL_SIZES )
+                    ?? ( null === $url ? null : [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $alt ] ),
+                $mediaId,
+                'image-' . $image->id,
+            );
+        }
+
+        return $images;
+    }
+
+    /**
+     * One media-library image at product-page sizes (a variant's or a
+     * category's image), or null without the library.
      *
      * @since 1.0.0
      *
      * @param  int|null  $mediaId  Media id.
-     * @param  string    $alt      Alternative text.
+     * @param  string    $alt      Alternative text when the media item has none.
      *
-     * @return array{url: string, srcset: string|null, alt: string}|null
+     * @return array{url: string, srcset: string|null, full: string, alt: string}|null
      */
-    private static function fromMedia( ?int $mediaId, string $alt ): ?array
+    public static function media( ?int $mediaId, string $alt ): ?array
+    {
+        return self::fromMedia( $mediaId, $alt, self::DETAIL_SIZES );
+    }
+
+    /**
+     * A media-library image with its `srcset`, or null.
+     *
+     * @since 1.0.0
+     *
+     * @param  int|null            $mediaId  Media id.
+     * @param  string              $alt      Alternative text.
+     * @param  array<int, string>  $sizes    Sizes for the `srcset`, smallest first.
+     *
+     * @return array{url: string, srcset: string|null, full: string, alt: string}|null
+     */
+    private static function fromMedia( ?int $mediaId, string $alt, array $sizes = self::CARD_SIZES ): ?array
     {
         if ( null === $mediaId || ! self::libraryInstalled() ) {
             return null;
@@ -161,7 +247,7 @@ final class ProductImages
 
             $sources = [];
 
-            foreach ( self::CARD_SIZES as $size ) {
+            foreach ( $sizes as $size ) {
                 $url   = self::safeUrl( $media->imageUrl( $size ) );
                 $width = (int) config( 'artisanpack.media.image_sizes.' . $size . '.width', 0 );
 
@@ -169,6 +255,8 @@ final class ProductImages
                     $sources[ $url ] = $width;
                 }
             }
+
+            $full = self::safeUrl( $media->imageUrl( 'full' ) );
         } catch ( Throwable ) {
             return null;
         }
@@ -188,6 +276,7 @@ final class ProductImages
         return [
             'url'    => (string) array_key_first( $sources ),
             'srcset' => count( $srcset ) > 1 ? implode( ', ', $srcset ) : null,
+            'full'   => $full ?? (string) array_key_last( $sources ),
             'alt'    => '' !== trim( (string) ( $media->alt_text ?? '' ) ) ? (string) $media->alt_text : $alt,
         ];
     }

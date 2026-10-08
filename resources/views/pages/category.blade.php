@@ -11,9 +11,5 @@
 @section( 'title', $category->name )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ $category->name }}</h1>
-
-        <livewire:artisanpack-ecommerce-storefront-catalog :category="(int) $category->id" />
-    </div>
+    <livewire:artisanpack-ecommerce-storefront-category-show :category="$category" />
 @endsection
