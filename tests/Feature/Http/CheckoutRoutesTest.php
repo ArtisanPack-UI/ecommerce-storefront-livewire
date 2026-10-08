@@ -95,6 +95,18 @@ it( 'sends the shopper back to payment when the payment didn\'t go through', fun
     'cancelled'        => [ PaymentSession::STATUS_CANCELED, 'Try again or use another payment method.' ],
 ] );
 
+it( 'sends the shopper back to payment when the confirmed payment was for an older total', function (): void {
+    [ 'gateway' => $gateway ] = cartAwaitingPayment();
+
+    $gateway->sessions['fake_ps_1'] = new PaymentSession( 'fake', 'fake_ps_1', new Money\Money( 100, new Money\Currency( 'USD' ) ), status: PaymentSession::STATUS_SUCCEEDED );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1' ] ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
+        ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
+
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'Your order total has changed.' );
+} );
+
 it( 'refuses a return for another payment', function (): void {
     [ 'gateway' => $gateway ] = cartAwaitingPayment();
     $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );

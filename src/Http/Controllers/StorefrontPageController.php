@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Illuminate\Contracts\View\View;
@@ -167,8 +168,9 @@ class StorefrontPageController extends Controller
      * gateway, 3-D Secure, or a payment method that redirects).
      *
      * The cart's payment session is checked with its gateway: confirmed
-     * (authorized, succeeded, processing) resumes checkout at the next
-     * step; anything else goes back to the payment step with the reason.
+     * (authorized, succeeded, processing) for the cart's current total
+     * resumes checkout at the next step; anything else goes back to the
+     * payment step with the reason.
      * A `reference` (or Stripe's `payment_intent`) in the query string
      * must be the cart's session. Without a session there's nothing to
      * resume, so the shopper lands on checkout as it is.
@@ -210,6 +212,10 @@ class StorefrontPageController extends Controller
                 __( 'Your payment wasn\'t completed.' ),
                 $session->requiresAction() ? __( 'Your bank needs you to confirm this payment. Try again.' ) : __( 'Try again or use another payment method.' ),
             );
+        }
+
+        if ( ! PaymentSessions::confirmedFor( $session, $cart ) ) {
+            return $this->backToPayment( __( 'Your order total has changed.' ), __( 'Pay again for the new total.' ) );
         }
 
         $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );

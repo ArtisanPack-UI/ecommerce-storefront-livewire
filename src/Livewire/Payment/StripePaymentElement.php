@@ -14,6 +14,8 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
+use Livewire\Livewire;
 
 /**
  * `stripe-payment-element` — on-site card (and wallet) entry with Stripe's
@@ -59,6 +61,30 @@ class StripePaymentElement extends PaymentDriver
      * @var string
      */
     public const STRIPE_JS = 'https://js.stripe.com/v3';
+
+    /**
+     * The storefront page the driver is on, for Stripe to return to when
+     * the storefront's return route is off. Captured at mount, because
+     * later renders run on Livewire's update endpoint.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $pageUrl = '';
+
+    /**
+     * Remembers the page the driver is on.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function mount(): void
+    {
+        $this->pageUrl = Livewire::originalUrl();
+    }
 
     /**
      * Checks the PaymentIntent the Payment Element confirmed and reports
@@ -119,7 +145,7 @@ class StripePaymentElement extends PaymentDriver
                 'clientSecret'   => $clientSecret,
                 'locale'         => is_string( $options['locale'] ?? null ) && '' !== $options['locale'] ? $options['locale'] : 'auto',
                 'appearance'     => is_array( $options['appearance'] ?? null ) ? $options['appearance'] : [],
-                'returnUrl'      => $this->returnUrl() ?? url()->current(),
+                'returnUrl'      => $this->returnUrl() ?? $this->pageUrl,
                 'messages'       => [
                     'loadFailed' => __( 'The payment form couldn\'t load. Check your connection and reload the page.' ),
                     'failed'     => __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ),

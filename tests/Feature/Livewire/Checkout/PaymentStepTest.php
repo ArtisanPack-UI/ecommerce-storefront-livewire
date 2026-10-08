@@ -182,6 +182,37 @@ it( 'refuses a confirmation the gateway doesn\'t back up', function ( bool $prov
         ->assertSet( 'step', 'payment' );
 } )->with( [ 'not paid' => [ false ], 'provider down' => [ true ] ] );
 
+it( 'refuses a confirmed payment made for an older total', function (): void {
+    $gateway = checkoutGateway();
+    checkoutCart( [ makeProduct( 2000 ) ] );
+
+    $component = checkoutAtPayment();
+
+    $gateway->sessions['fake_ps_1'] = new PaymentSession( 'fake', 'fake_ps_1', new Money\Money( 100, new Money\Currency( 'USD' ) ), status: PaymentSession::STATUS_AUTHORIZED );
+
+    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1' )
+        ->assertHasErrors( 'gateway' )
+        ->assertSet( 'confirmedPayment', null )
+        ->assertSet( 'step', 'payment' );
+} );
+
+it( 'sets the payment up again when the cart changes on the payment step', function (): void {
+    $gateway = checkoutGateway();
+    $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
+
+    $component = checkoutAtPayment()->assertSet( 'payment.reference', 'fake_ps_1' );
+
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 2 );
+
+    $reference = (string) $component->get( 'payment.reference' );
+
+    expect( $reference )->not->toBe( 'fake_ps_1' )
+        ->and( (int) $gateway->sessions[ $reference ]->amount->getAmount() )->toBe( 4500 )
+        ->and( $cart->refresh()->payment_reference )->toBe( $reference );
+} );
+
 it( 'ignores a confirmation for another payment', function (): void {
     checkoutGateway();
     checkoutCart();

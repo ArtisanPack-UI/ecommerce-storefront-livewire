@@ -36,6 +36,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\AddressFormats;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutSteps;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\Countries;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\AddressForm;
 use Illuminate\Contracts\View\View;
@@ -402,6 +403,9 @@ class Index extends Component
 
         if ( ! $this->canVisit( $this->step, $cart ) ) {
             $this->moveTo( $this->furthestStep( $cart ), $cart );
+        } elseif ( 'payment' === $this->step ) {
+            // A session made for the old total can't pay for the new one.
+            $this->preparePayment( $cart );
         }
     }
 
@@ -1100,7 +1104,7 @@ class Index extends Component
 
     /**
      * Whether the cart's gateway says the session is confirmed (authorized,
-     * succeeded, or processing).
+     * succeeded, or processing) for the cart's current total and currency.
      *
      * @since 1.0.0
      *
@@ -1118,7 +1122,7 @@ class Index extends Component
         }
 
         try {
-            return $gateway->retrievePaymentSession( $reference )->isConfirmed();
+            return PaymentSessions::confirmedFor( $gateway->retrievePaymentSession( $reference ), $cart );
         } catch ( Throwable $exception ) {
             report( $exception );
 

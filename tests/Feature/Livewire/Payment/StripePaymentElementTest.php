@@ -144,9 +144,33 @@ it( 'passes on a decline from Stripe as plain text', function (): void {
 it( 'holds no card data, only the session it was given', function (): void {
     $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
 
-    expect( array_keys( $component->instance()->all() ) )->toEqualCanonicalizing( [ 'config', 'gateway', 'gatewayLabel', 'reference' ] );
+    expect( array_keys( $component->instance()->all() ) )->toEqualCanonicalizing( [ 'config', 'gateway', 'gatewayLabel', 'reference', 'pageUrl' ] );
 } );
 
 it( 'keeps its props out of the browser\'s reach', function ( string $property ): void {
     Livewire::test( StripePaymentElement::class, stripeDriverProps() )->set( $property, 'pi_evil' );
-} )->with( [ 'reference', 'config.client_secret', 'gateway' ] )->throws( CannotUpdateLockedPropertyException::class );
+} )->with( [ 'reference', 'config.client_secret', 'gateway', 'pageUrl' ] )->throws( CannotUpdateLockedPropertyException::class );
+
+it( 'returns to the page it was mounted on when the return route is off, even after an update', function (): void {
+    stripeLikeGateway();
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
+    $mountedOn = (string) $component->get( 'pageUrl' );
+
+    // Only the return route goes; Livewire's update route has to stay.
+    $routes = new Illuminate\Routing\RouteCollection();
+
+    foreach ( app( 'router' )->getRoutes() as $route ) {
+        if ( 'artisanpack.ecommerce.storefront.checkout.return' !== $route->getName() ) {
+            $routes->add( $route );
+        }
+    }
+
+    app( 'router' )->setRoutes( $routes );
+
+    $component->call( '$refresh' );
+
+    expect( $mountedOn )->not->toBe( '' )
+        ->and( $mountedOn )->not->toEndWith( '/livewire/update' )
+        ->and( $component->instance()->render()->getData()['stripe']['returnUrl'] )->toBe( $mountedOn );
+} );
