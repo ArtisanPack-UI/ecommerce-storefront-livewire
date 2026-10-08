@@ -11,9 +11,7 @@
 @section( 'title', __( 'Order details' ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Order details' ) }}</h1>
-
-        @include( 'ecommerce-storefront::partials.screen-pending' )
-    </div>
+    <x-artisanpack-ec-account-shell :title="__( 'Order details' )">
+        <livewire:artisanpack-ecommerce-storefront-account-order :order="$order" />
+    </x-artisanpack-ec-account-shell>
 @endsection

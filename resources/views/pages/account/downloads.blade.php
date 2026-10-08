@@ -11,9 +11,7 @@
 @section( 'title', __( 'Downloads' ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Downloads' ) }}</h1>
-
+    <x-artisanpack-ec-account-shell :title="__( 'Downloads' )">
         @include( 'ecommerce-storefront::partials.screen-pending' )
-    </div>
+    </x-artisanpack-ec-account-shell>
 @endsection
