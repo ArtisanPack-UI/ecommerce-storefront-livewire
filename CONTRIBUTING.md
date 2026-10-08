@@ -60,8 +60,9 @@ Before contributing, make sure you have:
    ```bash
    composer config repositories.ecommerce '{"type": "path", "url": "../ecommerce", "options": {"symlink": true}}'
    composer update artisanpack-ui/ecommerce
-   # Before committing:
+   # Before committing, switch back to the Packagist engine CI uses:
    composer config --unset repositories.ecommerce
+   composer update artisanpack-ui/ecommerce
    ```
 5. Make your changes
 6. Test your changes
