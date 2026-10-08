@@ -50,7 +50,7 @@
             <ul
                 id="{{ $headingId }}-list"
                 x-ref="list"
-                class="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-4"
+                class="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 md:mx-0 md:grid md:overflow-visible md:px-0 md:pb-0 {{ $gridClass }}"
                 aria-labelledby="{{ $headingId }}"
                 data-related-list
             >

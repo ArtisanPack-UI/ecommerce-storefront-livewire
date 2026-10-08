@@ -17,6 +17,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
@@ -26,11 +27,13 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Order;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Blade;
@@ -102,6 +105,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'account-shell'   => Components\AccountShell::class,
         'address'         => Components\Address::class,
         'address-form'    => Components\AddressForm::class,
+        'category-grid'   => Components\CategoryGrid::class,
         'empty-state'     => Components\EmptyState::class,
         'gallery'         => Components\Gallery::class,
         'money'           => Components\Money::class,
@@ -110,6 +114,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'quantity'        => Components\Quantity::class,
         'rating-input'    => Components\RatingInput::class,
         'rating-summary'  => Components\RatingSummary::class,
+        'search-box'      => Components\SearchBox::class,
         'sf-product-card' => Components\ProductCard::class,
         'skeleton'        => Components\Skeleton::class,
         'stock-status'    => Components\StockStatus::class,
@@ -127,9 +132,13 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'artisanpack-ecommerce-storefront-catalog'               => Catalog\Index::class,
         'artisanpack-ecommerce-storefront-category-show'         => Catalog\CategoryShow::class,
         'artisanpack-ecommerce-storefront-tag-show'              => Catalog\TagShow::class,
+        'artisanpack-ecommerce-storefront-product-grid'          => Catalog\ProductGrid::class,
+        'artisanpack-ecommerce-storefront-search'                => Search\Index::class,
+        'artisanpack-ecommerce-storefront-search-box'            => Search\HeaderSearch::class,
         'artisanpack-ecommerce-storefront-product-show'          => Product\Show::class,
         'artisanpack-ecommerce-storefront-product-reviews'       => Product\Reviews::class,
         'artisanpack-ecommerce-storefront-related-products'      => Product\RelatedProducts::class,
+        'artisanpack-ecommerce-storefront-recently-viewed'       => Product\RecentlyViewed::class,
         'artisanpack-ecommerce-storefront-product-form-simple'   => Product\Forms\SimpleForm::class,
         'artisanpack-ecommerce-storefront-product-form-variable' => Product\Forms\VariableForm::class,
         'artisanpack-ecommerce-storefront-product-form-grouped'  => Product\Forms\GroupedForm::class,
@@ -199,6 +208,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $this->app->scoped( StorefrontCart::class );
         $this->app->scoped( CategoryPaths::class );
+        $this->app->scoped( StorefrontContext::class );
         $this->app->singleton( ProductFormRegistry::class );
         $this->app->singleton( PaymentDriverRegistry::class );
     }
@@ -228,6 +238,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerSettings();
         $this->registerRoutes();
         $this->registerOrderViewUrl();
+        $this->registerVisualEditorBlocks();
     }
 
     /**
@@ -527,6 +538,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom( __DIR__ . '/../routes/storefront.php' );
         $this->loadRoutesFrom( __DIR__ . '/../routes/account.php' );
+    }
+
+    /**
+     * Registers the commerce blocks when visual-editor is installed and
+     * `visual_editor.blocks` is on (spec §11).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerVisualEditorBlocks(): void
+    {
+        StorefrontBlocks::boot( $this->app );
     }
 
     /**

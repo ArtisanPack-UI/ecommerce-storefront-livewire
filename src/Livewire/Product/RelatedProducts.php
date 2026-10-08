@@ -20,6 +20,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -99,6 +100,16 @@ class RelatedProducts extends Component
     public ?string $heading = null;
 
     /**
+     * Grid columns from `lg` up (1–6).
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $columns = 4;
+
+    /**
      * Normalizes the type and limit.
      *
      * @since 1.0.0
@@ -163,6 +174,7 @@ class RelatedProducts extends Component
             'headingId' => 'ec-related-' . $this->type . '-' . ( $this->product?->id ?? 'cart' ),
             'title'     => $this->headingText(),
             'currency'  => app( StorefrontCart::class )->currency(),
+            'gridClass' => GridColumns::large( $this->columns ),
         ] );
     }
 

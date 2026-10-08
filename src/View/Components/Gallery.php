@@ -40,6 +40,16 @@ use Illuminate\View\Component;
 class Gallery extends Component
 {
     /**
+     * Where the thumbnails can go: below the image, beside it (start or
+     * end, from `sm` up), or nowhere.
+     *
+     * @since 1.0.0
+     *
+     * @var array<int, string>
+     */
+    public const THUMBNAIL_POSITIONS = [ 'bottom', 'start', 'end', 'none' ];
+
+    /**
      * The images, normalised.
      *
      * @since 1.0.0
@@ -54,15 +64,20 @@ class Gallery extends Component
      * @param  array<int, array<string, mixed>>  $images  Images (`url`, `srcset`, `full`, `alt`), as from `ProductImages::gallery()`.
      * @param  string                            $name    The product name (for labels and fallback alt text).
      * @param  int                               $active  The index shown first.
-     * @param  string|null                       $scope   Only follow `ecommerce-gallery-show` events with this `scope`.
+     * @param  string|null                       $scope       Only follow `ecommerce-gallery-show` events with this `scope`.
+     * @param  string                            $thumbnails  Thumbnail position ({@see self::THUMBNAIL_POSITIONS}).
+     * @param  bool                              $zoom        Zoom the image in place on click.
      */
     public function __construct(
         public array $images,
         public string $name,
         public int $active = 0,
         public ?string $scope = null,
+        public string $thumbnails = 'bottom',
+        public bool $zoom = true,
     ) {
-        $this->items = [];
+        $this->items      = [];
+        $this->thumbnails = in_array( $thumbnails, self::THUMBNAIL_POSITIONS, true ) ? $thumbnails : 'bottom';
 
         foreach ( $images as $image ) {
             $url = is_array( $image ) ? ProductImages::safeUrl( $image['url'] ?? null ) : null;

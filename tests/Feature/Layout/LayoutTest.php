@@ -117,6 +117,6 @@ it( 'shows the cart count in the header', function (): void {
 } );
 
 it( 'ignores a search term that isn\'t a string', function (): void {
-    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q[]=lamp' )->assertOk();
-    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q=lamp' )->assertSee( 'value="lamp"', false );
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q[]=lamp' )->assertOk()->assertSee( '&quot;q&quot;:&quot;&quot;', false );
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q=lamp' )->assertSee( '&quot;q&quot;:&quot;lamp&quot;', false );
 } );

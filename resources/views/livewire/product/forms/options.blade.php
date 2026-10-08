@@ -94,6 +94,6 @@
 
     @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [
         'formId'       => $ecommerceFormId,
-        'showQuantity' => ! $separately,
+        'showQuantity' => $showQuantity && ! $separately,
     ] )
 </div>

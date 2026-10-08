@@ -12,8 +12,9 @@
         <span class="sr-only">{{ __( 'No image available' ) }}</span>
     </div>
 @else
+    @php( $ecommerceBeside = in_array( $thumbnails, [ 'start', 'end' ], true ) )
     <div
-        {{ $attributes->class( [ 'flex flex-col gap-3' ] ) }}
+        {{ $attributes->class( [ 'flex flex-col gap-3', 'sm:flex-row' => 'end' === $thumbnails, 'sm:flex-row-reverse' => 'start' === $thumbnails ] ) }}
         x-data="{
             images: @js( $items ),
             active: {{ $active }},
@@ -43,32 +44,50 @@
         aria-roledescription="{{ __( 'gallery' ) }}"
         aria-label="{{ __( ':name images', [ 'name' => $name ] ) }}"
         data-gallery
+        data-gallery-thumbnails="{{ $thumbnails }}"
     >
-        <div class="relative overflow-hidden rounded-box bg-base-200">
-            <button
-                type="button"
-                class="block aspect-square w-full cursor-zoom-in overflow-hidden"
-                x-bind:class="zoomed && 'cursor-zoom-out'"
-                x-on:click="zoomed = ! zoomed"
-                x-on:mousemove="zoomed && pan( $event )"
-                x-bind:aria-pressed="zoomed.toString()"
-                aria-label="{{ __( 'Zoom image' ) }}"
-                data-gallery-zoom
-            >
-                @foreach ( $items as $index => $item )
-                    <img
-                        src="{{ $item['url'] }}"
-                        @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
-                        alt="{{ $item['alt'] }}"
-                        @if ( $index !== $active ) loading="lazy" style="display: none" @endif
-                        decoding="async"
-                        class="h-full w-full object-contain transition-transform duration-200"
-                        x-show="active === {{ $index }}"
-                        x-bind:style="zoomed ? { transform: 'scale(2)', transformOrigin: origin } : { transform: '', transformOrigin: '' }"
-                        data-gallery-image="{{ $index }}"
-                    >
-                @endforeach
-            </button>
+        <div @class( [ 'relative overflow-hidden rounded-box bg-base-200', 'min-w-0 grow' => $ecommerceBeside ] )>
+            @if ( $zoom )
+                <button
+                    type="button"
+                    class="block aspect-square w-full cursor-zoom-in overflow-hidden"
+                    x-bind:class="zoomed && 'cursor-zoom-out'"
+                    x-on:click="zoomed = ! zoomed"
+                    x-on:mousemove="zoomed && pan( $event )"
+                    x-bind:aria-pressed="zoomed.toString()"
+                    aria-label="{{ __( 'Zoom image' ) }}"
+                    data-gallery-zoom
+                >
+                    @foreach ( $items as $index => $item )
+                        <img
+                            src="{{ $item['url'] }}"
+                            @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
+                            alt="{{ $item['alt'] }}"
+                            @if ( $index !== $active ) loading="lazy" style="display: none" @endif
+                            decoding="async"
+                            class="h-full w-full object-contain transition-transform duration-200"
+                            x-show="active === {{ $index }}"
+                            x-bind:style="zoomed ? { transform: 'scale(2)', transformOrigin: origin } : { transform: '', transformOrigin: '' }"
+                            data-gallery-image="{{ $index }}"
+                        >
+                    @endforeach
+                </button>
+            @else
+                <div class="block aspect-square w-full overflow-hidden" data-gallery-stage>
+                    @foreach ( $items as $index => $item )
+                        <img
+                            src="{{ $item['url'] }}"
+                            @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
+                            alt="{{ $item['alt'] }}"
+                            @if ( $index !== $active ) loading="lazy" style="display: none" @endif
+                            decoding="async"
+                            class="h-full w-full object-contain"
+                            x-show="active === {{ $index }}"
+                            data-gallery-image="{{ $index }}"
+                        >
+                    @endforeach
+                </div>
+            @endif
 
             <x-artisanpack-button
                 icon="o-arrows-pointing-out"
@@ -79,8 +98,8 @@
             />
         </div>
 
-        @if ( count( $items ) > 1 )
-            <ul role="list" class="flex flex-wrap gap-2" aria-label="{{ __( 'Thumbnails' ) }}">
+        @if ( count( $items ) > 1 && 'none' !== $thumbnails )
+            <ul role="list" @class( [ 'flex flex-wrap gap-2', 'sm:w-16 sm:shrink-0 sm:flex-col sm:flex-nowrap' => $ecommerceBeside ] ) aria-label="{{ __( 'Thumbnails' ) }}">
                 @foreach ( $items as $index => $item )
                     <li>
                         <button

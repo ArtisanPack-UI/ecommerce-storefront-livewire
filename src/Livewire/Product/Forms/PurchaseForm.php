@@ -65,6 +65,27 @@ abstract class PurchaseForm extends Component
     public Product $product;
 
     /**
+     * Show the quantity stepper; without it, one is added. The Add-to-Cart
+     * block turns it off.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showQuantity = true;
+
+    /**
+     * The button's text in place of "Add to cart" (at most 60 characters).
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $buttonText = null;
+
+    /**
      * How many to add. Starts at 1 in mount(): with a property default,
      * Livewire would restore it when the shopper empties the field.
      *
@@ -92,7 +113,8 @@ abstract class PurchaseForm extends Component
      */
     public function mount(): void
     {
-        $this->quantity = 1;
+        $this->quantity   = 1;
+        $this->buttonText = null === $this->buttonText || '' === trim( $this->buttonText ) ? null : mb_substr( trim( $this->buttonText ), 0, 60 );
     }
 
     /**

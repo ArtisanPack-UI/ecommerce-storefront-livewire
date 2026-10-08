@@ -50,36 +50,38 @@
                 <p class="text-base-content/70" data-reviews-empty>{{ __( 'No reviews yet. Be the first to review this product.' ) }}</p>
             @endif
 
-            <div class="border-t border-base-content/10 pt-4" data-review-cta>
-                @if ( $submitted )
-                    <x-artisanpack-alert
-                        icon="o-check-circle"
-                        class="alert-success"
-                        :title="$published ? __( 'Thanks — your review is published' ) : __( 'Thanks — your review is awaiting moderation' )"
-                        role="status"
-                        data-review-submitted
-                    />
-                @elseif ( $eligibility->allowed )
-                    @unless ( $showForm )
-                        <x-artisanpack-button
-                            :label="__( 'Write a review' )"
-                            icon="o-pencil-square"
-                            wire:click="openForm"
-                            aria-controls="{{ $ecommerceFormId }}"
-                            aria-expanded="false"
-                            data-review-open
+            @if ( $allowForm )
+                <div class="border-t border-base-content/10 pt-4" data-review-cta>
+                    @if ( $submitted )
+                        <x-artisanpack-alert
+                            icon="o-check-circle"
+                            class="alert-success"
+                            :title="$published ? __( 'Thanks — your review is published' ) : __( 'Thanks — your review is awaiting moderation' )"
+                            role="status"
+                            data-review-submitted
                         />
-                    @endunless
-                @else
-                    <p class="text-sm" data-review-ineligible="{{ $eligibility->reason }}">
-                        @if ( null !== $loginUrl && in_array( $eligibility->reason, [ \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::GUESTS_NOT_ALLOWED, \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::PURCHASE_REQUIRED ], true ) )
-                            <a href="{{ $loginUrl }}" class="link">{{ $reasonMessage }}</a>
-                        @else
-                            {{ $reasonMessage }}
-                        @endif
-                    </p>
-                @endif
-            </div>
+                    @elseif ( $eligibility->allowed )
+                        @unless ( $showForm )
+                            <x-artisanpack-button
+                                :label="__( 'Write a review' )"
+                                icon="o-pencil-square"
+                                wire:click="openForm"
+                                aria-controls="{{ $ecommerceFormId }}"
+                                aria-expanded="false"
+                                data-review-open
+                            />
+                        @endunless
+                    @else
+                        <p class="text-sm" data-review-ineligible="{{ $eligibility->reason }}">
+                            @if ( null !== $loginUrl && in_array( $eligibility->reason, [ \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::GUESTS_NOT_ALLOWED, \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::PURCHASE_REQUIRED ], true ) )
+                                <a href="{{ $loginUrl }}" class="link">{{ $reasonMessage }}</a>
+                            @else
+                                {{ $reasonMessage }}
+                            @endif
+                        </p>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div class="flex flex-col gap-6 lg:col-span-2">

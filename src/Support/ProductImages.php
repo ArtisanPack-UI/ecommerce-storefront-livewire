@@ -206,6 +206,35 @@ final class ProductImages
     }
 
     /**
+     * The product page gallery: {@see self::gallery()}, then any variant
+     * images not already in it, so choosing a variant can show its image.
+     *
+     * @since 1.0.0
+     *
+     * @param  Product  $product  Product.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function withVariants( Product $product ): array
+    {
+        $images = self::gallery( $product );
+        $urls   = array_column( $images, 'url' );
+
+        $variantMedia = $product->variants()->whereNotNull( 'image_media_id' )->orderBy( 'position' )->orderBy( 'id' )->pluck( 'image_media_id' );
+
+        foreach ( $variantMedia as $mediaId ) {
+            $image = self::media( (int) $mediaId, (string) $product->name );
+
+            if ( null !== $image && ! in_array( $image['url'], $urls, true ) ) {
+                $images[] = $image + [ 'key' => 'media-' . $mediaId, 'media_id' => (int) $mediaId ];
+                $urls[]   = $image['url'];
+            }
+        }
+
+        return $images;
+    }
+
+    /**
      * One media-library image at product-page sizes (a variant's or a
      * category's image), or null without the library.
      *
