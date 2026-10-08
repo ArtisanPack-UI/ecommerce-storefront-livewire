@@ -263,16 +263,30 @@ it( 'keeps narrowing props out of the browser\'s reach', function (): void {
 it( 'adds a simple product to a new cart from its card', function (): void {
     $mug = makeProduct( 1200, [ 'name' => 'Mug' ] );
 
-    $component = Livewire::test( Index::class )
+    Livewire::test( Index::class )
         ->call( 'quickAdd', $mug->id )
-        ->assertDispatched( 'ecommerce-cart-updated', count: 1 );
+        ->assertDispatched( 'ecommerce-cart-updated', count: 1 )
+        ->assertDispatched( 'ecommerce-cart-open' );
 
     $cart = Cart::query()->sole();
 
     expect( $cart->items()->sole()->product_id )->toBe( $mug->id )
-        ->and( Cookie::queued( GuestCartCookie::name() )?->getValue() )->toBe( $cart->token )
-        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Added to your cart' );
+        ->and( Cookie::queued( GuestCartCookie::name() )?->getValue() )->toBe( $cart->token );
 } );
+
+it( 'follows cart.after_add after a quick add', function ( string $mode, bool $drawer, bool $toast ): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', $mode );
+
+    $component = Livewire::test( Index::class )->call( 'quickAdd', makeProduct( 1200, [ 'name' => 'Mug' ] )->id );
+
+    $drawer ? $component->assertDispatched( 'ecommerce-cart-open' ) : $component->assertNotDispatched( 'ecommerce-cart-open' );
+
+    expect( str_contains( json_encode( $component->effects['xjs'] ?? [] ), 'Mug is in your cart.' ) )->toBe( $toast );
+} )->with( [
+    'drawer' => [ 'drawer', true, false ],
+    'toast'  => [ 'toast', false, true ],
+    'none'   => [ 'none', false, false ],
+] );
 
 it( 'adds again to the same cart', function (): void {
     $mug = makeProduct( 1200, [ 'name' => 'Mug' ] );
@@ -355,6 +369,8 @@ it( 'eager-loads what the cards need, so listing more products adds no image que
 } );
 
 it( 'escapes product names in toasts, which the toast container renders as HTML', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'toast' );
+
     $product = makeProduct( 1200, [ 'name' => '<img src=x onerror=alert(1)>' ] );
 
     $toasts = json_encode( Livewire::test( Index::class )->call( 'quickAdd', $product->id )->effects['xjs'] ?? [] );

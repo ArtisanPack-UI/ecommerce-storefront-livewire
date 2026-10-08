@@ -267,13 +267,6 @@ abstract class PurchaseForm extends Component
 
         $this->announcement = __( 'Added to your cart.' );
 
-        match ( (string) config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'drawer' ) ) {
-            'toast' => $this->toastSuccess(
-                __( 'Added to your cart' ),
-                __( ':name is in your cart.', [ 'name' => (string) $this->product->name ] ),
-            ),
-            'none'  => null,
-            default => $this->dispatch( 'ecommerce-cart-open' ),
-        };
+        $this->afterAddToCart( (string) $this->product->name );
     }
 }

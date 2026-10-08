@@ -13,6 +13,8 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
 
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
+
 /**
  * Shows `<x-artisanpack-toast>` notices from a storefront component.
  *
@@ -21,9 +23,9 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
  * helpers are protected, so they stay server-side.
  *
  * The toast container renders the title and description with Alpine's
- * `x-html`, so both are HTML-escaped here: they often carry product names
- * and engine messages, which must never run as markup in a shopper's
- * browser.
+ * `x-html`, so both are HTML-escaped ({@see ToastPayload}): they often
+ * carry product names and engine messages, which must never run as markup
+ * in a shopper's browser.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -78,10 +80,24 @@ trait SendsToasts
     }
 
     /**
-     * Dispatches the toast to the browser.
+     * Shows a success toast on the next page the shopper sees, for actions
+     * that reload the page (the currency switcher). The toast waits in the
+     * session until `ecommerce-storefront::partials.global` shows it.
      *
-     * The payload goes through `json_encode` with the HEX flags, so titles
-     * that contain quotes or markup cannot break out of the script.
+     * @since 1.0.0
+     *
+     * @param  string       $title        The title.
+     * @param  string|null  $description  The description.
+     *
+     * @return void
+     */
+    protected function flashToastSuccess( string $title, ?string $description = null ): void
+    {
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', $title, $description, 'alert-success' ) );
+    }
+
+    /**
+     * Dispatches the toast to the browser.
      *
      * @since 1.0.0
      *
@@ -94,19 +110,6 @@ trait SendsToasts
      */
     private function sendToast( string $type, string $title, ?string $description, string $css ): void
     {
-        $payload = json_encode(
-            [
-                'toast' => [
-                    'type'        => $type,
-                    'title'       => e( $title ),
-                    'description' => null === $description ? null : e( $description ),
-                    'icon'        => '',
-                    'css'         => $css,
-                ],
-            ],
-            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_THROW_ON_ERROR,
-        );
-
-        $this->js( 'if ( typeof toast === "function" ) { toast( ' . $payload . ' ); }' );
+        $this->js( 'if ( typeof toast === "function" ) { toast( ' . ToastPayload::encode( ToastPayload::make( $type, $title, $description, $css ) ) . ' ); }' );
     }
 }

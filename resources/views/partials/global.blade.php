@@ -1,8 +1,8 @@
 {{--
-    The storefront's page-wide pieces: the toast container and the cart
-    merge prompt shown after sign-in. The slide-out cart drawer joins them
-    here (#15). Include it once in any layout storefront pages extend,
-    after the content:
+    The storefront's page-wide pieces: the toast container (and any toast
+    flashed for this page), the slide-out cart drawer, and the cart merge
+    prompt shown after sign-in. Include it once in any layout storefront
+    pages extend, after the content:
 
         @include( 'ecommerce-storefront::partials.global' )
 
@@ -17,6 +17,10 @@
 @once
     <div data-ecommerce-storefront-global>
         <x-artisanpack-toast />
+
+        @include( 'ecommerce-storefront::partials.flash-toast' )
+
+        <livewire:artisanpack-ecommerce-storefront-cart-drawer />
 
         <livewire:artisanpack-ecommerce-storefront-cart-merge-prompt />
     </div>

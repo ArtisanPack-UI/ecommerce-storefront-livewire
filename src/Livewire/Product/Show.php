@@ -18,6 +18,7 @@ use ArtisanPackUI\Ecommerce\Inventory\StockStatus;
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
+use ArtisanPackUI\Ecommerce\Models\ProductRelation;
 use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
@@ -48,7 +49,9 @@ use Throwable;
  * - **Sections** — Livewire components from `ap.ecommerceStorefrontLivewire.product.sections`
  *   (filter: key => `[ 'component' => name, 'position' => int, 'params' => [] ]`,
  *   product), rendered below the details in position order with `product`
- *   added to their params.
+ *   added to their params. The defaults are `reviews` (position 10, the
+ *   reviews and `#reviews` anchor), `upsells` (20, "You may also like"),
+ *   and `related` (30); unset a key to drop one.
  *
  * Mounting it records a view through the engine (`ap.ecommerce.product.viewed`).
  * A product that isn't storefront-visible, or whose type is missing, is a 404.
@@ -172,6 +175,22 @@ class Show extends Component
     }
 
     /**
+     * The sections every product page starts with.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array{component: string, position: int, params: array<string, mixed>}>
+     */
+    public static function defaultSections(): array
+    {
+        return [
+            'reviews' => [ 'component' => 'artisanpack-ecommerce-storefront-product-reviews', 'position' => 10, 'params' => [] ],
+            'upsells' => [ 'component' => 'artisanpack-ecommerce-storefront-related-products', 'position' => 20, 'params' => [ 'type' => ProductRelation::UPSELL ] ],
+            'related' => [ 'component' => 'artisanpack-ecommerce-storefront-related-products', 'position' => 30, 'params' => [ 'type' => ProductRelation::RELATED ] ],
+        ];
+    }
+
+    /**
      * A variant of this product, with the product relation set.
      *
      * @since 1.0.0
@@ -252,7 +271,7 @@ class Show extends Component
     }
 
     /**
-     * Extra page sections from the filter, in position order.
+     * Page sections from the filter, in position order.
      *
      * @since 1.0.0
      *
@@ -260,7 +279,7 @@ class Show extends Component
      */
     protected function sections(): array
     {
-        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.product.sections', [], $this->product );
+        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.product.sections', self::defaultSections(), $this->product );
         $sections = [];
 
         foreach ( is_array( $filtered ) ? $filtered : [] as $key => $section ) {

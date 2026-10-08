@@ -82,11 +82,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Reviews
+    |--------------------------------------------------------------------------
+    |
+    | Approved reviews shown per page on the product page. Who may review,
+    | and moderation, are engine settings (`artisanpack.ecommerce.reviews`).
+    |
+    */
+    'reviews' => [
+        'per_page' => 5,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Related products
+    |--------------------------------------------------------------------------
+    |
+    | How many related products, upsells, and cart cross-sells to suggest
+    | (1–12).
+    |
+    */
+    'related' => [
+        'limit' => 4,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cart
     |--------------------------------------------------------------------------
     |
-    | What happens after "Add to cart" on a product page: `drawer` opens the
-    | cart drawer, `toast` shows a toast, `none` only updates the cart count.
+    | What happens after "Add to cart" (product page or a product card's
+    | quick add): `drawer` opens the cart drawer, `toast` shows a toast,
+    | `none` only updates the cart count.
     |
     */
     'cart' => [

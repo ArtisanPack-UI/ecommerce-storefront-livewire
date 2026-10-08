@@ -14,6 +14,6 @@
     <div class="flex flex-col gap-6">
         <h1 class="text-3xl font-bold">{{ __( 'Cart' ) }}</h1>
 
-        @include( 'ecommerce-storefront::partials.screen-pending' )
+        <livewire:artisanpack-ecommerce-storefront-cart />
     </div>
 @endsection
