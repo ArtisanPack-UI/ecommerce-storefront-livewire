@@ -209,3 +209,24 @@ it( 'switches marketing off on every channel when consent is withdrawn', functio
     expect( $service->allows( $customer->refresh(), 'mail', 'marketing' ) )->toBeFalse()
         ->and( $service->allows( $customer, 'sms', 'marketing' ) )->toBeFalse();
 } );
+
+it( 'warns the shopper when marketing couldn\'t be switched off after withdrawing consent', function (): void {
+    [ , $customer ] = shopper( [ 'accepts_marketing' => true, 'accepts_marketing_at' => now()->subMonth() ] );
+
+    app()->instance( NotificationPreferenceService::class, new class extends NotificationPreferenceService {
+        public function update( Customer $customer, array $preferences ): array
+        {
+            throw new RuntimeException( 'Database is down.' );
+        }
+    } );
+
+    $component = Livewire::test( Profile::class )
+        ->set( 'profile.accepts_marketing', false )
+        ->call( 'saveProfile' );
+
+    $toasts = json_encode( $component->effects['xjs'] ?? [] );
+
+    expect( $toasts )->toContain( 'news and offers may still be on' )
+        ->and( $toasts )->not->toContain( '"Profile saved"' )
+        ->and( $customer->refresh()->accepts_marketing )->toBeFalse();
+} );

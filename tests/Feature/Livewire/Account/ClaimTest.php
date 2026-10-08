@@ -152,3 +152,27 @@ it( 'reports an unexpected engine failure', function (): void {
         ->assertNoRedirect()
         ->assertSet( 'failure', 'We couldn\'t claim your orders right now. Try again in a moment.' );
 } );
+
+it( 'won\'t claim for an account whose email isn\'t verified, even with a customer record', function (): void {
+    $user = makeUser();
+    Customer::factory()->create( [ 'user_id' => $user->id, 'email' => $user->email ] );
+    $order = guestOrderFor( $user->email );
+
+    $unverified = new class extends Tests\Fixtures\User implements Illuminate\Contracts\Auth\MustVerifyEmail {
+        use Illuminate\Auth\MustVerifyEmail;
+    };
+    $unverified->setRawAttributes( $user->getAttributes(), true );
+    $unverified->exists = true;
+
+    $this->actingAs( $unverified );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertNoRedirect()
+        ->assertSet( 'failure', 'Your account can\'t claim orders yet. Verify your email address and try again.' );
+
+    expect( $order->refresh()->customer_id )->toBeNull()
+        ->and( CustomerClaimAttempt::query()->count() )->toBe( 0 );
+} );

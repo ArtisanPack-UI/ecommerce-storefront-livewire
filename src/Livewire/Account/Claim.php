@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerClaimService;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,9 @@ use Throwable;
  * engine's `CustomerClaimService` checks them against an unclaimed guest
  * order under the account's email and, when they match, claims every guest
  * order under that email. The shopper then lands on their order history.
+ *
+ * The account's email must be verified (when the user model verifies
+ * emails): a claim takes over every guest order under that email.
  *
  * Attempts count against `ecommerce.claim.attempt` (per user and per IP)
  * and the engine's own failed-attempt cap. A wrong number, a wrong
@@ -121,13 +125,21 @@ class Claim extends Component
         $ip       = request()->ip() ?? '127.0.0.1';
         $customer = null;
 
+        // The engine claims every guest order under the customer's email, so
+        // the account must have proved it owns that email first.
+        if ( null === $user || ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() ) ) {
+            $this->failure = __( 'Your account can\'t claim orders yet. Verify your email address and try again.' );
+
+            return;
+        }
+
         try {
-            $customer = null === $user ? null : app( CustomerService::class )->customerForUser( $user, true );
+            $customer = app( CustomerService::class )->customerForUser( $user, true );
         } catch ( Throwable $exception ) {
             report( $exception );
         }
 
-        if ( null === $user || null === $customer ) {
+        if ( null === $customer ) {
             $this->failure = __( 'Your account can\'t claim orders yet. Verify your email address and try again.' );
 
             return;

@@ -154,16 +154,26 @@ class Profile extends Component
             return;
         }
 
+        $withdrawn = true;
+
         if ( ! (bool) $updated->accepts_marketing ) {
             try {
                 $this->withdrawMarketing( $updated );
             } catch ( Throwable $exception ) {
                 report( $exception );
+
+                $withdrawn = false;
             }
         }
 
         $this->profile['accepts_marketing'] = (bool) $updated->accepts_marketing;
         $this->preferences                  = $this->loadPreferences( $updated );
+
+        if ( ! $withdrawn ) {
+            $this->toastWarning( __( 'Profile saved, but news and offers may still be on' ), __( 'We couldn\'t switch them off on every channel. Save your details again to retry.' ) );
+
+            return;
+        }
 
         $this->toastSuccess( __( 'Profile saved' ) );
     }
