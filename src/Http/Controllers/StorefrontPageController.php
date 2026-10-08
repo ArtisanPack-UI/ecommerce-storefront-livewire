@@ -14,10 +14,12 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
-use ArtisanPackUI\Ecommerce\Catalog\CategoryTree;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 /**
@@ -49,20 +51,32 @@ class StorefrontPageController extends Controller
     }
 
     /**
-     * A category page, found by its slug chain (`clothing/shirts`).
+     * A category page, found by the last slug of its chain
+     * (`clothing/shirts`). A chain that isn't the category's canonical one
+     * (`shirts`, `shirts/clothing`) redirects there permanently, keeping
+     * the query string; an unknown slug is a 404.
      *
      * @since 1.0.0
      *
-     * @param  CategoryTree  $categories  The engine's category tree.
-     * @param  string        $path        The slug chain.
+     * @param  Request        $request  The request.
+     * @param  CategoryPaths  $paths    Category paths.
+     * @param  string         $path     The slug chain.
      *
-     * @return View
+     * @return RedirectResponse|View
      */
-    public function category( CategoryTree $categories, string $path ): View
+    public function category( Request $request, CategoryPaths $paths, string $path ): View|RedirectResponse
     {
-        $category = $this->categoryByPath( $categories, $path );
+        $segments = explode( '/', trim( $path, '/' ) );
+        $node     = $paths->bySlug( (string) end( $segments ) );
+        $category = null === $node ? null : ProductCategory::query()->find( $node['id'] );
 
         abort_if( null === $category, 404 );
+
+        $canonical = (string) $paths->path( (int) $category->id );
+
+        if ( $canonical !== implode( '/', $segments ) ) {
+            return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ ...$request->query(), 'path' => $canonical ], 301 );
+        }
 
         return view( 'ecommerce-storefront::pages.category', [ 'category' => $category ] );
     }
@@ -266,42 +280,5 @@ class StorefrontPageController extends Controller
     public function accountClaim(): View
     {
         return view( 'ecommerce-storefront::pages.account.claim' );
-    }
-
-    /**
-     * The category at the end of a slug chain, when every slug is the child
-     * of the one before it.
-     *
-     * @since 1.0.0
-     *
-     * @param  CategoryTree  $categories  The engine's category tree.
-     * @param  string        $path        The slug chain.
-     *
-     * @return ProductCategory|null
-     */
-    protected function categoryByPath( CategoryTree $categories, string $path ): ?ProductCategory
-    {
-        $level = $categories->tree();
-        $node  = null;
-
-        foreach ( explode( '/', trim( $path, '/' ) ) as $slug ) {
-            $node = null;
-
-            foreach ( $level as $candidate ) {
-                if ( $slug === ( $candidate['slug'] ?? null ) ) {
-                    $node = $candidate;
-
-                    break;
-                }
-            }
-
-            if ( null === $node ) {
-                return null;
-            }
-
-            $level = (array) ( $node['children'] ?? [] );
-        }
-
-        return null === $node ? null : ProductCategory::query()->find( (int) $node['id'] );
     }
 }

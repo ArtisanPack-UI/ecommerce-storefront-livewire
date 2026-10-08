@@ -68,12 +68,29 @@ return [
     | `show_stock_count`, low-stock products say "Only 3 left" (the engine's
     | `inventory.show_quantity` must be on for the count to be known).
     |
+    | `filter_attributes` lists the attribute keys shoppers can filter by
+    | (e.g. [ 'colour', 'size' ]); null offers every attribute.
+    |
     */
     'catalog' => [
-        'per_page'         => 24,
-        'per_page_values'  => [ 12, 24, 48 ],
-        'default_sort'     => 'newest',
-        'show_stock_count' => false,
+        'per_page'          => 24,
+        'per_page_values'   => [ 12, 24, 48 ],
+        'default_sort'      => 'newest',
+        'show_stock_count'  => false,
+        'filter_attributes' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cart
+    |--------------------------------------------------------------------------
+    |
+    | What happens after "Add to cart" on a product page: `drawer` opens the
+    | cart drawer, `toast` shows a toast, `none` only updates the cart count.
+    |
+    */
+    'cart' => [
+        'after_add' => 'drawer',
     ],
 
     /*
