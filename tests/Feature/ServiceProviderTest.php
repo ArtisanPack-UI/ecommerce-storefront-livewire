@@ -2,9 +2,11 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
+use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\EcommerceStorefrontLivewireServiceProvider;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
@@ -73,6 +75,8 @@ it( 'registers the Livewire components', function ( string $name, string $class 
         str_starts_with( $name, 'artisanpack-ecommerce-storefront-product-' ) => [ 'product' => makeProduct() ],
         str_ends_with( $name, '-category-show' )                              => [ 'category' => ProductCategory::factory()->create() ],
         str_ends_with( $name, '-tag-show' )                                   => [ 'tag' => ProductTag::factory()->create() ],
+        str_ends_with( $name, '-order-confirmation' ),
+        str_ends_with( $name, '-account-order' )                              => ( static fn ( Order $order ): array => [ 'order' => $order->id, 'token' => OrderViewToken::for( $order ) ] )( Order::factory()->create() ),
         default                                                               => [],
     };
 

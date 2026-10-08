@@ -242,3 +242,97 @@ if ( ! function_exists( 'checkoutAddress' ) ) {
         ];
     }
 }
+
+if ( ! function_exists( 'checkoutAtReview' ) ) {
+    /**
+     * A checkout at the review step: contact, a US address, the first
+     * shipping rate, and a payment the fake gateway confirmed. Needs
+     * {@see checkoutShipping()}, {@see checkoutGateway()}, and a cart.
+     */
+    function checkoutAtReview( Tests\Fixtures\Gateways\FakeGateway $gateway, string $email = 'ada@example.test' ): Livewire\Features\SupportTesting\Testable
+    {
+        $component = Livewire\Livewire::test( ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index::class )
+            ->set( 'email', $email )
+            ->call( 'saveContact' )
+            ->set( 'shipping', checkoutAddress() )
+            ->call( 'saveAddress' );
+
+        $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' );
+
+        $reference = (string) $component->get( 'payment' )['reference'];
+
+        $gateway->setStatus( $reference, ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession::STATUS_AUTHORIZED );
+
+        return $component->dispatch( 'payment-confirmed', reference: $reference, gateway: $gateway->key() )->assertSet( 'step', 'review' );
+    }
+}
+
+if ( ! function_exists( 'placeOrderToken' ) ) {
+    /**
+     * The action token the review step's "Place order" form carries.
+     */
+    function placeOrderToken( Livewire\Features\SupportTesting\Testable $component ): string
+    {
+        preg_match( "/placeOrder\\( '([^']+)' \\)/", $component->html(), $matches );
+
+        return $matches[1] ?? '';
+    }
+}
+
+if ( ! function_exists( 'placedOrder' ) ) {
+    /**
+     * A paid order with one line per product (a new $20 product when none
+     * are given), for `$customer` or a guest.
+     *
+     * @param  array<string, mixed>  $attributes  Order attribute overrides.
+     * @param  array<int, Product>   $products    Products, one line each (quantity 2).
+     */
+    function placedOrder( array $attributes = [], ?ArtisanPackUI\Ecommerce\Models\Customer $customer = null, array $products = [] ): ArtisanPackUI\Ecommerce\Models\Order
+    {
+        $factory = ArtisanPackUI\Ecommerce\Models\Order::factory();
+        $factory = null === $customer ? $factory->guest() : $factory->forCustomer( $customer );
+
+        $order = $factory->create( $attributes + [
+            'email'            => $customer?->email ?? 'guest@example.test',
+            'system_status'    => 'processing',
+            'payment_status'   => 'paid',
+            'subtotal_amount'  => 4000,
+            'shipping_amount'  => 500,
+            'tax_amount'       => 0,
+            'total_amount'     => 4500,
+            'shipping_address' => checkoutAddress(),
+            'billing_address'  => checkoutAddress(),
+            'meta'             => [ 'shipping_rate' => [ 'label' => 'Standard' ] ],
+        ] );
+
+        foreach ( [] === $products ? [ makeProduct( 2000, [ 'name' => 'Mug' ] ) ] : $products as $product ) {
+            ArtisanPackUI\Ecommerce\Models\OrderItem::factory()->create( [
+                'order_id'          => $order->id,
+                'product_id'        => $product->id,
+                'product_snapshot'  => [ 'name' => $product->name, 'sku' => 'SKU-' . $product->id, 'type' => 'simple', 'options' => [] ],
+                'quantity'          => 2,
+                'unit_price_amount' => 2000,
+            ] );
+        }
+
+        return $order->refresh();
+    }
+}
+
+if ( ! function_exists( 'shopper' ) ) {
+    /**
+     * A signed-in user with a customer record.
+     *
+     * @return array{0: User, 1: ArtisanPackUI\Ecommerce\Models\Customer}
+     */
+    function shopper( array $customer = [] ): array
+    {
+        $user = makeUser();
+
+        $record = ArtisanPackUI\Ecommerce\Models\Customer::factory()->create( $customer + [ 'user_id' => $user->id, 'email' => $user->email ] );
+
+        test()->actingAs( $user );
+
+        return [ $user, $record ];
+    }
+}

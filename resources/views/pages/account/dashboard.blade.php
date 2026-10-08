@@ -11,9 +11,7 @@
 @section( 'title', __( 'Your account' ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Your account' ) }}</h1>
-
-        @include( 'ecommerce-storefront::partials.screen-pending' )
-    </div>
+    <x-artisanpack-ec-account-shell :title="__( 'Your account' )">
+        <livewire:artisanpack-ecommerce-storefront-account-dashboard />
+    </x-artisanpack-ec-account-shell>
 @endsection

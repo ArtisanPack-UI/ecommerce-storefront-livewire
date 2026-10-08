@@ -14,11 +14,13 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
+use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
@@ -38,6 +40,8 @@ use Throwable;
  * Livewire component. Catalog subjects (category, tag, product) are resolved
  * here so an unknown or hidden one is a 404; owned records (orders) are
  * passed through unresolved for their component to load and authorize.
+ * Checkout, confirmation, and account pages are marked private and
+ * `noindex`.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -175,6 +179,11 @@ class StorefrontPageController extends Controller
      * must be the cart's session. Without a session there's nothing to
      * resume, so the shopper lands on checkout as it is.
      *
+     * When the order was already placed and its payment needed confirming
+     * ({@see CheckoutPlacement}), the order's own session is checked the
+     * same way: a paid order goes to its confirmation, a confirmed payment
+     * back to checkout to finish the order.
+     *
      * @since 1.0.0
      *
      * @param  Request                 $request   The request.
@@ -185,7 +194,12 @@ class StorefrontPageController extends Controller
      */
     public function checkoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
     {
-        $cart      = $carts->current();
+        $cart = $carts->current();
+
+        if ( null === $cart && null !== ( $placement = CheckoutPlacement::current() ) ) {
+            return $this->placedOrderReturn( $request, $placement['order'], $gateways );
+        }
+
         $reference = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
         $gateway   = null === $cart || null === $cart->payment_gateway_key ? null : $gateways->find( (string) $cart->payment_gateway_key );
 
@@ -225,17 +239,24 @@ class StorefrontPageController extends Controller
 
     /**
      * An order's confirmation page. The component loads the order and
-     * authorizes it (signed link for guests).
+     * authorizes it (the signed `token` for guests). Never cached or
+     * indexed.
      *
      * @since 1.0.0
      *
-     * @param  string  $order  The order reference.
+     * @param  Request  $request  The request.
+     * @param  string   $order    The order id.
      *
-     * @return View
+     * @return Response
      */
-    public function confirmation( string $order ): View
+    public function confirmation( Request $request, string $order ): Response
     {
-        return view( 'ecommerce-storefront::pages.confirmation', [ 'order' => $order ] );
+        $token = $request->query( 'token' );
+
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.confirmation', [
+            'order' => $order,
+            'token' => is_string( $token ) ? $token : null,
+        ] ) );
     }
 
     /**
@@ -255,11 +276,11 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountDashboard(): View
+    public function accountDashboard(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.dashboard' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.dashboard' ) );
     }
 
     /**
@@ -267,11 +288,11 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountOrders(): View
+    public function accountOrders(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.orders' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.orders' ) );
     }
 
     /**
@@ -280,13 +301,13 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @param  string  $order  The order reference.
+     * @param  string  $order  The order id.
      *
-     * @return View
+     * @return Response
      */
-    public function accountOrder( string $order ): View
+    public function accountOrder( string $order ): Response
     {
-        return view( 'ecommerce-storefront::pages.account.order', [ 'order' => $order ] );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.order', [ 'order' => $order ] ) );
     }
 
     /**
@@ -294,11 +315,11 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountAddresses(): View
+    public function accountAddresses(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.addresses' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.addresses' ) );
     }
 
     /**
@@ -306,11 +327,11 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountDownloads(): View
+    public function accountDownloads(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.downloads' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.downloads' ) );
     }
 
     /**
@@ -318,11 +339,11 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountProfile(): View
+    public function accountProfile(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.profile' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.profile' ) );
     }
 
     /**
@@ -330,11 +351,60 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function accountClaim(): View
+    public function accountClaim(): Response
     {
-        return view( 'ecommerce-storefront::pages.account.claim' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.claim' ) );
+    }
+
+    /**
+     * The payment return for an order already placed: a paid order goes
+     * to its confirmation; a session the gateway confirms goes back to
+     * checkout, which finishes the order; anything else back to the
+     * order's payment.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request                 $request   The request.
+     * @param  Order                   $order     The placed order.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
+     */
+    protected function placedOrderReturn( Request $request, Order $order, PaymentGatewayRegistry $gateways ): RedirectResponse
+    {
+        if ( CheckoutPlacement::isPaid( $order ) ) {
+            CheckoutPlacement::forget();
+
+            $url = CheckoutPlacement::confirmationUrl( $order );
+
+            return $this->keepPrivate( null === $url ? redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) : redirect()->to( $url ) );
+        }
+
+        $reference = (string) ( $order->payment_reference ?? '' );
+        $gateway   = null === $order->payment_gateway_key ? null : $gateways->find( (string) $order->payment_gateway_key );
+        $given     = $request->query( 'reference', $request->query( 'payment_intent' ) );
+
+        if ( '' === $reference || null === $gateway || ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) ) {
+            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Try paying for your order again.' ) );
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
+        }
+
+        if ( ! $session->isConfirmed() ) {
+            return $this->backToPayment( __( 'Your payment wasn\'t completed.' ), __( 'Try again or use another payment method.' ) );
+        }
+
+        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $order->total_amount ] );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
     }
 
     /**
@@ -355,8 +425,9 @@ class StorefrontPageController extends Controller
     }
 
     /**
-     * Marks a checkout response private: not stored by any cache and not
-     * indexed (spec §12).
+     * Marks a response private: not stored by any cache, not indexed
+     * (spec §12), and not leaking its URL — which can carry a guest's
+     * signed order-view token — to other sites in the `Referer`.
      *
      * @since 1.0.0
      *
@@ -370,6 +441,7 @@ class StorefrontPageController extends Controller
     {
         $response->headers->set( 'Cache-Control', 'no-store, private' );
         $response->headers->set( 'X-Robots-Tag', 'noindex, nofollow' );
+        $response->headers->set( 'Referrer-Policy', 'same-origin' );
 
         return $response;
     }

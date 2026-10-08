@@ -21,19 +21,26 @@ use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Models\CartItem;
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\CustomerAddress;
+use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Services\CheckoutService;
 use ArtisanPackUI\Ecommerce\Services\CustomerAddressService;
 use ArtisanPackUI\Ecommerce\Support\ClientPaymentConfig;
 use ArtisanPackUI\Ecommerce\ValueObjects\Address;
+use ArtisanPackUI\Ecommerce\ValueObjects\CheckoutResult;
+use ArtisanPackUI\Ecommerce\ValueObjects\PaymentFinalization;
 use ArtisanPackUI\Ecommerce\ValueObjects\ShippingRate;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Contracts\CreatesCustomerAccounts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\WithActionToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\AddressFormats;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutSteps;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\Countries;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
@@ -72,6 +79,30 @@ use Throwable;
  * says the steps before it are done; completed steps can be reopened.
  * The current step is in the query string, so browser back works.
  *
+ * **Layout** ({@see CheckoutLayout}, the store owner's choice): multi-step
+ * shows a progress bar (`x-artisanpack-steps`), the completed steps'
+ * summaries, and the open step; single page shows every section, with the
+ * ones after an unfinished step disabled and saying why. Both use the same
+ * step partials, and the order summary collapses on small screens.
+ *
+ * **Placing the order** (S22). The review step shows what the shopper is
+ * buying, takes an optional note (sanitized), the terms checkbox when a
+ * terms page is set, and — for guests, when the store offers it — a
+ * password to create an account. "Place order" carries a one-time action
+ * token ({@see WithActionToken}) and runs under the
+ * `ecommerce.checkout.finalize` limit; it fires
+ * `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` and calls the
+ * engine's `finalize()`, so a double click places one order. Then:
+ *
+ * - captured — the account is created when asked
+ *   (`auth.create_account_action`, {@see CreatesCustomerAccounts}) and the
+ *   shopper goes to the confirmation page (signed for guests);
+ * - challenged or failed — the order exists but isn't paid: the payment
+ *   driver is shown again for the order's payment ({@see CheckoutPlacement}
+ *   keeps it across reloads and the provider's redirect), and confirming it
+ *   finishes the order;
+ * - blocked by fraud screening — a generic message.
+ *
  * Every engine refusal — including an `ap.ecommerce.checkout.canTransitionTo`
  * listener blocking a step — is shown with its message.
  *
@@ -86,6 +117,16 @@ class Index extends Component
     use InteractsWithStorefrontCart;
     use RateLimitsStorefront;
     use SendsToasts;
+    use WithActionToken;
+
+    /**
+     * The longest order note a shopper can leave, in characters.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const NOTE_MAX_LENGTH = 2_000;
 
     /**
      * Where the return route leaves a payment it found confirmed, for the
@@ -335,9 +376,99 @@ class Index extends Component
     public string $announcement = '';
 
     /**
+     * The shopper's note for the store.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public string $orderNote = '';
+
+    /**
+     * Whether the shopper accepted the terms and conditions.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    public bool $acceptTerms = false;
+
+    /**
+     * Whether a guest wants an account made with the order.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    public bool $createAccount = false;
+
+    /**
+     * The password for the account a guest asked for.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public string $password = '';
+
+    /**
+     * The order placed whose payment isn't finished (challenged or
+     * failed): `cart`, `order`, and `number`. Null otherwise.
+     *
+     * @since 1.0.0
+     *
+     * @var array{cart: int, order: int, number: string}|null
+     */
+    #[Locked]
+    public ?array $placement = null;
+
+    /**
+     * What happened to the placed order's payment, shown above the payment
+     * UI.
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $paymentProblem = null;
+
+    /**
+     * The order number, once the order is placed and there is no
+     * confirmation page to go to.
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
+     */
+    #[Locked]
+    public ?string $placedOrder = null;
+
+    /**
+     * The layout: `multi_step` or `single_page` ({@see CheckoutLayout}).
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $layout = CheckoutLayout::MULTI_STEP;
+
+    /**
+     * The open step's number, for the multi-step progress bar.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public int $progress = 1;
+
+    /**
      * Checks the cart can check out, starts checkout, and opens the
      * furthest step the shopper can reach (or the one in the query
-     * string, when they can reach it).
+     * string, when they can reach it). When the shopper has nothing in an
+     * open cart, an order placed earlier whose payment isn't finished is
+     * picked up instead.
      *
      * @since 1.0.0
      *
@@ -345,7 +476,13 @@ class Index extends Component
      */
     public function mount(): void
     {
+        $this->layout = CheckoutLayout::current();
+
         $cart = $this->cart();
+
+        if ( ( null === $cart || [] === $this->paidLines( $cart ) ) && $this->resumePlacement() ) {
+            return;
+        }
 
         if ( ! $this->guard( $cart ) ) {
             return;
@@ -385,7 +522,7 @@ class Index extends Component
     #[On( 'ecommerce-cart-updated' )]
     public function cartUpdated(): void
     {
-        if ( $this->signInRequired || null !== $this->unavailable ) {
+        if ( $this->signInRequired || null !== $this->unavailable || null !== $this->placement ) {
             return;
         }
 
@@ -420,7 +557,7 @@ class Index extends Component
      */
     public function goTo( string $step ): void
     {
-        $cart = $this->signInRequired ? null : $this->openCart();
+        $cart = $this->signInRequired || null !== $this->placement ? null : $this->openCart();
 
         if ( null === $cart || ! $this->canVisit( $step, $cart ) ) {
             return;
@@ -708,6 +845,12 @@ class Index extends Component
     #[On( 'payment-confirmed' )]
     public function paymentConfirmed( string $reference = '' ): void
     {
+        if ( null !== $this->placement ) {
+            $this->placementPaymentConfirmed( $reference );
+
+            return;
+        }
+
         $cart = $this->openCart();
 
         if ( null === $cart ) {
@@ -778,6 +921,96 @@ class Index extends Component
     }
 
     /**
+     * Clears the password when the shopper no longer wants an account.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function updatedCreateAccount(): void
+    {
+        if ( ! $this->createAccount ) {
+            $this->password = '';
+            $this->resetErrorBag( 'password' );
+        }
+    }
+
+    /**
+     * Places the order (spec §7.4): checks the review form, then finalizes
+     * the cart through the engine under the action token and the
+     * `ecommerce.checkout.finalize` limit, and acts on how the payment
+     * went.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $token  The action token minted when the button rendered.
+     *
+     * @return void
+     */
+    public function placeOrder( string $token = '' ): void
+    {
+        $this->resetErrorBag();
+
+        $cart = null === $this->placement ? $this->openCart() : null;
+
+        if ( null === $cart ) {
+            return;
+        }
+
+        if ( 'review' !== $this->step || ! $this->canVisit( 'review', $cart ) ) {
+            $this->moveTo( $this->furthestStep( $cart ), $cart );
+            $this->addError( 'review', __( 'Finish the steps above before placing your order.' ) );
+            $this->errorSummary++;
+
+            return;
+        }
+
+        $errors = $this->reviewErrors( $cart );
+
+        if ( [] !== $errors ) {
+            foreach ( $errors as $field => $message ) {
+                $this->addError( $field, $message );
+            }
+
+            $this->errorSummary++;
+
+            return;
+        }
+
+        $note      = trim( sanitizeText( $this->orderNote ) );
+        $reference = (int) $cart->total_amount > 0 ? (string) ( $cart->payment_reference ?? '' ) : null;
+        $context   = array_filter( [
+            'customer_note' => '' === $note ? null : $note,
+            'ip_address'    => request()->ip(),
+            'user_agent'    => request()->userAgent(),
+        ], static fn ( mixed $value ): bool => null !== $value && '' !== $value );
+
+        try {
+            $outcome = $this->rateLimited(
+                'ecommerce.checkout.finalize',
+                fn (): ?array => $this->withActionToken( $token, 'place-order', fn (): array => $this->finalizeCart( $cart, $reference, $context ), $cart ),
+            );
+        } catch ( CartOperationException $exception ) {
+            $this->placementRefused( $cart, $exception );
+
+            return;
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            if ( ! $this->placedButUnpaid( $cart, __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ) ) ) {
+                $this->addError( 'review', __( 'We couldn\'t place your order. Try again in a moment.' ) );
+                $this->errorSummary++;
+            }
+
+            return;
+        }
+
+        if ( is_array( $outcome ) ) {
+            $this->settleOutcome( $outcome );
+        }
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
@@ -786,15 +1019,23 @@ class Index extends Component
      */
     public function render(): View
     {
-        $cart   = null === $this->unavailable ? $this->cart() : null;
+        $cart   = null === $this->unavailable && null === $this->placement && null === $this->placedOrder ? $this->cart() : null;
         $ready  = null !== $cart && ! $this->signInRequired;
         $ships  = $ready && $this->requiresShipping( $cart );
         $steps  = $ready ? $this->steps( $cart ) : [];
         $policy = $this->checkout()->guestCheckout();
+        $listed = $this->describeSteps( $steps, $cart );
+
+        $this->progress = max( 1, (int) ( collect( $listed )->firstWhere( 'current', true )['number'] ?? 1 ) );
 
         return view( 'ecommerce-storefront::livewire.checkout.index', [
             'cart'             => $cart,
-            'steps'            => $this->describeSteps( $steps, $cart ),
+            'steps'            => $listed,
+            'placedOrderModel' => null === $this->placement ? null : Order::query()->with( 'items' )->find( $this->placement['order'] ),
+            'placeOrderToken'  => $ready && 'review' === $this->step ? $this->actionToken( 'place-order', $cart ) : null,
+            'termsUrl'         => $ready && 'review' === $this->step ? CheckoutLayout::termsUrl() : null,
+            'offersAccount'    => $ready && 'review' === $this->step && $this->offersAccount( $cart ),
+            'noteMaxLength'    => self::NOTE_MAX_LENGTH,
             'ships'            => $ships,
             'lines'            => null === $cart ? [] : $this->lines( $cart ),
             'totals'           => null === $cart ? null : $this->totals( $cart ),
@@ -811,6 +1052,525 @@ class Index extends Component
             'regions'          => [ 'shipping' => AddressFormats::regions( $this->shipping['country_code'] ?? null ), 'billing' => AddressFormats::regions( $this->billing['country_code'] ?? null ) ],
             'errorLabels'      => $this->errorLabels(),
         ] );
+    }
+
+    /**
+     * The review form's problems, keyed by field: a note that's too long,
+     * terms not accepted (when a terms page is set), and — when a guest
+     * asked for an account — a password the account action refuses or an
+     * email that already has an account.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart  $cart  The cart.
+     *
+     * @return array<string, string>
+     */
+    protected function reviewErrors( Cart $cart ): array
+    {
+        $errors = [];
+
+        if ( mb_strlen( trim( $this->orderNote ) ) > self::NOTE_MAX_LENGTH ) {
+            $errors['orderNote'] = __( 'Keep your note to :max characters or fewer.', [ 'max' => self::NOTE_MAX_LENGTH ] );
+        }
+
+        if ( null !== CheckoutLayout::termsUrl() && ! $this->acceptTerms ) {
+            $errors['acceptTerms'] = __( 'Accept the terms and conditions to place your order.' );
+        }
+
+        $action = $this->createAccount && $this->offersAccount( $cart ) ? $this->accountAction() : null;
+
+        if ( null !== $action ) {
+            $validator = Validator::make( [ 'password' => $this->password ], [ 'password' => $action->passwordRules() ], [
+                'password.required' => __( 'Choose a password for your account.' ),
+            ] );
+
+            if ( $validator->fails() ) {
+                $errors['password'] = (string) $validator->errors()->first( 'password' );
+            } elseif ( ! $action->emailIsAvailable( (string) $cart->email ) ) {
+                $errors['password'] = __( 'There\'s already an account for :email. Sign in to use it, or place the order without an account.', [ 'email' => (string) $cart->email ] );
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Places the order through the engine, after
+     * `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder`. Runs once
+     * per action token.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart                  $cart       The cart.
+     * @param  string|null           $reference  The payment session the shopper confirmed (null when nothing is due).
+     * @param  array<string, mixed>  $context    Placement context (note, IP, user agent).
+     *
+     * @return array{cart: int, order: int, status: string, message: string|null}
+     */
+    protected function finalizeCart( Cart $cart, ?string $reference, array $context ): array
+    {
+        doAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', $cart, $context );
+
+        return $this->describeResult( $cart, $this->checkout()->finalize( $cart, $reference, $context ) );
+    }
+
+    /**
+     * What a finalize call came to, in a form the action token can replay.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart            $cart    The cart.
+     * @param  CheckoutResult  $result  The engine's result.
+     *
+     * @return array{cart: int, order: int, status: string, message: string|null}
+     */
+    protected function describeResult( Cart $cart, CheckoutResult $result ): array
+    {
+        $message = $result->payment?->payment?->errorMessage;
+
+        return [
+            'cart'    => (int) $cart->id,
+            'order'   => (int) $result->order->id,
+            'status'  => $result->status(),
+            'message' => is_string( $message ) && '' !== trim( $message ) ? trim( strip_tags( $message ) ) : null,
+        ];
+    }
+
+    /**
+     * Acts on how placing the order went: captured goes to the
+     * confirmation; challenged or failed shows the payment again for the
+     * placed order; blocked shows a generic message.
+     *
+     * @since 1.0.0
+     *
+     * @param  array{cart: int, order: int, status: string, message: string|null}  $outcome  From {@see self::describeResult()}.
+     *
+     * @return void
+     */
+    protected function settleOutcome( array $outcome ): void
+    {
+        $cart  = Cart::query()->find( $outcome['cart'] );
+        $order = Order::query()->find( $outcome['order'] );
+
+        if ( null === $cart || null === $order ) {
+            $this->addError( 'review', __( 'We couldn\'t place your order. Try again in a moment.' ) );
+            $this->errorSummary++;
+
+            return;
+        }
+
+        match ( $outcome['status'] ) {
+            PaymentFinalization::STATUS_CAPTURED   => $this->orderPlaced( $order ),
+            PaymentFinalization::STATUS_BLOCKED    => $this->orderBlocked(),
+            PaymentFinalization::STATUS_CHALLENGED => $this->awaitPayment( $cart, $order, __( 'Your bank needs you to confirm this payment. Confirm it below to finish your order.' ) ),
+            default                                => $this->awaitPayment( $cart, $order, $outcome['message'] ?? __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ) ),
+        };
+    }
+
+    /**
+     * The order is paid: creates the account the shopper asked for and
+     * goes to the confirmation page (or, without one, says the order is
+     * placed).
+     *
+     * @since 1.0.0
+     *
+     * @param  Order  $order  The order.
+     *
+     * @return void
+     */
+    protected function orderPlaced( Order $order ): void
+    {
+        CheckoutPlacement::forget();
+
+        $this->placement      = null;
+        $this->payment        = null;
+        $this->paymentProblem = null;
+
+        $this->createAccountFor( $order );
+        $this->cartChanged();
+
+        $url = CheckoutPlacement::confirmationUrl( $order->refresh() );
+
+        if ( null === $url ) {
+            $this->placedOrder  = (string) $order->order_number;
+            $this->announcement = __( 'Your order :number is placed.', [ 'number' => $this->placedOrder ] );
+
+            return;
+        }
+
+        $this->redirect( $url );
+    }
+
+    /**
+     * Fraud screening blocked the payment: the shopper gets a generic
+     * message, never the reason.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function orderBlocked(): void
+    {
+        CheckoutPlacement::forget();
+
+        $this->placement   = null;
+        $this->payment     = null;
+        $this->unavailable = __( 'We couldn\'t process your order. Please contact the store for help.' );
+
+        $this->cartChanged();
+    }
+
+    /**
+     * The order is placed but not paid (the payment needs confirming, or
+     * was declined): shows the payment step again for the order's own
+     * payment, and remembers the order across reloads.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart    $cart     The converted cart.
+     * @param  Order   $order    The order.
+     * @param  string  $message  What happened.
+     *
+     * @return void
+     */
+    protected function awaitPayment( Cart $cart, Order $order, string $message ): void
+    {
+        CheckoutPlacement::remember( $cart, $order );
+
+        $this->placement        = [ 'cart' => (int) $cart->id, 'order' => (int) $order->id, 'number' => (string) $order->order_number ];
+        $this->paymentProblem   = $message;
+        $this->confirmedPayment = null;
+        $this->step             = 'payment';
+        $this->focusStep        = true;
+        $this->announcement     = $message;
+
+        $this->preparePlacementPayment( $cart, $order );
+        $this->cartChanged();
+    }
+
+    /**
+     * Picks up an order placed earlier in this session whose payment
+     * isn't finished: a paid one goes to its confirmation; a payment the
+     * return route found confirmed finishes it; otherwise its payment is
+     * shown again.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True when there was such an order.
+     */
+    protected function resumePlacement(): bool
+    {
+        $placement = CheckoutPlacement::current();
+
+        if ( null === $placement ) {
+            return false;
+        }
+
+        [ 'cart' => $cart, 'order' => $order ] = $placement;
+
+        if ( CheckoutPlacement::isPaid( $order ) ) {
+            $this->orderPlaced( $order );
+
+            return true;
+        }
+
+        if ( in_array( (string) $order->system_status, [ 'cancelled', 'failed', 'refunded' ], true ) ) {
+            CheckoutPlacement::forget();
+
+            return false;
+        }
+
+        $this->placement = [ 'cart' => (int) $cart->id, 'order' => (int) $order->id, 'number' => (string) $order->order_number ];
+        $this->step      = 'payment';
+
+        $returned  = app()->bound( 'session' ) ? session()->pull( self::CONFIRMED_PAYMENT_SESSION_KEY ) : null;
+        $reference = (string) ( $order->payment_reference ?? '' );
+
+        if ( is_array( $returned ) && is_string( $returned['reference'] ?? null ) && '' !== $reference && hash_equals( $reference, $returned['reference'] ) ) {
+            $this->finishPlacement( $cart, $reference );
+
+            return true;
+        }
+
+        $this->paymentProblem = __( 'Your order :number is placed, but its payment isn\'t finished. Pay below to complete it.', [ 'number' => (string) $order->order_number ] );
+
+        $this->preparePlacementPayment( $cart, $order );
+
+        return true;
+    }
+
+    /**
+     * Checks a payment the driver confirmed for the placed order, then
+     * finishes the order.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $reference  The confirmed session.
+     *
+     * @return void
+     */
+    protected function placementPaymentConfirmed( string $reference ): void
+    {
+        $placement = CheckoutPlacement::current();
+
+        if ( null === $placement || (int) $placement['order']->id !== (int) ( $this->placement['order'] ?? 0 ) ) {
+            $this->placement = null;
+            $this->payment   = null;
+            $this->leave( __( 'Your cart is empty' ), __( 'Add something to your cart to check out.' ) );
+
+            return;
+        }
+
+        if ( CheckoutPlacement::isPaid( $placement['order'] ) ) {
+            $this->orderPlaced( $placement['order'] );
+
+            return;
+        }
+
+        $current = (string) ( $placement['order']->payment_reference ?? '' );
+
+        if ( '' === $current || '' === $reference || ! hash_equals( $current, $reference ) ) {
+            $this->addError( 'gateway', __( 'That payment doesn\'t belong to this checkout. Try again.' ) );
+
+            return;
+        }
+
+        $this->finishPlacement( $placement['cart'], $reference );
+    }
+
+    /**
+     * Finalizes the placed order again (the engine resumes its payment)
+     * and acts on the outcome.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart         $cart       The converted cart.
+     * @param  string|null  $reference  The confirmed session.
+     *
+     * @return void
+     */
+    protected function finishPlacement( Cart $cart, ?string $reference ): void
+    {
+        try {
+            $outcome = $this->rateLimited( 'ecommerce.checkout.finalize', fn (): array => $this->describeResult( $cart, $this->checkout()->finalize( $cart, $reference ) ) );
+        } catch ( CartOperationException $exception ) {
+            $this->addError( 'gateway', $exception->getMessage() );
+            $this->errorSummary++;
+
+            return;
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            $this->addError( 'gateway', __( 'Your payment couldn\'t be checked. Try again in a moment.' ) );
+            $this->errorSummary++;
+
+            return;
+        }
+
+        if ( is_array( $outcome ) ) {
+            $this->settleOutcome( $outcome );
+        }
+    }
+
+    /**
+     * Shows the placed order's own payment session through its gateway's
+     * driver, so the shopper can confirm (or retry) it.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart   $cart   The converted cart.
+     * @param  Order  $order  The order.
+     *
+     * @return void
+     */
+    protected function preparePlacementPayment( Cart $cart, Order $order ): void
+    {
+        $key       = (string) ( $order->payment_gateway_key ?? '' );
+        $reference = (string) ( $order->payment_reference ?? '' );
+        $gateway   = '' === $key ? null : app( PaymentGatewayRegistry::class )->find( $key );
+
+        $this->payment = null;
+
+        if ( null === $gateway || '' === $reference ) {
+            return;
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            $this->addError( 'gateway', __( 'Your payment couldn\'t be loaded. Try again in a moment.' ) );
+
+            return;
+        }
+
+        $config    = ClientPaymentConfig::for( $gateway, $cart, $session );
+        $component = is_array( $config ) && is_string( $config['driver'] ?? null ) ? app( PaymentDriverRegistry::class )->component( $config['driver'] ) : null;
+
+        if ( null === $component ) {
+            $this->addError( 'gateway', __( 'This payment method isn\'t available.' ) );
+
+            return;
+        }
+
+        $this->gateway = $key;
+        $this->payment = [
+            'gateway'   => $key,
+            'label'     => $gateway->label(),
+            'reference' => $reference,
+            'component' => $component,
+            'config'    => $config,
+        ];
+    }
+
+    /**
+     * The engine refused to place the order (nothing was placed, or the
+     * order exists but its payment couldn't be attempted): shows why, on
+     * the step that needs fixing.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart                    $cart       The cart the shopper tried to check out.
+     * @param  CartOperationException  $exception  The refusal.
+     *
+     * @return void
+     */
+    protected function placementRefused( Cart $cart, CartOperationException $exception ): void
+    {
+        if ( $this->placedButUnpaid( $cart, $exception->getMessage() ) ) {
+            return;
+        }
+
+        $cart = $this->cart()?->refresh();
+
+        if ( null === $cart ) {
+            $this->leave( __( 'Your cart is empty' ), __( 'Add something to your cart to check out.' ) );
+
+            return;
+        }
+
+        if ( $exception instanceof CheckoutException && 'account-required' === $exception->errorCode ) {
+            $this->signInRequired = CheckoutService::GUESTS_DISABLED === $this->checkout()->guestCheckout();
+        }
+
+        $paymentIssue = in_array( $exception->field, [ 'payment', 'payment_reference', 'payment_gateway' ], true )
+            || ( $exception instanceof CheckoutException && 'totals-changed' === $exception->errorCode );
+
+        if ( $paymentIssue ) {
+            $this->confirmedPayment = null;
+        }
+
+        $target = $this->furthestStep( $cart );
+
+        if ( $target !== $this->step ) {
+            $this->moveTo( $target, $cart );
+        }
+
+        $this->addError( $this->errorField( $exception->field, 'payment' === $target ? 'gateway' : 'review' ), $exception->getMessage() );
+        $this->errorSummary++;
+    }
+
+    /**
+     * When a finalize call failed after the cart became an order, shows
+     * the order's payment again with `$message`.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart    $cart     The cart the shopper tried to check out.
+     * @param  string  $message  What went wrong.
+     *
+     * @return bool True when the cart became an order.
+     */
+    protected function placedButUnpaid( Cart $cart, string $message ): bool
+    {
+        $order = $this->checkout()->placedOrder( $cart );
+
+        if ( null === $order ) {
+            return false;
+        }
+
+        if ( CheckoutPlacement::isPaid( $order ) ) {
+            $this->orderPlaced( $order );
+        } else {
+            $this->awaitPayment( $cart->refresh(), $order, $message );
+        }
+
+        return true;
+    }
+
+    /**
+     * Creates the account a guest asked for, once their order is paid. A
+     * failure doesn't hold up the order; the shopper is told.
+     *
+     * @since 1.0.0
+     *
+     * @param  Order  $order  The order.
+     *
+     * @return void
+     */
+    protected function createAccountFor( Order $order ): void
+    {
+        $password = $this->password;
+
+        $this->password = '';
+
+        if ( ! $this->createAccount || '' === $password || auth()->check() || ! $this->checkout()->offersAccountCreation() ) {
+            return;
+        }
+
+        $action = $this->accountAction();
+
+        if ( null === $action ) {
+            return;
+        }
+
+        try {
+            $action->create( $order, $password );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            $this->flashToastWarning( __( 'We couldn\'t create your account' ), __( 'Your order is placed. You can create an account later with :email.', [ 'email' => (string) $order->email ] ) );
+
+            return;
+        }
+
+        $this->flashToastSuccess( __( 'Your account is ready' ), __( 'You\'re signed in as :email.', [ 'email' => (string) $order->email ] ) );
+    }
+
+    /**
+     * Whether a guest is offered an account with their order
+     * (`checkout.account_creation`).
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart  $cart  The cart.
+     *
+     * @return bool
+     */
+    protected function offersAccount( Cart $cart ): bool
+    {
+        return $this->isGuest( $cart ) && ! auth()->check() && $this->checkout()->offersAccountCreation() && null !== $this->accountAction();
+    }
+
+    /**
+     * The configured account action (`auth.create_account_action`), or
+     * null when it isn't usable.
+     *
+     * @since 1.0.0
+     *
+     * @return CreatesCustomerAccounts|null
+     */
+    protected function accountAction(): ?CreatesCustomerAccounts
+    {
+        $class = config( 'artisanpack.ecommerce-storefront-livewire.auth.create_account_action' );
+
+        if ( ! is_string( $class ) || ! is_a( $class, CreatesCustomerAccounts::class, true ) ) {
+            return null;
+        }
+
+        return app( $class );
     }
 
     /**
@@ -1850,7 +2610,15 @@ class Index extends Component
             'postal_code'  => __( 'Postal code' ),
         ];
 
-        $labels = [ 'email' => __( 'Email' ), 'shippingRate' => __( 'Shipping option' ), 'gateway' => __( 'Payment method' ) ];
+        $labels = [
+            'email'        => __( 'Email' ),
+            'shippingRate' => __( 'Shipping option' ),
+            'gateway'      => __( 'Payment method' ),
+            'orderNote'    => __( 'Order note' ),
+            'acceptTerms'  => __( 'Terms and conditions' ),
+            'password'     => __( 'Password' ),
+            'review'       => __( 'Review order' ),
+        ];
 
         foreach ( [ 'shipping' => __( 'Shipping address' ), 'billing' => __( 'Billing address' ) ] as $model => $section ) {
             foreach ( $fields as $field => $label ) {

@@ -16,16 +16,20 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
+use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Order;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -95,6 +99,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
      * @var array<string, class-string>
      */
     public const BLADE_COMPONENTS = [
+        'account-shell'   => Components\AccountShell::class,
         'address'         => Components\Address::class,
         'address-form'    => Components\AddressForm::class,
         'empty-state'     => Components\EmptyState::class,
@@ -139,6 +144,10 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'artisanpack-ecommerce-storefront-checkout'              => Checkout\Index::class,
         'artisanpack-ecommerce-storefront-payment-redirect'      => Payment\RedirectDriver::class,
         'artisanpack-ecommerce-storefront-payment-stripe'        => Payment\StripePaymentElement::class,
+        'artisanpack-ecommerce-storefront-order-confirmation'    => Order\Confirmation::class,
+        'artisanpack-ecommerce-storefront-account-dashboard'     => Account\Dashboard::class,
+        'artisanpack-ecommerce-storefront-account-orders'        => Account\Orders::class,
+        'artisanpack-ecommerce-storefront-account-order'         => Account\OrderShow::class,
     ];
 
     /**
@@ -211,6 +220,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerLivewireComponents();
         $this->registerProductForms();
         $this->registerPaymentDrivers();
+        $this->registerSettings();
         $this->registerRoutes();
     }
 
@@ -473,6 +483,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
                 $registry->register( $driver, $component );
             }
         }
+    }
+
+    /**
+     * Adds the store owner's checkout choices (layout, terms page) to the
+     * engine's settings, so the admin's settings screen can change them.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerSettings(): void
+    {
+        CheckoutLayout::registerSettings( $this->app->make( SettingsRegistry::class ) );
     }
 
     /**

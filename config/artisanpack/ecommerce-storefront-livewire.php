@@ -49,13 +49,17 @@ return [
     | Customer authentication
     |--------------------------------------------------------------------------
     |
-    | The host owns sign-in and registration. The storefront links to these
-    | route names and creates accounts at checkout through the action class.
+    | The host owns sign-in, registration, and the profile and password
+    | screens. The storefront links to these route names (a missing route
+    | hides its link) and creates accounts at checkout through the action
+    | class, which implements Contracts\CreatesCustomerAccounts.
     |
     */
     'auth' => [
         'login_route'           => 'login',
         'register_route'        => 'register',
+        'profile_route'         => 'settings.profile',
+        'password_route'        => 'settings.password',
         'create_account_action' => 'ArtisanPackUI\\EcommerceStorefrontLivewire\\Actions\\CreateCustomerAccount',
     ],
 
@@ -125,12 +129,16 @@ return [
     | Checkout
     |--------------------------------------------------------------------------
     |
-    | `multi_step` or `single_page`. The engine setting
-    | `storefront.checkout_layout` overrides this when set.
+    | `layout` is `multi_step` or `single_page`. `terms_url` is the terms
+    | and conditions page shoppers must accept before placing an order (an
+    | http(s) URL or a path on this site; null shows no checkbox). The
+    | engine settings `storefront.checkout_layout` and `storefront.terms_url`
+    | (the admin's Checkout settings) override these when set.
     |
     */
     'checkout' => [
-        'layout' => 'multi_step',
+        'layout'    => 'multi_step',
+        'terms_url' => null,
     ],
 
     /*

@@ -279,6 +279,8 @@ it( 'shows a blocked transition with the engine\'s message', function (): void {
 } );
 
 it( 'lets a satellite add a step before review', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.checkout.layout', 'single_page' );
+
     Livewire::component( 'age-check-step', AgeCheckStep::class );
 
     addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', static function ( array $steps ): array {

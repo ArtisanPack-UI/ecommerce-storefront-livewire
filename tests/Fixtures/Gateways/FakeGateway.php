@@ -48,6 +48,17 @@ class FakeGateway implements PaymentGateway
      */
     public bool $failCreation = false;
 
+    /**
+     * How captures go: `success` (the default), `declined` (a retryable
+     * failure with a message), or `error` (throws).
+     */
+    public string $captureOutcome = 'success';
+
+    /**
+     * How many captures ran.
+     */
+    public int $captures = 0;
+
     private int $sequence = 0;
 
     public function __construct(
@@ -129,7 +140,13 @@ class FakeGateway implements PaymentGateway
 
     public function capturePayment( Order $order, PaymentSession $session ): PaymentResult
     {
-        return PaymentResult::success( $session->amount, 'ch_' . $session->reference );
+        $this->captures++;
+
+        return match ( $this->captureOutcome ) {
+            'declined' => PaymentResult::retryableFailure( $session->amount, 'card_declined', 'Your card was declined.' ),
+            'error'    => throw new RuntimeException( 'The provider is down.' ),
+            default    => PaymentResult::success( $session->amount, 'ch_' . $session->reference ),
+        };
     }
 
     public function voidPendingPayment( Order $order ): void

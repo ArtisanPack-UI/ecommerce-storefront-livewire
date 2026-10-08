@@ -23,7 +23,8 @@ beforeEach( function (): void {
 
 /**
  * Every storefront route with its parameters. The checkout routes need a
- * cart, so tests/Feature/Http/CheckoutRoutesTest.php covers them.
+ * cart, so tests/Feature/Http/CheckoutRoutesTest.php covers them; the
+ * confirmation needs an order, so ConfirmationTest covers it.
  *
  * @return array<string, array{0: string, 1: array<string, string>}>
  */
@@ -37,7 +38,6 @@ function storefrontRoutes(): array
         'product'         => [ 'artisanpack.ecommerce.storefront.product', [ 'product' => 'linen-shirt' ] ],
         'search'          => [ 'artisanpack.ecommerce.storefront.search', [] ],
         'cart'            => [ 'artisanpack.ecommerce.storefront.cart', [] ],
-        'confirmation'    => [ 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => '1001' ] ],
         'lookup'          => [ 'artisanpack.ecommerce.storefront.lookup', [] ],
     ];
 }
@@ -87,12 +87,29 @@ it( 'sends a guest to the sign-in route from every account route', function ( st
     $this->get( route( $name, $parameters ) )->assertRedirect( route( 'login' ) );
 } )->with( accountRoutes() );
 
-it( 'serves every account route to a signed-in customer', function ( string $name, array $parameters ): void {
+it( 'serves every account route to a signed-in customer, in the account shell', function ( string $name, array $parameters ): void {
+    $this->actingAs( makeUser() )
+        ->get( route( $name, $parameters ) )
+        ->assertOk()
+        ->assertSee( 'data-account-shell', false )
+        ->assertSee( 'data-account-nav', false )
+        ->assertHeader( 'X-Robots-Tag', 'noindex, nofollow' );
+} )->with( array_diff_key( accountRoutes(), [ 'order' => true ] ) );
+
+it( 'still shows the account screens that haven\'t shipped as pending', function ( string $name, array $parameters ): void {
     $this->actingAs( makeUser() )
         ->get( route( $name, $parameters ) )
         ->assertOk()
         ->assertSee( 'data-screen-pending', false );
-} )->with( accountRoutes() );
+} )->with( array_intersect_key( accountRoutes(), array_flip( [ 'addresses', 'downloads', 'profile', 'claim' ] ) ) );
+
+it( 'answers 404 for an order that isn\'t the shopper\'s', function (): void {
+    $this->actingAs( makeUser() )
+        ->get( route( 'artisanpack.ecommerce.account.orders.show', [ 'order' => '1001' ] ) )
+        ->assertNotFound();
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => '1001' ] ) )->assertNotFound();
+} );
 
 it( 'embeds the catalog component on the catalog, category, and tag pages', function ( string $name, array $parameters ): void {
     $this->get( route( $name, $parameters ) )
