@@ -145,9 +145,14 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'artisanpack-ecommerce-storefront-payment-redirect'      => Payment\RedirectDriver::class,
         'artisanpack-ecommerce-storefront-payment-stripe'        => Payment\StripePaymentElement::class,
         'artisanpack-ecommerce-storefront-order-confirmation'    => Order\Confirmation::class,
+        'artisanpack-ecommerce-storefront-order-lookup'          => Order\Lookup::class,
         'artisanpack-ecommerce-storefront-account-dashboard'     => Account\Dashboard::class,
         'artisanpack-ecommerce-storefront-account-orders'        => Account\Orders::class,
         'artisanpack-ecommerce-storefront-account-order'         => Account\OrderShow::class,
+        'artisanpack-ecommerce-storefront-account-addresses'     => Account\Addresses::class,
+        'artisanpack-ecommerce-storefront-account-downloads'     => Account\Downloads::class,
+        'artisanpack-ecommerce-storefront-account-profile'       => Account\Profile::class,
+        'artisanpack-ecommerce-storefront-account-claim'         => Account\Claim::class,
     ];
 
     /**
@@ -222,6 +227,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerPaymentDrivers();
         $this->registerSettings();
         $this->registerRoutes();
+        $this->registerOrderViewUrl();
     }
 
     /**
@@ -521,5 +527,28 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom( __DIR__ . '/../routes/storefront.php' );
         $this->loadRoutesFrom( __DIR__ . '/../routes/account.php' );
+    }
+
+    /**
+     * Points the engine's guest order links (confirmation emails,
+     * `checkout.order_view_url`) at the storefront's signed order page
+     * (spec §7.6), unless the host set its own. Skipped when the storefront
+     * doesn't register its routes.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerOrderViewUrl(): void
+    {
+        $current = config( 'artisanpack.ecommerce.checkout.order_view_url' );
+
+        if ( ( is_string( $current ) && '' !== trim( $current ) ) || ! (bool) config( 'artisanpack.ecommerce-storefront-livewire.storefront.routes_enabled', true ) ) {
+            return;
+        }
+
+        $prefix = trim( (string) config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix', 'shop' ), '/' );
+
+        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => url( ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}' ) ] );
     }
 }

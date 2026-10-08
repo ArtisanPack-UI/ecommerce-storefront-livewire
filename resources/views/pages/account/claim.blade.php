@@ -12,6 +12,6 @@
 
 @section( 'content' )
     <x-artisanpack-ec-account-shell :title="__( 'Claim an order' )">
-        @include( 'ecommerce-storefront::partials.screen-pending' )
+        <livewire:artisanpack-ecommerce-storefront-account-claim />
     </x-artisanpack-ec-account-shell>
 @endsection

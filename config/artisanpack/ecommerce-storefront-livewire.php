@@ -143,6 +143,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Guest order lookup
+    |--------------------------------------------------------------------------
+    |
+    | `link_ttl_minutes` is how long the order link a successful lookup
+    | opens keeps working. Links in guest confirmation emails follow the
+    | engine's `checkout.order_view_ttl_days` instead.
+    |
+    */
+    'order_lookup' => [
+        'link_ttl_minutes' => 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Payment drivers
     |--------------------------------------------------------------------------
     |

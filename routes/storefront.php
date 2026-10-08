@@ -38,4 +38,7 @@ Route::prefix( trim( (string) config( 'artisanpack.ecommerce-storefront-livewire
         Route::get( 'checkout/return', [ StorefrontPageController::class, 'checkoutReturn' ] )->name( 'checkout.return' );
         Route::get( 'orders/{order}/confirmation', [ StorefrontPageController::class, 'confirmation' ] )->where( 'order', '[A-Za-z0-9_\-]+' )->name( 'confirmation' );
         Route::get( 'order-lookup', [ StorefrontPageController::class, 'lookup' ] )->name( 'lookup' );
+
+        // `{token}` is the engine's signed order-view token (`{id}-{expiry}-{hmac}`).
+        Route::get( 'order/{token}', [ StorefrontPageController::class, 'orderView' ] )->where( 'token', '[0-9]+-[0-9]+-[a-f0-9]{64}' )->name( 'order-view' );
     } );

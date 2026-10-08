@@ -12,6 +12,6 @@
 
 @section( 'content' )
     <x-artisanpack-ec-account-shell :title="__( 'Addresses' )">
-        @include( 'ecommerce-storefront::partials.screen-pending' )
+        <livewire:artisanpack-ecommerce-storefront-account-addresses />
     </x-artisanpack-ec-account-shell>
 @endsection

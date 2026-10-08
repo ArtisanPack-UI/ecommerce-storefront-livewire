@@ -67,6 +67,9 @@ it( 'registers the spec paths under the configured prefixes', function (): void 
         ->and( route( 'artisanpack.ecommerce.storefront.checkout.return', absolute: false ) )->toBe( '/shop/checkout/return' )
         ->and( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => '1001' ], false ) )->toBe( '/shop/orders/1001/confirmation' )
         ->and( route( 'artisanpack.ecommerce.storefront.lookup', absolute: false ) )->toBe( '/shop/order-lookup' )
+        ->and( route( 'artisanpack.ecommerce.storefront.order-view', [ 'token' => '1-2-' . str_repeat( 'a', 64 ) ], false ) )->toBe( '/shop/order/1-2-' . str_repeat( 'a', 64 ) )
+        ->and( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => 5 ], false ) )->toBe( '/account/downloads/5' )
+        ->and( route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => 5 ], false ) )->toBe( '/account/downloads/5/stream' )
         ->and( route( 'artisanpack.ecommerce.account.dashboard', absolute: false ) )->toBe( '/account' )
         ->and( route( 'artisanpack.ecommerce.account.orders.show', [ 'order' => '1001' ], false ) )->toBe( '/account/orders/1001' );
 } );
@@ -96,12 +99,26 @@ it( 'serves every account route to a signed-in customer, in the account shell', 
         ->assertHeader( 'X-Robots-Tag', 'noindex, nofollow' );
 } )->with( array_diff_key( accountRoutes(), [ 'order' => true ] ) );
 
-it( 'still shows the account screens that haven\'t shipped as pending', function ( string $name, array $parameters ): void {
+it( 'embeds each account screen\'s component', function ( string $name, string $marker ): void {
     $this->actingAs( makeUser() )
-        ->get( route( $name, $parameters ) )
+        ->get( route( $name ) )
         ->assertOk()
-        ->assertSee( 'data-screen-pending', false );
-} )->with( array_intersect_key( accountRoutes(), array_flip( [ 'addresses', 'downloads', 'profile', 'claim' ] ) ) );
+        ->assertSee( $marker, false )
+        ->assertDontSee( 'data-screen-pending', false );
+} )->with( [
+    'addresses' => [ 'artisanpack.ecommerce.account.addresses', 'data-account-addresses' ],
+    'downloads' => [ 'artisanpack.ecommerce.account.downloads', 'data-account-downloads' ],
+    'profile'   => [ 'artisanpack.ecommerce.account.profile', 'data-account-profile' ],
+    'claim'     => [ 'artisanpack.ecommerce.account.claim', 'data-account-claim' ],
+] );
+
+it( 'serves the order lookup form, not indexed', function (): void {
+    $this->get( route( 'artisanpack.ecommerce.storefront.lookup' ) )
+        ->assertOk()
+        ->assertSee( 'data-order-lookup', false )
+        ->assertHeader( 'X-Robots-Tag', 'noindex, nofollow' )
+        ->assertHeader( 'Referrer-Policy', 'same-origin' );
+} );
 
 it( 'answers 404 for an order that isn\'t the shopper\'s', function (): void {
     $this->actingAs( makeUser() )

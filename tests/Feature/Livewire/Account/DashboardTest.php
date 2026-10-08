@@ -124,3 +124,42 @@ it( 'keeps "Orders" active on an order\'s page', function (): void {
 
     expect( $orders[0] ?? '' )->toContain( 'aria-current="page"' );
 } );
+
+it( 'prompts the shopper to claim guest orders placed with their email', function (): void {
+    [ , $customer ] = shopper();
+
+    placedOrder( [ 'email' => $customer->email, 'is_claimed' => false ] );
+    placedOrder( [ 'email' => $customer->email, 'is_claimed' => false ] );
+    placedOrder( [ 'email' => 'someone@example.test', 'is_claimed' => false ] );
+    placedOrder( [], $customer );
+
+    Livewire::test( Dashboard::class )
+        ->assertSeeHtml( 'data-account-claim-prompt' )
+        ->assertSee( 'We found 2 orders placed as a guest with your email' )
+        ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.account.claim' ) . '"' );
+} );
+
+it( 'doesn\'t prompt when there are no unclaimed guest orders for the shopper', function (): void {
+    [ , $customer ] = shopper();
+
+    placedOrder( [ 'email' => 'someone@example.test', 'is_claimed' => false ] );
+    placedOrder( [], $customer );
+
+    Livewire::test( Dashboard::class )->assertDontSeeHtml( 'data-account-claim-prompt' );
+} );
+
+it( 'doesn\'t prompt an account whose email isn\'t verified', function (): void {
+    $user = makeUser();
+
+    placedOrder( [ 'email' => $user->email, 'is_claimed' => false ] );
+
+    $unverified = new class extends Tests\Fixtures\User implements Illuminate\Contracts\Auth\MustVerifyEmail {
+        use Illuminate\Auth\MustVerifyEmail;
+    };
+    $unverified->setRawAttributes( $user->getAttributes(), true );
+    $unverified->exists = true;
+
+    $this->actingAs( $unverified );
+
+    Livewire::test( Dashboard::class )->assertDontSeeHtml( 'data-account-claim-prompt' );
+} );

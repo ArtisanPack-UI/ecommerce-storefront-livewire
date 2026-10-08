@@ -29,6 +29,8 @@ Route::prefix( trim( (string) config( 'artisanpack.ecommerce-storefront-livewire
         Route::get( 'orders/{order}', [ StorefrontPageController::class, 'accountOrder' ] )->where( 'order', '[A-Za-z0-9_\-]+' )->name( 'orders.show' );
         Route::get( 'addresses', [ StorefrontPageController::class, 'accountAddresses' ] )->name( 'addresses' );
         Route::get( 'downloads', [ StorefrontPageController::class, 'accountDownloads' ] )->name( 'downloads' );
+        Route::get( 'downloads/{download}', [ StorefrontPageController::class, 'accountDownloadFile' ] )->whereNumber( 'download' )->name( 'downloads.file' );
+        Route::get( 'downloads/{download}/stream', [ StorefrontPageController::class, 'accountDownloadStream' ] )->whereNumber( 'download' )->name( 'downloads.stream' );
         Route::get( 'profile', [ StorefrontPageController::class, 'accountProfile' ] )->name( 'profile' );
         Route::get( 'claim', [ StorefrontPageController::class, 'accountClaim' ] )->name( 'claim' );
     } );

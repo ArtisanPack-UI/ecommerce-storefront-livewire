@@ -14,10 +14,15 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
+use ArtisanPackUI\Ecommerce\Digital\DigitalFileStreamer;
+use ArtisanPackUI\Ecommerce\Exceptions\DigitalDownloadException;
+use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
+use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
+use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
@@ -260,15 +265,39 @@ class StorefrontPageController extends Controller
     }
 
     /**
-     * The guest order lookup.
+     * The guest order lookup. Not cached or indexed.
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function lookup(): View
+    public function lookup(): Response
     {
-        return view( 'ecommerce-storefront::pages.lookup' );
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.lookup' ) );
+    }
+
+    /**
+     * A guest's order, opened with a signed order-view token (a lookup or
+     * a confirmation email). A malformed, tampered, or expired token is a
+     * 404. The component shows the order read-only. Never cached or
+     * indexed, and the token never leaves in a `Referer`.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $token  The signed order-view token.
+     *
+     * @return Response
+     */
+    public function orderView( string $token ): Response
+    {
+        $order = OrderViewToken::verify( $token );
+
+        abort_if( null === $order, 404 );
+
+        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.order-view', [
+            'order' => (int) $order->id,
+            'token' => $token,
+        ] ) );
     }
 
     /**
@@ -332,6 +361,54 @@ class StorefrontPageController extends Controller
     public function accountDownloads(): Response
     {
         return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.downloads' ) );
+    }
+
+    /**
+     * Sends one of the shopper's files as an attachment, spending a
+     * download (engine `DigitalDownloadService::redeemOwned()`). Another
+     * customer's entitlement is a 404; one that is expired, used up, or
+     * streaming-only goes back to the downloads page saying why.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     *
+     * @return SymfonyResponse
+     */
+    public function accountDownloadFile( Request $request, int $download ): SymfonyResponse
+    {
+        try {
+            return $this->deliverDownload( $request, $download, DigitalDownloadService::MODE_DOWNLOAD, true );
+        } catch ( DigitalDownloadException $exception ) {
+            abort_if( 404 === $exception->status && 'download-not-found' === $exception->errorCode, 404 );
+
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage(), 'alert-warning' ) );
+
+            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.account.downloads' ) );
+        }
+    }
+
+    /**
+     * Streams one of the shopper's files for the browser's player
+     * (byte-range aware); the first request of a stream spends a download.
+     * A refusal answers with its status, since a media player can't follow
+     * a redirect to a page.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     *
+     * @return SymfonyResponse
+     */
+    public function accountDownloadStream( Request $request, int $download ): SymfonyResponse
+    {
+        try {
+            return $this->deliverDownload( $request, $download, DigitalDownloadService::MODE_STREAM, DigitalFileStreamer::startsStream( $request ) );
+        } catch ( DigitalDownloadException $exception ) {
+            abort( $exception->status, $exception->getMessage() );
+        }
     }
 
     /**
@@ -405,6 +482,34 @@ class StorefrontPageController extends Controller
         $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $order->total_amount ] );
 
         return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
+    }
+
+    /**
+     * Redeems one of the signed-in shopper's entitlements and sends the
+     * file, marked private.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     * @param  string   $mode      `DigitalDownloadService::MODE_DOWNLOAD` or `MODE_STREAM`.
+     * @param  bool     $counted   Whether the request spends a download.
+     *
+     * @throws DigitalDownloadException When it isn't theirs or can't be redeemed.
+     *
+     * @return SymfonyResponse
+     */
+    protected function deliverDownload( Request $request, int $download, string $mode, bool $counted ): SymfonyResponse
+    {
+        $customer = Customer::forUser( $request->user() );
+
+        if ( null === $customer ) {
+            throw new DigitalDownloadException( 'download-not-found', 404, __( 'That download doesn\'t exist.' ) );
+        }
+
+        $entitlement = app( DigitalDownloadService::class )->redeemOwned( $customer, $download, $mode, $request, $counted );
+
+        return $this->keepPrivate( app( DigitalFileStreamer::class )->respond( $entitlement, $request, $mode ) );
     }
 
     /**
