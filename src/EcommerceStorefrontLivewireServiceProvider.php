@@ -19,8 +19,11 @@ use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
@@ -133,6 +136,9 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'artisanpack-ecommerce-storefront-cart-button'           => Cart\HeaderButton::class,
         'artisanpack-ecommerce-storefront-cart-merge-prompt'     => Cart\MergePrompt::class,
         'artisanpack-ecommerce-storefront-currency-switcher'     => Currency\Switcher::class,
+        'artisanpack-ecommerce-storefront-checkout'              => Checkout\Index::class,
+        'artisanpack-ecommerce-storefront-payment-redirect'      => Payment\RedirectDriver::class,
+        'artisanpack-ecommerce-storefront-payment-stripe'        => Payment\StripePaymentElement::class,
     ];
 
     /**
@@ -148,6 +154,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'grouped'  => 'artisanpack-ecommerce-storefront-product-form-grouped',
         'bundled'  => 'artisanpack-ecommerce-storefront-product-form-bundled',
         'digital'  => 'artisanpack-ecommerce-storefront-product-form-digital',
+    ];
+
+    /**
+     * The core payment drivers (spec §8.3), keyed by the `driver` of the
+     * engine's client-render contract.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const PAYMENT_DRIVERS = [
+        'redirect'               => 'artisanpack-ecommerce-storefront-payment-redirect',
+        'stripe-payment-element' => 'artisanpack-ecommerce-storefront-payment-stripe',
     ];
 
     /**
@@ -167,6 +186,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->app->scoped( StorefrontCart::class );
         $this->app->scoped( CategoryPaths::class );
         $this->app->singleton( ProductFormRegistry::class );
+        $this->app->singleton( PaymentDriverRegistry::class );
     }
 
     /**
@@ -190,6 +210,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerLayoutResolver();
         $this->registerLivewireComponents();
         $this->registerProductForms();
+        $this->registerPaymentDrivers();
         $this->registerRoutes();
     }
 
@@ -424,6 +445,32 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         foreach ( self::PRODUCT_FORMS as $type => $component ) {
             if ( ! $registry->has( $type ) ) {
                 $registry->register( $type, $component );
+            }
+        }
+    }
+
+    /**
+     * Registers the core payment drivers and the ones listed in
+     * `payments.drivers` (`driver => component`), leaving any a satellite
+     * registered first in place. Configured drivers win over core ones.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerPaymentDrivers(): void
+    {
+        $registry = $this->app->make( PaymentDriverRegistry::class );
+
+        foreach ( self::PAYMENT_DRIVERS as $driver => $component ) {
+            if ( ! $registry->has( $driver ) ) {
+                $registry->register( $driver, $component );
+            }
+        }
+
+        foreach ( (array) config( 'artisanpack.ecommerce-storefront-livewire.payments.drivers', [] ) as $driver => $component ) {
+            if ( is_string( $driver ) && '' !== trim( $driver ) && is_string( $component ) && '' !== trim( $component ) ) {
+                $registry->register( $driver, $component );
             }
         }
     }

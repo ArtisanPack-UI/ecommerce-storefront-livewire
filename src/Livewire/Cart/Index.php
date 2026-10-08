@@ -403,85 +403,6 @@ class Index extends Component
     }
 
     /**
-     * The order summary.
-     *
-     * Keys: `currency`, `subtotal`, `discounts` (`label`, `amount`, `free_shipping`),
-     * `discount`, `shipping` (`state`: `chosen`, `free`, `checkout`, or
-     * `none`; `label`; `amount`), `tax` (`amount`, `estimated`,
-     * `inclusive`), and `total`.
-     *
-     * @since 1.0.0
-     *
-     * @param  Cart  $cart  The cart.
-     *
-     * @return array<string, mixed>
-     */
-    protected function totals( Cart $cart ): array
-    {
-        $meta = (array) ( $cart->meta ?? [] );
-        $rate = $this->chosenRate( $cart );
-        $tax  = is_array( $meta[ StorefrontCartService::TAX_META_KEY ] ?? null ) ? $meta[ StorefrontCartService::TAX_META_KEY ] : [];
-        $free = [] !== (array) ( $meta[ StorefrontCartService::FREE_SHIPPING_META_KEY ] ?? [] );
-
-        $shipping = match ( true ) {
-            ! $this->requiresShipping( $cart ) => [ 'state' => 'none', 'label' => null, 'amount' => 0 ],
-            $free                              => [ 'state' => 'free', 'label' => null, 'amount' => 0 ],
-            null !== $rate                     => [ 'state' => 'chosen', 'label' => (string) ( $rate['label'] ?? '' ), 'amount' => (int) $cart->shipping_amount ],
-            default                            => [ 'state' => 'checkout', 'label' => null, 'amount' => 0 ],
-        };
-
-        return [
-            'currency'  => (string) $cart->currency,
-            'subtotal'  => (int) $cart->subtotal_amount,
-            'discounts' => $this->discounts( $cart ),
-            'discount'  => (int) $cart->discount_amount,
-            'shipping'  => $shipping,
-            'tax'       => [
-                'amount'    => (int) $cart->tax_amount,
-                'estimated' => (bool) ( $tax['estimated'] ?? true ),
-                'inclusive' => (bool) ( $tax['prices_include_tax'] ?? false ),
-            ],
-            'total'     => (int) $cart->total_amount,
-        ];
-    }
-
-    /**
-     * Each applied promotion and its discount. When the promotions can't
-     * be evaluated, one "Discount" line with the cart's discount.
-     *
-     * @since 1.0.0
-     *
-     * @param  Cart  $cart  The cart.
-     *
-     * @return array<int, array{label: string, amount: int, free_shipping: bool}>
-     */
-    protected function discounts( Cart $cart ): array
-    {
-        $fallback = (int) $cart->discount_amount > 0 ? [ [ 'label' => __( 'Discount' ), 'amount' => (int) $cart->discount_amount, 'free_shipping' => false ] ] : [];
-
-        try {
-            $promotions = app( StorefrontCartService::class )->promotionResult( $cart )->toArray()['promotions'] ?? [];
-        } catch ( Throwable $exception ) {
-            report( $exception );
-
-            return $fallback;
-        }
-
-        $discounts = [];
-
-        foreach ( (array) $promotions as $promotion ) {
-            $amount = (int) ( $promotion['amount'] ?? 0 );
-            $label  = trim( (string) ( $promotion['name'] ?? '' ) );
-
-            if ( $amount > 0 || (bool) ( $promotion['free_shipping'] ?? false ) ) {
-                $discounts[] = [ 'label' => '' === $label ? __( 'Discount' ) : $label, 'amount' => $amount, 'free_shipping' => (bool) ( $promotion['free_shipping'] ?? false ) ];
-            }
-        }
-
-        return [] === $discounts ? $fallback : $discounts;
-    }
-
-    /**
      * The coupon code applied to the cart, if any.
      *
      * @since 1.0.0
@@ -495,42 +416,6 @@ class Index extends Component
         $code = ( (array) ( $cart->meta ?? [] ) )[ StorefrontCartService::COUPON_META_KEY ] ?? null;
 
         return is_string( $code ) && '' !== $code ? $code : null;
-    }
-
-    /**
-     * The shipping rate chosen for the cart, as the engine stored it.
-     *
-     * @since 1.0.0
-     *
-     * @param  Cart|null  $cart  The cart.
-     *
-     * @return array<string, mixed>|null
-     */
-    protected function chosenRate( ?Cart $cart ): ?array
-    {
-        $rate = null === $cart ? null : ( (array) ( $cart->meta ?? [] ) )[ StorefrontCartService::SHIPPING_RATE_META_KEY ] ?? null;
-
-        return is_array( $rate ) ? $rate : null;
-    }
-
-    /**
-     * Whether any line needs shipping.
-     *
-     * @since 1.0.0
-     *
-     * @param  Cart  $cart  The cart.
-     *
-     * @return bool
-     */
-    protected function requiresShipping( Cart $cart ): bool
-    {
-        try {
-            return app( StorefrontCartService::class )->requiresShipping( $cart );
-        } catch ( Throwable $exception ) {
-            report( $exception );
-
-            return true;
-        }
     }
 
     /**

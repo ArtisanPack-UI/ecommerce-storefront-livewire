@@ -138,7 +138,10 @@ return [
     | Payment drivers
     |--------------------------------------------------------------------------
     |
-    | Extra payment driver classes. The core drivers are always registered.
+    | Extra payment drivers: `driver => Livewire component` (name or class),
+    | keyed by the `driver` a gateway's client config names. The core
+    | `redirect` and `stripe-payment-element` drivers are always registered;
+    | an entry here with the same key replaces one.
     |
     */
     'payments' => [
