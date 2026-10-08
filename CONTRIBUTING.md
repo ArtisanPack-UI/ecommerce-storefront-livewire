@@ -54,6 +54,16 @@ Before contributing, make sure you have:
 2. Clone your fork locally
 3. Install dependencies: `composer install`
 4. Create a feature branch: `git checkout -b feature/your-feature-name`
+
+   `composer install` resolves the engine (`artisanpack-ui/ecommerce`) from Packagist. To work against a local engine checkout instead, add a path repository on your machine only, and don't commit it:
+
+   ```bash
+   composer config repositories.ecommerce '{"type": "path", "url": "../ecommerce", "options": {"symlink": true}}'
+   composer update artisanpack-ui/ecommerce
+   # Before committing, switch back to the Packagist engine CI uses:
+   composer config --unset repositories.ecommerce
+   composer update artisanpack-ui/ecommerce
+   ```
 5. Make your changes
 6. Test your changes
 7. Push to your fork
