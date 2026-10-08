@@ -12,6 +12,6 @@
 
 @section( 'content' )
     <x-artisanpack-ec-account-shell :title="__( 'Profile' )">
-        @include( 'ecommerce-storefront::partials.screen-pending' )
+        <livewire:artisanpack-ecommerce-storefront-account-profile />
     </x-artisanpack-ec-account-shell>
 @endsection

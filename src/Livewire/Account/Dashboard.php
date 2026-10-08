@@ -17,8 +17,10 @@ use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\CustomerAddress;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Services\CustomerOrderHistory;
+use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesOrder;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Livewire\Component;
@@ -32,6 +34,9 @@ use Throwable;
  * downloads the shopper has, with links to the account pages and to the
  * host's own profile and password screens (`auth.profile_route`,
  * `auth.password_route`; the host owns auth, D6).
+ *
+ * When guest orders were placed with the shopper's (verified) email and
+ * haven't been claimed, it prompts them to claim those orders (S30).
  *
  * A signed-in user the engine has no customer record for yet (they
  * haven't ordered) gets the same page with nothing in it. When the engine
@@ -95,6 +100,8 @@ class Dashboard extends Component
             'billingAddress'  => $billing instanceof CustomerAddress ? $billing->toArray() : null,
             'downloads'       => $count,
             'failed'          => $failed,
+            'claimable'       => $this->claimableOrders( $customer ),
+            'claimUrl'        => $this->routeUrl( 'artisanpack.ecommerce.account.claim' ),
             'ordersUrl'       => $this->routeUrl( 'artisanpack.ecommerce.account.orders.index' ),
             'addressesUrl'    => $this->routeUrl( 'artisanpack.ecommerce.account.addresses' ),
             'downloadsUrl'    => $this->routeUrl( 'artisanpack.ecommerce.account.downloads' ),
@@ -125,6 +132,40 @@ class Dashboard extends Component
         }
 
         return null;
+    }
+
+    /**
+     * How many unclaimed guest orders were placed with the shopper's email.
+     * None while the email is unverified, so an account can't learn what a
+     * stranger's address ordered.
+     *
+     * @since 1.0.0
+     *
+     * @param  Customer|null  $customer  The shopper's customer record.
+     *
+     * @return int
+     */
+    protected function claimableOrders( ?Customer $customer ): int
+    {
+        $user  = auth()->user();
+        $email = $customer?->email ?? ( is_string( $user?->email ?? null ) ? $user->email : null );
+
+        if ( null === $user || ! is_string( $email ) || '' === trim( $email ) || ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() ) ) {
+            return 0;
+        }
+
+        try {
+            return Order::query()
+                ->whereNull( 'customer_id' )
+                ->where( 'is_claimed', false )
+                ->where( 'email', mb_strtolower( trim( $email ) ) )
+                ->where( 'email', '!=', CustomerService::ANONYMIZED_EMAIL )
+                ->count();
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return 0;
+        }
     }
 
     /**

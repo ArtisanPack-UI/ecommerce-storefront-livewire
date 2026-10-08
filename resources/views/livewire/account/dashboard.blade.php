@@ -15,6 +15,20 @@
         <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'Some of your account details couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-dashboard-failed />
     @endif
 
+    @if ( $claimable > 0 && null !== $claimUrl )
+        <x-artisanpack-alert
+            icon="o-inbox-arrow-down"
+            class="alert-info alert-soft"
+            :title="trans_choice( 'We found :count order placed as a guest with your email|We found :count orders placed as a guest with your email', $claimable, [ 'count' => $claimable ] )"
+            :description="__( 'Add them to your account to see them in your order history.' )"
+            data-account-claim-prompt
+        >
+            <x-slot:actions>
+                <x-artisanpack-button :label="__( 'Claim your orders' )" :link="$claimUrl" class="btn-sm" />
+            </x-slot:actions>
+        </x-artisanpack-alert>
+    @endif
+
     <section class="flex flex-col gap-3" aria-labelledby="ec-account-recent-orders" data-account-recent-orders>
         <div class="flex items-center justify-between gap-4">
             <h2 id="ec-account-recent-orders" class="text-xl font-bold">{{ __( 'Recent orders' ) }}</h2>
