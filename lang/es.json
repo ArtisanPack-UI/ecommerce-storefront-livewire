@@ -185,6 +185,7 @@
     "Price: high to low": "Precio: de mayor a menor",
     "Price: low to high": "Precio: de menor a mayor",
     "Prices are now shown in :currency.": "Los precios se muestran ahora en :currency.",
+    "Prices can't be shown in :currency here.": "Aquí no se pueden mostrar los precios en :currency.",
     "Product details": "Detalles del producto",
     "Products": "Productos",
     "Products in this group": "Productos de este grupo",

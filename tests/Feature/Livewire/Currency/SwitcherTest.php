@@ -17,6 +17,36 @@ use Livewire\Livewire;
 
 beforeEach( function (): void {
     config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    // Livewire test requests carry no session, so the engine's session
+    // resolver can't keep a choice between calls; this one keeps it in
+    // memory, the way the session does across real requests.
+    $this->resolver = new class implements CurrencyResolver {
+        public string $currency = 'USD';
+
+        public bool $keeps = true;
+
+        /** @var array<int, string> */
+        public array $remembered = [];
+
+        public function resolve( Request $request ): string
+        {
+            return $this->currency;
+        }
+
+        public function remember( Request $request, string $currency ): string
+        {
+            $this->remembered[] = $currency;
+
+            if ( $this->keeps ) {
+                $this->currency = $currency;
+            }
+
+            return $currency;
+        }
+    };
+
+    $this->app->instance( CurrencyResolver::class, $this->resolver );
 } );
 
 /**
@@ -49,30 +79,13 @@ it( 'is hidden when the store sells in one currency', function (): void {
 } );
 
 it( 'switches the shopper\'s currency and reloads the page with a toast', function (): void {
-    $remembered = [];
-
-    $this->app->instance( CurrencyResolver::class, new class( $remembered ) implements CurrencyResolver {
-        public function __construct( private array &$remembered )
-        {
-        }
-
-        public function resolve( Request $request ): string
-        {
-            return 'USD';
-        }
-
-        public function remember( Request $request, string $currency ): string
-        {
-            return $this->remembered[] = $currency;
-        }
-    } );
-
     $component = Livewire::test( Switcher::class )
         ->set( 'currency', 'eur' )
         ->assertHasNoErrors()
         ->assertSet( 'currency', 'EUR' );
 
-    expect( $remembered )->toBe( [ 'EUR' ] )
+    expect( $this->resolver->remembered )->toBe( [ 'EUR' ] )
+        ->and( app( StorefrontCart::class )->currency() )->toBe( 'EUR' )
         ->and( Cookie::queued( 'ecommerce_currency' )?->getValue() )->toBe( 'EUR' )
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'window.location.reload()' )
         ->and( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'Prices are now shown in EUR.' )
@@ -83,6 +96,10 @@ it( 'prices the catalog in the chosen currency on the next request', function ()
     twoCurrencyProduct( 'Mug', 1000, 900 );
 
     Livewire::test( Switcher::class )->set( 'currency', 'EUR' );
+
+    // The next request uses the engine's own resolver, which reads the cookie.
+    $this->app->forgetInstance( CurrencyResolver::class );
+    $this->app->singleton( CurrencyResolver::class, ArtisanPackUI\Ecommerce\Services\SessionCurrencyResolver::class );
 
     $this->withCookie( 'ecommerce_currency', Cookie::queued( 'ecommerce_currency' )->getValue() )
         ->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
@@ -146,11 +163,29 @@ it( 'rate limits repricing the cart', function (): void {
     $component = Livewire::test( Switcher::class )
         ->set( 'currency', 'EUR' )
         ->set( 'currency', 'USD' )
-        ->assertSet( 'currency', 'USD' );
+        ->assertSet( 'currency', 'EUR' );
 
-    // The second switch was throttled: the cart stays in EUR.
+    // The second switch was throttled: the cart and the shopper's choice stay in EUR.
     expect( Cart::query()->sole()->currency )->toBe( 'EUR' )
+        ->and( $this->resolver->currency )->toBe( 'EUR' )
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Too many attempts' );
+} );
+
+it( 'changes nothing when the resolver won\'t keep the choice', function (): void {
+    $this->resolver->keeps = false;
+
+    $cart = app( StorefrontCart::class )->current( true );
+    app( StorefrontCartService::class )->addItem( $cart, twoCurrencyProduct()->id, null, 1 );
+
+    $component = Livewire::test( Switcher::class )
+        ->set( 'currency', 'EUR' )
+        ->assertSet( 'currency', 'USD' )
+        ->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    expect( Cart::query()->sole()->currency )->toBe( 'USD' )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Prices can' )
+        ->not->toContain( 'window.location.reload()' )
+        ->and( session()->has( ToastPayload::SESSION_KEY ) )->toBeFalse();
 } );
 
 it( 'names currencies in the shopper\'s language', function (): void {

@@ -113,7 +113,8 @@ it( 'is mounted once by the global partial, in the package layout and a host lay
         ->assertSeeLivewire( Drawer::class )
         ->getContent();
 
-    expect( substr_count( $html, 'wire:name="artisanpack-ecommerce-storefront-cart-drawer"' ) )->toBe( 1 );
+    // The drawer's root; the header button's script also names the attribute.
+    expect( preg_match_all( '/data-ecommerce-cart-drawer\s+x-data/', $html ) )->toBe( 1 );
 } )->with( [
     'package layout' => [ null ],
     'host layout'    => [ 'host::layout' ],

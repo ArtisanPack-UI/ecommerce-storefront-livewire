@@ -95,7 +95,11 @@ it( 'filters to one rating from the histogram and back', function (): void {
         ->assertSet( 'ratingFilter', null )
         ->assertSee( 'Five Star Fan' )
         ->call( 'filterRating', 9 )
-        ->assertSet( 'ratingFilter', null );
+        ->assertSet( 'ratingFilter', null )
+        ->call( 'filterRating', 'abc' )
+        ->assertSet( 'ratingFilter', null )
+        ->call( 'filterRating', '2' )
+        ->assertSet( 'ratingFilter', 2 );
 } );
 
 it( 'ignores a bad rating from the query string', function ( mixed $rating ): void {

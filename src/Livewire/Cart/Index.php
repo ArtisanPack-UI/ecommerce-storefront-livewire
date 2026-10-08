@@ -242,7 +242,8 @@ class Index extends Component
     }
 
     /**
-     * Clears a region that doesn't belong to a newly chosen country.
+     * Clears the region, quotes, and chosen rate, which belong to the old
+     * country.
      *
      * @since 1.0.0
      *
@@ -252,6 +253,7 @@ class Index extends Component
     {
         $this->estimateRegion = '';
         $this->rates          = null;
+        $this->selectedRate   = '';
     }
 
     /**

@@ -36,7 +36,9 @@ use Livewire\Component;
  *
  * A choice is stored through the engine's `CurrencyResolver` (the default
  * keeps it in the session) and in the engine's `currency.cookie` cookie,
- * so catalog, product, and search prices use it. An existing cart is
+ * so catalog, product, and search prices use it. When the resolver won't
+ * keep it (it still resolves another currency), nothing changes and the
+ * shopper is told. An existing cart is
  * re-priced through `StorefrontCartService::changeCurrency()` (counting
  * against `ecommerce.cart.mutate`); if it can't be, the choice is undone
  * and the shopper told why. The page then reloads in the new currency with
@@ -115,10 +117,22 @@ class Switcher extends Component
             return;
         }
 
+        // Store the choice first: a resolver that won't keep it (a geo-IP
+        // resolver, say) would put the shopper straight back, so nothing is
+        // changed and they are told.
+        if ( ! $this->remember( $chosen ) ) {
+            $this->remember( $previous );
+            $this->currency = $previous;
+            $this->toastError( __( 'Prices can\'t be shown in :currency here.', [ 'currency' => $chosen ] ) );
+
+            return;
+        }
+
         if ( $repriced ) {
             try {
                 $this->rateLimited( 'ecommerce.cart.mutate', static fn (): Cart => app( StorefrontCartService::class )->changeCurrency( $cart, $chosen ) );
             } catch ( CartOperationException $exception ) {
+                $this->remember( $previous );
                 $this->currency = $previous;
                 $this->toastError( __( 'Your cart can\'t be shown in :currency.', [ 'currency' => $chosen ] ), $exception->getMessage() );
 
@@ -126,6 +140,7 @@ class Switcher extends Component
             }
 
             if ( $this->wasThrottled() ) {
+                $this->remember( $previous );
                 $this->currency = $previous;
 
                 return;
@@ -133,8 +148,6 @@ class Switcher extends Component
 
             $this->cartChanged( $cart );
         }
-
-        $this->remember( $chosen );
 
         $this->flashToastSuccess(
             __( 'Prices are now shown in :currency.', [ 'currency' => $chosen ] ),
@@ -165,13 +178,17 @@ class Switcher extends Component
      * Stores the choice: through the resolver (the default resolver keeps
      * it in the session) and in the engine's currency cookie.
      *
+     * The engine's `CurrencyResolver` contract only promises `resolve()`,
+     * so the choice counts as kept only when the resolver now answers with
+     * it.
+     *
      * @since 1.0.0
      *
      * @param  string  $currency  The chosen currency.
      *
-     * @return void
+     * @return bool Whether the resolver now resolves to `$currency`.
      */
-    protected function remember( string $currency ): void
+    protected function remember( string $currency ): bool
     {
         $resolver = app( CurrencyResolver::class );
 
@@ -180,5 +197,7 @@ class Switcher extends Component
         }
 
         Cookie::queue( (string) config( 'artisanpack.ecommerce.currency.cookie', 'ecommerce_currency' ), $currency, self::COOKIE_MINUTES );
+
+        return strtoupper( $resolver->resolve( request() ) ) === $currency;
     }
 }

@@ -85,12 +85,16 @@ class Reviews extends Component
     /**
      * The star rating the list is filtered to, or null for all.
      *
+     * Untyped because it comes straight from `?review-rating=`, which can
+     * hold anything (`abc`, `[]`); {@see self::normalizedRating()} turns it
+     * into 1–5 or null before it is used.
+     *
      * @since 1.0.0
      *
-     * @var int|null
+     * @var mixed
      */
     #[Url( as: 'review-rating', except: null )]
-    public ?int $ratingFilter = null;
+    public mixed $ratingFilter = null;
 
     /**
      * Whether the review form is open.
@@ -182,14 +186,14 @@ class Reviews extends Component
      *
      * @since 1.0.0
      *
-     * @param  int|null  $stars  1–5, or null for all.
+     * @param  mixed  $stars  1–5, or null for all (anything else counts as null).
      *
      * @return void
      */
-    public function filterRating( ?int $stars = null ): void
+    public function filterRating( mixed $stars = null ): void
     {
-        $stars              = null !== $stars && $stars >= 1 && $stars <= 5 ? $stars : null;
-        $this->ratingFilter = $stars === $this->ratingFilter ? null : $stars;
+        $stars              = self::normalizedRating( $stars );
+        $this->ratingFilter = $stars === self::normalizedRating( $this->ratingFilter ) ? null : $stars;
 
         $this->resetPage( self::PAGE_NAME );
     }
@@ -279,9 +283,7 @@ class Reviews extends Component
      */
     public function render(): View
     {
-        if ( null !== $this->ratingFilter && ( $this->ratingFilter < 1 || $this->ratingFilter > 5 ) ) {
-            $this->ratingFilter = null;
-        }
+        $this->ratingFilter = self::normalizedRating( $this->ratingFilter );
 
         $histogram   = app( ProductRatingAggregator::class )->histogram( $this->product );
         $total       = array_sum( $histogram );
@@ -298,6 +300,22 @@ class Reviews extends Component
             'guest'         => null === auth()->user(),
             'honeypotName'  => ReviewService::honeypotField(),
         ] );
+    }
+
+    /**
+     * A star rating from 1 to 5, or null for anything else.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  A rating from the query string or an action.
+     *
+     * @return int|null
+     */
+    protected static function normalizedRating( mixed $value ): ?int
+    {
+        $rating = is_int( $value ) || is_string( $value ) ? filter_var( $value, FILTER_VALIDATE_INT ) : false;
+
+        return is_int( $rating ) && $rating >= 1 && $rating <= 5 ? $rating : null;
     }
 
     /**

@@ -185,6 +185,7 @@
     "Price: high to low": "Prix : décroissant",
     "Price: low to high": "Prix : croissant",
     "Prices are now shown in :currency.": "Les prix sont désormais affichés en :currency.",
+    "Prices can't be shown in :currency here.": "Les prix ne peuvent pas être affichés en :currency ici.",
     "Product details": "Détails du produit",
     "Products": "Produits",
     "Products in this group": "Produits de ce groupe",
