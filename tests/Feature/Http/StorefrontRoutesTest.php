@@ -151,6 +151,15 @@ it( 'answers 404 for an unknown category or tag', function ( string $name, array
     'unknown tag'           => [ 'artisanpack.ecommerce.storefront.tag', [ 'tag' => 'winter' ] ],
 ] );
 
+it( 'keeps the canonical path when the query string has its own path', function ( string $query ): void {
+    $this->get( '/shop/category/shirts?' . $query )
+        ->assertStatus( 301 )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing/shirts' ] ) );
+} )->with( [
+    'string' => 'path=hats',
+    'array'  => 'path[]=x',
+] );
+
 it( 'redirects a wrong category chain to the canonical path of its last slug, keeping the query string', function ( string $path, string $canonical ): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.category', [ 'path' => $path, 'sort' => 'name' ] ) )
         ->assertStatus( 301 )

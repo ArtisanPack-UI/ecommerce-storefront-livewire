@@ -85,7 +85,8 @@
             @endif
 
             @if ( $products->isEmpty() )
-                @if ( [] !== $activeFilters )
+                {{-- From the filter state, not the badges, so "Clear filters" stays reachable when the panel can't be built. --}}
+                @if ( $filtered )
                     <x-artisanpack-ec-empty-state
                         icon="o-funnel"
                         :title="__( 'No products match your filters' )"

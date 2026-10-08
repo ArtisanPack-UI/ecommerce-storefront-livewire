@@ -422,6 +422,7 @@ class Index extends Component
             'currency'      => $this->currency(),
             'groups'        => $groups,
             'activeFilters' => $this->filterable ? $this->activeFilters( $groups ) : [],
+            'filtered'      => $this->filterable && $this->hasFilters(),
         ] );
     }
 

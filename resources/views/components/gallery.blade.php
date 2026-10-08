@@ -64,7 +64,7 @@
                         decoding="async"
                         class="h-full w-full object-contain transition-transform duration-200"
                         x-show="active === {{ $index }}"
-                        x-bind:style="zoomed ? 'transform: scale(2); transform-origin: ' + origin : ''"
+                        x-bind:style="zoomed ? { transform: 'scale(2)', transformOrigin: origin } : { transform: '', transformOrigin: '' }"
                         data-gallery-image="{{ $index }}"
                     >
                 @endforeach
@@ -117,7 +117,7 @@
                 </div>
 
                 <template x-for="( image, index ) in images" :key="index">
-                    <img x-show="active === index" :src="image.full" :alt="image.alt" class="max-h-[80vh] w-full object-contain">
+                    <img x-show="active === index" :src="image.full" :alt="image.alt" loading="lazy" decoding="async" class="max-h-[80vh] w-full object-contain">
                 </template>
 
                 @if ( count( $items ) > 1 )

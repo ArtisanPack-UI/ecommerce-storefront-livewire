@@ -144,3 +144,18 @@ it( 'preselects a group with a single option', function (): void {
     Livewire::test( VariableForm::class, [ 'product' => $made['product'] ] )
         ->assertSet( 'variant', $made['variants']['red/m']->id );
 } );
+
+it( 'follows a variant set from browser history or the client', function (): void {
+    $blueM = $this->made['variants']['blue/m'];
+
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
+        ->set( "selected.{$this->size}", (string) $this->values['l']->id )
+        ->set( 'variant', $blueM->id )
+        ->assertSet( "selected.{$this->colour}", $this->values['blue']->id )
+        ->assertSet( "selected.{$this->size}", $this->values['m']->id )
+        ->assertDispatched( 'ecommerce-product-variant-selected', productId: $this->made['product']->id, variantId: $blueM->id )
+        ->set( 'variant', 999999 )
+        ->assertSet( 'variant', null )
+        ->assertSet( 'selected', [] );
+} );

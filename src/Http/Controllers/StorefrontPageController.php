@@ -75,7 +75,7 @@ class StorefrontPageController extends Controller
         $canonical = (string) $paths->path( (int) $category->id );
 
         if ( $canonical !== implode( '/', $segments ) ) {
-            return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ 'path' => $canonical, ...$request->query() ], 301 );
+            return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ ...$request->query(), 'path' => $canonical ], 301 );
         }
 
         return view( 'ecommerce-storefront::pages.category', [ 'category' => $category ] );

@@ -107,19 +107,7 @@ class VariableForm extends PurchaseForm
     {
         parent::mount();
 
-        $this->selected = [];
-
-        $row = null === $this->variant ? null : $this->rowFor( $this->variant );
-
-        if ( null !== $row ) {
-            foreach ( $this->groups() as $group ) {
-                foreach ( $group->values as $value ) {
-                    if ( in_array( (int) $value->id, $row['attribute_value_ids'], true ) ) {
-                        $this->selected[ (int) $group->id ] = (int) $value->id;
-                    }
-                }
-            }
-        }
+        $this->selectVariant( $this->variant );
 
         foreach ( $this->groups() as $group ) {
             if ( ! isset( $this->selected[ (int) $group->id ] ) && 1 === $group->values->count() ) {
@@ -128,6 +116,23 @@ class VariableForm extends PurchaseForm
         }
 
         $this->resolveVariant( false );
+    }
+
+    /**
+     * Follows a variant set from outside the picker (browser history
+     * restoring `?variant=`, or `$wire.set()`), so the radios, the page,
+     * and the line added to the cart agree.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function updatedVariant(): void
+    {
+        $this->selectionNotice = '';
+        $this->resetErrorBag( 'variant' );
+        $this->selectVariant( $this->variant );
+        $this->resolveVariant();
     }
 
     /**
@@ -255,6 +260,9 @@ class VariableForm extends PurchaseForm
      */
     protected function readyToAdd(): bool
     {
+        // The variant added must be the one the radios show.
+        $this->resolveVariant( false );
+
         $reason = $this->blockedReason();
 
         if ( null !== $reason ) {
@@ -264,6 +272,33 @@ class VariableForm extends PurchaseForm
         }
 
         return true;
+    }
+
+    /**
+     * Selects a variant's values (or nothing for an unknown variant).
+     *
+     * @since 1.0.0
+     *
+     * @param  int|null  $variantId  Variant id.
+     *
+     * @return void
+     */
+    protected function selectVariant( ?int $variantId ): void
+    {
+        $this->selected = [];
+        $row            = null === $variantId ? null : $this->rowFor( $variantId );
+
+        if ( null === $row ) {
+            return;
+        }
+
+        foreach ( $this->groups() as $group ) {
+            foreach ( $group->values as $value ) {
+                if ( in_array( (int) $value->id, $row['attribute_value_ids'], true ) ) {
+                    $this->selected[ (int) $group->id ] = (int) $value->id;
+                }
+            }
+        }
     }
 
     /**

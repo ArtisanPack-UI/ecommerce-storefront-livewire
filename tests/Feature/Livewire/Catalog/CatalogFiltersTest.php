@@ -312,6 +312,24 @@ it( 'renders without filters when the engine\'s facets fail', function (): void 
         ->assertDontSeeHtml( 'data-filters-sidebar' );
 } );
 
+it( 'still offers "Clear filters" when the filter panel can\'t be built', function (): void {
+    $this->app->bind( CatalogQuery::class, function ( $app ) {
+        return new class( $app->make( CategoryTree::class ), $app->make( ArtisanPackUI\Ecommerce\Services\StoreCurrencies::class ), $app->make( ArtisanPackUI\Ecommerce\Registries\CurrencyRateProviderRegistry::class ) ) extends CatalogQuery {
+            public function facets(): array
+            {
+                throw new RuntimeException( 'Facets are down.' );
+            }
+        };
+    } );
+
+    Livewire::withQueryParams( [ 'attr' => [ 'colour' => [ 'purple' ] ] ] )
+        ->test( Index::class )
+        ->assertSee( 'No products match your filters' )
+        ->assertSee( 'Clear filters' )
+        ->call( 'clearFilters' )
+        ->assertSee( 'Red runner' );
+} );
+
 it( 'keeps the number of filter queries independent of the catalog size', function (): void {
     $queries = static function (): int {
         DB::flushQueryLog();
