@@ -12,6 +12,7 @@
     Vite build or dev server is present; the host adds this package's views
     to its Tailwind `@source` list (see `php artisan ecommerce-storefront:install`).
 
+    The header search box comes from `ecommerce-storefront::partials.header.search`.
     Header actions (currency switcher, account, cart, and anything a
     satellite adds, such as a wishlist) come from the `ap.ecommerceStorefrontLivewire.header.actions`
     filter: key => view name or Htmlable.
@@ -35,8 +36,6 @@
     $ecommerceHasCatalog = Route::has( 'artisanpack.ecommerce.storefront.catalog' );
     $ecommerceHasSearch  = Route::has( 'artisanpack.ecommerce.storefront.search' );
     $ecommerceHasLookup  = Route::has( 'artisanpack.ecommerce.storefront.lookup' );
-    $ecommerceSearchTerm = request()->query( 'q' );
-    $ecommerceSearchTerm = is_string( $ecommerceSearchTerm ) ? $ecommerceSearchTerm : '';
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}">
@@ -70,18 +69,7 @@
 
             <x-slot:actions>
                 @if ( $ecommerceHasSearch )
-                    <form method="GET" action="{{ route( 'artisanpack.ecommerce.storefront.search' ) }}" role="search" class="hidden md:block">
-                        <label for="ecommerce-header-search" class="sr-only">{{ __( 'Search products' ) }}</label>
-                        <input
-                            id="ecommerce-header-search"
-                            type="search"
-                            name="q"
-                            value="{{ $ecommerceSearchTerm }}"
-                            placeholder="{{ __( 'Search products' ) }}"
-                            class="input input-sm"
-                            autocomplete="off"
-                        >
-                    </form>
+                    @include( 'ecommerce-storefront::partials.header.search' )
                 @endif
 
                 @foreach ( $ecommerceHeaderActions as $ecommerceActionKey => $ecommerceAction )

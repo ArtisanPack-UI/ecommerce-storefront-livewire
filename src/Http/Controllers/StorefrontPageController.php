@@ -24,10 +24,12 @@ use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search\Index as Search;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -46,7 +48,8 @@ use Throwable;
  * here so an unknown or hidden one is a 404; owned records (orders) are
  * passed through unresolved for their component to load and authorize.
  * Checkout, confirmation, and account pages are marked private and
- * `noindex`.
+ * `noindex`. The product, category, or (verified) order a page is about
+ * goes into the request's `StorefrontContext` for visual-editor blocks.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -95,6 +98,8 @@ class StorefrontPageController extends Controller
             return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ ...$request->query(), 'path' => $canonical ], 301 );
         }
 
+        app( StorefrontContext::class )->setCategory( $category );
+
         return view( 'ecommerce-storefront::pages.category', [ 'category' => $category ] );
     }
 
@@ -133,19 +138,32 @@ class StorefrontPageController extends Controller
 
         abort_if( null === $model || $model->typeIsMissing(), 404 );
 
+        app( StorefrontContext::class )->setProduct( $model );
+
         return view( 'ecommerce-storefront::pages.product', [ 'product' => $model ] );
     }
 
     /**
-     * The search page.
+     * The search page. Results pages are `noindex` (spec §12): they are
+     * endless and duplicate the catalog.
      *
      * @since 1.0.0
      *
-     * @return View
+     * @param  Request  $request  The request.
+     *
+     * @return Response
      */
-    public function search(): View
+    public function search( Request $request ): Response
     {
-        return view( 'ecommerce-storefront::pages.search' );
+        $term = $request->query( 'q' );
+
+        $response = response()->view( 'ecommerce-storefront::pages.search', [
+            'term' => is_string( $term ) ? mb_substr( Search::normalizeTerm( $term ), 0, Search::MAX_TERM_LENGTH ) : '',
+        ] );
+
+        $response->headers->set( 'X-Robots-Tag', 'noindex, follow' );
+
+        return $response;
     }
 
     /**
@@ -293,6 +311,8 @@ class StorefrontPageController extends Controller
         $order = OrderViewToken::verify( $token );
 
         abort_if( null === $order, 404 );
+
+        app( StorefrontContext::class )->setOrder( $order );
 
         return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.order-view', [
             'order' => (int) $order->id,

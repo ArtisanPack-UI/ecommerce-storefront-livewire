@@ -413,9 +413,22 @@ class Index extends Component
      */
     public function render(): View
     {
+        return view( 'ecommerce-storefront::livewire.catalog.index', $this->viewData() );
+    }
+
+    /**
+     * The grid's view data: the page of products, sorts, page sizes,
+     * currency, filter groups, and active filters.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, mixed>
+     */
+    protected function viewData(): array
+    {
         $groups = $this->filterable ? $this->filterGroups() : [];
 
-        return view( 'ecommerce-storefront::livewire.catalog.index', [
+        return [
             'products'      => $this->products(),
             'sorts'         => $this->sorts(),
             'perPageValues' => $this->perPageValues(),
@@ -423,7 +436,7 @@ class Index extends Component
             'groups'        => $groups,
             'activeFilters' => $this->filterable ? $this->activeFilters( $groups ) : [],
             'filtered'      => $this->filterable && $this->hasFilters(),
-        ] );
+        ];
     }
 
     /**
@@ -663,11 +676,7 @@ class Index extends Component
             unset( $defaults['tag'] );
         }
 
-        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.catalog.filters', $defaults, [
-            'category' => $this->category,
-            'tag'      => $this->tag,
-            'featured' => $this->featured,
-        ] );
+        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.catalog.filters', $defaults, $this->filterContext() );
 
         $definitions = [];
 
@@ -694,6 +703,22 @@ class Index extends Component
         }
 
         return $this->definitions = $definitions;
+    }
+
+    /**
+     * The context `catalog.filters` callbacks get: the listing's scope.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, mixed>
+     */
+    protected function filterContext(): array
+    {
+        return [
+            'category' => $this->category,
+            'tag'      => $this->tag,
+            'featured' => $this->featured,
+        ];
     }
 
     /**

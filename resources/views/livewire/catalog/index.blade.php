@@ -1,6 +1,10 @@
 {{--
     The product grid. See Catalog\Index.
 
+    The search page (Search\Index) reuses it, passing `$resultsLabel` (the
+    live results count) and `$emptyState` (icon, title, description, and
+    tips) in place of the catalog's own.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
@@ -26,7 +30,7 @@
             <div class="flex flex-wrap items-end justify-between gap-4">
                 {{-- Announced politely whenever filtering, sorting, or paging changes the results. --}}
                 <p class="text-sm text-base-content/70" role="status" aria-live="polite" aria-atomic="true" data-results-count>
-                    {{ trans_choice( ':count product|:count products', $products->total(), [ 'count' => $products->total() ] ) }}
+                    {{ $resultsLabel ?? trans_choice( ':count product|:count products', $products->total(), [ 'count' => $products->total() ] ) }}
                 </p>
 
                 <div class="flex flex-wrap items-end gap-3">
@@ -86,7 +90,21 @@
 
             @if ( $products->isEmpty() )
                 {{-- From the filter state, not the badges, so "Clear filters" stays reachable when the panel can't be built. --}}
-                @if ( $filtered )
+                @if ( null !== ( $emptyState ?? null ) )
+                    <x-artisanpack-ec-empty-state :icon="$emptyState['icon']" :title="$emptyState['title']" :description="$emptyState['description']" data-empty-reason="{{ $emptyState['key'] }}">
+                        @if ( [] !== $emptyState['tips'] )
+                            <ul role="list" class="list-inside list-disc text-start text-sm text-base-content/70" data-search-tips>
+                                @foreach ( $emptyState['tips'] as $tip )
+                                    <li>{{ $tip }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
+
+                        @if ( $filtered )
+                            <x-artisanpack-button :label="__( 'Clear filters' )" color="primary" wire:click="clearFilters" />
+                        @endif
+                    </x-artisanpack-ec-empty-state>
+                @elseif ( $filtered )
                     <x-artisanpack-ec-empty-state
                         icon="o-funnel"
                         :title="__( 'No products match your filters' )"
@@ -102,7 +120,7 @@
                     />
                 @endif
             @else
-                <ul role="list" @class( [ 'grid grid-cols-2 gap-4 sm:grid-cols-3', 'lg:grid-cols-4' => ! $ecommerceHasFilters, 'xl:grid-cols-4' => $ecommerceHasFilters ] ) wire:loading.class="opacity-60" wire:target="sort, perPage, gotoPage, nextPage, previousPage, setPage, categoryFilter, tagFilter, attributeFilters, inStock, onSale, minRating, extraFilters, removeFilter, clearFilters, $refresh">
+                <ul role="list" @class( [ 'grid grid-cols-2 gap-4 sm:grid-cols-3', 'lg:grid-cols-4' => ! $ecommerceHasFilters, 'xl:grid-cols-4' => $ecommerceHasFilters ] ) wire:loading.class="opacity-60" wire:target="q, sort, perPage, gotoPage, nextPage, previousPage, setPage, categoryFilter, tagFilter, attributeFilters, inStock, onSale, minRating, extraFilters, removeFilter, clearFilters, $refresh">
                     @foreach ( $products as $product )
                         <li wire:key="catalog-product-{{ $product->id }}">
                             <x-artisanpack-ec-sf-product-card :product="$product" :currency="$currency" :heading-level="null !== $heading ? 3 : 2" />

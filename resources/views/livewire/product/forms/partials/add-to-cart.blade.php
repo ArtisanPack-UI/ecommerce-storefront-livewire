@@ -3,8 +3,9 @@
     the purchase forms.
 
     Expects `$formId`, `$canAdd` (bool), and optionally `$blockedReason`
-    (why the button is disabled), `$showQuantity` (default true), and
-    `$buttonLabel`.
+    (why the button is disabled), `$showQuantity` (default: the form's
+    own), and `$buttonLabel` (default: the form's `buttonText`, else "Add
+    to cart").
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -25,7 +26,7 @@
         @endif
 
         <x-artisanpack-button
-            :label="$buttonLabel ?? __( 'Add to cart' )"
+            :label="$buttonLabel ?? ( $buttonText ?? null ) ?? __( 'Add to cart' )"
             icon="o-shopping-cart"
             color="primary"
             class="grow sm:grow-0"

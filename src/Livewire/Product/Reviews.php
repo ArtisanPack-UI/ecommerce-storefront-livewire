@@ -83,6 +83,26 @@ class Reviews extends Component
     public Product $product;
 
     /**
+     * Reviews per page; null uses `reviews.per_page` (1–50).
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
+     */
+    #[Locked]
+    public ?int $reviewsPerPage = null;
+
+    /**
+     * Offer the "Write a review" form. The Reviews block can turn it off.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $allowForm = true;
+
+    /**
      * The star rating the list is filtered to, or null for all.
      *
      * Untyped because it comes straight from `?review-rating=`, which can
@@ -208,7 +228,7 @@ class Reviews extends Component
     public function openForm(): void
     {
         $this->submitted = false;
-        $this->showForm  = $this->eligibility()->allowed;
+        $this->showForm  = $this->allowForm && $this->eligibility()->allowed;
     }
 
     /**
@@ -235,7 +255,7 @@ class Reviews extends Component
     {
         $guest = null === auth()->user();
 
-        if ( ! $this->eligibility()->allowed ) {
+        if ( ! $this->allowForm || ! $this->eligibility()->allowed ) {
             $this->showForm = false;
 
             return;
@@ -362,7 +382,7 @@ class Reviews extends Component
     }
 
     /**
-     * Reviews per page (`reviews.per_page`, 1–50).
+     * Reviews per page (the prop, else `reviews.per_page`; 1–50).
      *
      * @since 1.0.0
      *
@@ -370,7 +390,7 @@ class Reviews extends Component
      */
     protected function perPage(): int
     {
-        return max( 1, min( 50, (int) config( 'artisanpack.ecommerce-storefront-livewire.reviews.per_page', 5 ) ) );
+        return max( 1, min( 50, $this->reviewsPerPage ?? (int) config( 'artisanpack.ecommerce-storefront-livewire.reviews.per_page', 5 ) ) );
     }
 
     /**

@@ -46,9 +46,13 @@
             @endif
         </{{ $ecommerceHeading }}>
 
-        <x-artisanpack-ec-price :price="$card['price']" />
+        @if ( $showPrice )
+            <x-artisanpack-ec-price :price="$card['price']" />
+        @endif
 
-        <x-artisanpack-ec-rating-summary :rating="$card['rating']" :count="$card['reviews']" hide-empty class="relative z-10" />
+        @if ( $showRating )
+            <x-artisanpack-ec-rating-summary :rating="$card['rating']" :count="$card['reviews']" hide-empty class="relative z-10" />
+        @endif
 
         <x-artisanpack-ec-stock-status :status="$card['stock']" />
 

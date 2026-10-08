@@ -84,6 +84,17 @@ class Show extends Component
     public ?int $variantId = null;
 
     /**
+     * Record the view (`ap.ecommerce.product.viewed`); off for editor
+     * previews.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $recordView = true;
+
+    /**
      * The open details section.
      *
      * @since 1.0.0
@@ -108,6 +119,10 @@ class Show extends Component
 
         if ( is_numeric( $variant ) ) {
             $this->variantId = $this->ownVariant( (int) $variant )?->id;
+        }
+
+        if ( ! $this->recordView ) {
+            return;
         }
 
         try {
@@ -216,21 +231,7 @@ class Show extends Component
      */
     protected function images(): array
     {
-        $images = ProductImages::gallery( $this->product );
-        $urls   = array_column( $images, 'url' );
-
-        $variantMedia = $this->product->variants()->whereNotNull( 'image_media_id' )->orderBy( 'position' )->orderBy( 'id' )->pluck( 'image_media_id' );
-
-        foreach ( $variantMedia as $mediaId ) {
-            $image = ProductImages::media( (int) $mediaId, (string) $this->product->name );
-
-            if ( null !== $image && ! in_array( $image['url'], $urls, true ) ) {
-                $images[] = $image + [ 'key' => 'media-' . $mediaId, 'media_id' => (int) $mediaId ];
-                $urls[]   = $image['url'];
-            }
-        }
-
-        return $images;
+        return ProductImages::withVariants( $this->product );
     }
 
     /**

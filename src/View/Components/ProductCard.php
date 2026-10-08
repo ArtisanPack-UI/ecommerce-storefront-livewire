@@ -65,6 +65,8 @@ class ProductCard extends Component
      * @param  EngineStockStatus|null  $stock         The availability, when the caller already has it.
      * @param  bool                    $quickAdd      Offer "Add to cart" for simple products.
      * @param  int                     $headingLevel  The heading level of the product name (2–6).
+     * @param  bool                    $showPrice     Show the price.
+     * @param  bool                    $showRating    Show the rating.
      */
     public function __construct(
         public Product $product,
@@ -73,6 +75,8 @@ class ProductCard extends Component
         public ?EngineStockStatus $stock = null,
         public bool $quickAdd = true,
         public int $headingLevel = 3,
+        public bool $showPrice = true,
+        public bool $showRating = true,
     ) {
         $this->card = $this->cardData();
     }
