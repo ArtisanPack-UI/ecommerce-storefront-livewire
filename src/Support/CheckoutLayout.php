@@ -70,6 +70,17 @@ final class CheckoutLayout
     public const TERMS_SETTING = 'storefront.terms_url';
 
     /**
+     * What a terms page may be: an http(s) URL, or a path on this site.
+     * `//host` and `/\\host` are refused, since browsers open them on
+     * another host.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const TERMS_URL_PATTERN = '#^(https?://\\S+|/(?![/\\\\])\\S*)$#i';
+
+    /**
      * The layout to show.
      *
      * @since 1.0.0
@@ -97,7 +108,7 @@ final class CheckoutLayout
         $url = ecommerceSetting( self::TERMS_SETTING, config( 'artisanpack.ecommerce-storefront-livewire.checkout.terms_url' ) );
         $url = is_string( $url ) ? trim( $url ) : '';
 
-        return 1 === preg_match( '#^(https?://[^\s]+|/(?!/)[^\s]*)$#i', $url ) ? $url : null;
+        return 1 === preg_match( self::TERMS_URL_PATTERN, $url ) ? $url : null;
     }
 
     /**
@@ -139,7 +150,7 @@ final class CheckoutLayout
                 group: 'checkout',
                 type: 'string',
                 label: __( 'Terms and conditions page' ),
-                rules: [ 'nullable', 'string', 'max:2048', 'url:http,https' ],
+                rules: [ 'nullable', 'string', 'max:2048', 'regex:' . self::TERMS_URL_PATTERN ],
                 description: __( 'Shoppers must accept this page before placing an order. Leave blank to skip the checkbox.' ),
                 configKey: 'artisanpack.ecommerce-storefront-livewire.checkout.terms_url',
                 position: 60,

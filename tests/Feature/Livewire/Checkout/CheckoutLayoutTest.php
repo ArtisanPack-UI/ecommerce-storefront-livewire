@@ -117,3 +117,20 @@ it( 'escapes step labels in the progress bar, which renders them as HTML', funct
     expect( $html )->not->toContain( '<img src=x' )
         ->and( $html )->toContain( 'text: \'&amp;lt;img src=x onerror=alert(1)&amp;gt;Age &amp;#039;check&amp;#039;\'' );
 } );
+
+it( 'accepts the same terms pages in the admin setting as at checkout', function ( string $url, bool $allowed ): void {
+    $rules = app( SettingsRegistry::class )->definition( CheckoutLayout::TERMS_SETTING )->rules();
+
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.checkout.terms_url', $url );
+
+    expect( validator( [ 'value' => $url ], [ 'value' => $rules ] )->passes() )->toBe( $allowed )
+        ->and( CheckoutLayout::termsUrl() )->toBe( $allowed ? $url : null );
+} )->with( [
+    'site path'          => [ '/terms', true ],
+    'https URL'          => [ 'https://shop.test/terms', true ],
+    'http URL'           => [ 'http://shop.test/terms', true ],
+    'protocol-relative'  => [ '//evil.test/terms', false ],
+    'backslash relative' => [ '/\\evil.test/terms', false ],
+    'javascript'         => [ 'javascript:alert(1)', false ],
+    'relative path'      => [ 'terms', false ],
+] );
