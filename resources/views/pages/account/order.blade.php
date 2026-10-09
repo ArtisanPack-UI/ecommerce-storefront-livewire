@@ -8,6 +8,10 @@
 --}}
 @extends( $ecommerceStorefrontLayout )
 
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
 @section( 'title', __( 'Order details' ) )
 
 @section( 'content' )

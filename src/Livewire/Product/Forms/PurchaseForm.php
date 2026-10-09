@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
@@ -161,11 +162,13 @@ abstract class PurchaseForm extends Component
      */
     public function blockedReason(): ?string
     {
-        if ( ! StockStatus::for( $this->product )->purchasable() ) {
+        $product = DisplayData::for( $this->product );
+
+        if ( ! StockStatus::for( $product )->purchasable() ) {
             return __( 'This product is out of stock.' );
         }
 
-        if ( null === app( PriceDisplayResolver::class )->for( $this->product, app( StorefrontCart::class )->currency() ) ) {
+        if ( null === app( PriceDisplayResolver::class )->for( $product, app( StorefrontCart::class )->currency() ) ) {
             return __( 'This product isn\'t available to buy right now.' );
         }
 

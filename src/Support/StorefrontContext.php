@@ -16,10 +16,13 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
+use ArtisanPackUI\Ecommerce\Models\ProductTag;
 
 /**
- * What the current page is about (spec §11.2): the product, category, or
- * order a storefront page controller resolved before rendering.
+ * What the current page is (`catalog`, `product`, `category`, `tag`,
+ * `search`, `cart`, `checkout`, ...) and what it is about (spec §11.2):
+ * the product, category, tag, or order a storefront page controller
+ * resolved before rendering.
  *
  * Bound per request (scoped). Visual-editor blocks only receive their
  * attributes, so a block on a product template reads the product from
@@ -40,6 +43,15 @@ use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 class StorefrontContext
 {
     /**
+     * The storefront page being rendered.
+     *
+     * @since 1.0.0
+     *
+     * @var string|null
+     */
+    protected ?string $page = null;
+
+    /**
      * The product being viewed.
      *
      * @since 1.0.0
@@ -47,6 +59,15 @@ class StorefrontContext
      * @var Product|null
      */
     protected ?Product $product = null;
+
+    /**
+     * The tag being viewed.
+     *
+     * @since 1.0.0
+     *
+     * @var ProductTag|null
+     */
+    protected ?ProductTag $tag = null;
 
     /**
      * The category being viewed.
@@ -65,6 +86,62 @@ class StorefrontContext
      * @var Order|null
      */
     protected ?Order $order = null;
+
+    /**
+     * Sets the storefront page being rendered.
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $page  The page (`catalog`, `product`, `search`, ...).
+     *
+     * @return static
+     */
+    public function setPage( ?string $page ): static
+    {
+        $this->page = $page;
+
+        return $this;
+    }
+
+    /**
+     * The storefront page being rendered, or null outside one.
+     *
+     * @since 1.0.0
+     *
+     * @return string|null
+     */
+    public function page(): ?string
+    {
+        return $this->page;
+    }
+
+    /**
+     * Sets the tag being viewed.
+     *
+     * @since 1.0.0
+     *
+     * @param  ProductTag|null  $tag  The tag.
+     *
+     * @return static
+     */
+    public function setTag( ?ProductTag $tag ): static
+    {
+        $this->tag = $tag;
+
+        return $this;
+    }
+
+    /**
+     * The tag being viewed.
+     *
+     * @since 1.0.0
+     *
+     * @return ProductTag|null
+     */
+    public function tag(): ?ProductTag
+    {
+        return $this->tag;
+    }
 
     /**
      * Sets the product being viewed.

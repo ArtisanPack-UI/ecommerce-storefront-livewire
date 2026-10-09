@@ -32,8 +32,10 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Blade;
@@ -209,6 +211,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->app->scoped( StorefrontCart::class );
         $this->app->scoped( CategoryPaths::class );
         $this->app->scoped( StorefrontContext::class );
+        $this->app->scoped( StorefrontSeo::class );
         $this->app->singleton( ProductFormRegistry::class );
         $this->app->singleton( PaymentDriverRegistry::class );
     }
@@ -239,6 +242,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerRoutes();
         $this->registerOrderViewUrl();
         $this->registerVisualEditorBlocks();
+        $this->registerCacheInvalidation();
     }
 
     /**
@@ -424,8 +428,9 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     }
 
     /**
-     * Shares the layout every page view extends (spec §5.3): the configured
-     * `storefront.layout`, or the package's standalone layout.
+     * Shares the layout every page view extends (spec §5.3) — the
+     * configured `storefront.layout`, or the package's standalone layout —
+     * and the page's SEO metadata (`$ecommerceSeo`, spec §12).
      *
      * @since 1.0.0
      *
@@ -437,6 +442,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
             $layout = config( 'artisanpack.ecommerce-storefront-livewire.storefront.layout' );
 
             $view->with( 'ecommerceStorefrontLayout', is_string( $layout ) && '' !== $layout ? $layout : self::DEFAULT_LAYOUT );
+            $view->with( 'ecommerceSeo', app( StorefrontSeo::class ) );
         } );
     }
 
@@ -551,6 +557,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     protected function registerVisualEditorBlocks(): void
     {
         StorefrontBlocks::boot( $this->app );
+    }
+
+    /**
+     * Clears the storefront cache (category tree, facet counts) whenever
+     * the catalog changes ({@see StorefrontCache}).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerCacheInvalidation(): void
+    {
+        StorefrontCache::boot();
     }
 
     /**

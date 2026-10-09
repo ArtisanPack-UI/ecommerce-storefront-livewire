@@ -8,12 +8,20 @@
 --}}
 @extends( $ecommerceStorefrontLayout )
 
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
 @section( 'title', __( 'Checkout' ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Checkout' ) }}</h1>
+    @if ( null !== ( $ecommerceTemplate ?? null ) )
+        <x-dynamic-component :component="\ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontTemplates::COMPONENT" :slug="$ecommerceTemplate" />
+    @else
+        <div class="flex flex-col gap-6">
+            <h1 class="text-3xl font-bold">{{ __( 'Checkout' ) }}</h1>
 
-        <livewire:artisanpack-ecommerce-storefront-checkout />
-    </div>
+            <livewire:artisanpack-ecommerce-storefront-checkout />
+        </div>
+    @endif
 @endsection

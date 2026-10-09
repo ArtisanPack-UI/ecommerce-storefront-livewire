@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Search\SearchQuery;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Locked;
@@ -190,7 +191,7 @@ class HeaderSearch extends Component
         $prices   = app( PriceDisplayResolver::class );
         $hasRoute = Route::has( 'artisanpack.ecommerce.storefront.product' );
 
-        $result = app( SearchProviderRegistry::class )->active()->search( new SearchQuery( $this->q, [], 'relevance', 1, self::LIMIT, $currency, [ 'images' ] ) );
+        $result = app( SearchProviderRegistry::class )->active()->search( new SearchQuery( $this->q, [], 'relevance', 1, self::LIMIT, $currency, ProductCard::relations() ) );
 
         return $result->items
             ->filter( static fn ( mixed $product ): bool => $product instanceof Product )

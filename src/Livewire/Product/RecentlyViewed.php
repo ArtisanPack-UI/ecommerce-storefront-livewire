@@ -21,8 +21,10 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStoref
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
@@ -42,13 +44,16 @@ use Throwable;
  * }, 10, 4 );
  * ```
  *
- * Only storefront-visible products show; with none, nothing renders.
+ * Only storefront-visible products show; with none, nothing renders. The
+ * section loads after the page (`#[Lazy]`), showing skeleton cards until
+ * then.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
  */
+#[Lazy]
 class RecentlyViewed extends Component
 {
     use AddsToCart;
@@ -119,6 +124,26 @@ class RecentlyViewed extends Component
     }
 
     /**
+     * Skeleton cards while the section loads.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>  $params  The mount parameters.
+     *
+     * @return View
+     */
+    public function placeholder( array $params = [] ): View
+    {
+        $heading = is_string( $params['heading'] ?? null ) && '' !== trim( $params['heading'] ) ? $params['heading'] : __( 'Recently viewed' );
+        $limit   = is_int( $params['limit'] ?? null ) ? $params['limit'] : $this->limit;
+
+        return view( 'ecommerce-storefront::livewire.product.related-products-placeholder', [
+            'title' => $heading,
+            'count' => max( 1, min( 4, $limit ) ),
+        ] );
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
@@ -156,7 +181,7 @@ class RecentlyViewed extends Component
             $ids   = array_slice( $ids, 0, $this->limit );
             $order = array_flip( $ids );
 
-            return Product::query()->storefrontVisible()->whereKey( $ids )->with( [ 'images' ] )->get()
+            return Product::query()->storefrontVisible()->whereKey( $ids )->with( ProductCard::relations() )->get()
                 ->sortBy( static fn ( Product $product ): int => $order[ (int) $product->id ] )
                 ->values();
         } catch ( Throwable $exception ) {

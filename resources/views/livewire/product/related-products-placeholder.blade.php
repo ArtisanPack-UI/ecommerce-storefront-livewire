@@ -1,5 +1,6 @@
 {{--
-    Related products while they load. See Product\RelatedProducts.
+    Product suggestions while they load. See Product\RelatedProducts and
+    Product\RecentlyViewed.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
