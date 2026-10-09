@@ -129,7 +129,7 @@
                             >
                                 <span class="block h-10 w-10 shrink-0 overflow-hidden rounded-field bg-base-200" aria-hidden="true">
                                     @if ( null !== $product['image'] )
-                                        <img src="{{ $product['image']['url'] }}" alt="" loading="lazy" class="h-full w-full object-cover">
+                                        <img src="{{ $product['image']['url'] }}" @if ( null !== ( $product['image']['srcset'] ?? null ) ) srcset="{{ $product['image']['srcset'] }}" sizes="40px" @endif width="40" height="40" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                     @endif
                                 </span>
 

@@ -456,6 +456,18 @@ class Index extends Component
     public string $layout = CheckoutLayout::MULTI_STEP;
 
     /**
+     * A layout that wins over the store's choice (the Checkout Steps block's
+     * "Layout" setting): `multi_step`, `single_page`, or empty for the
+     * store setting.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $layoutOverride = '';
+
+    /**
      * The open step's number, for the multi-step progress bar.
      *
      * @since 1.0.0
@@ -477,7 +489,7 @@ class Index extends Component
      */
     public function mount(): void
     {
-        $this->layout = CheckoutLayout::current();
+        $this->layout = CheckoutLayout::resolve( $this->layoutOverride );
 
         $cart = $this->cart();
 

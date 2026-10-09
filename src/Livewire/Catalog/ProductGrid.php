@@ -21,6 +21,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStoref
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Locked;
@@ -242,7 +243,7 @@ class ProductGrid extends Component
                 return new Collection();
             }
 
-            $products = $query->builder()->with( [ 'images' ] )->limit( $this->limit )->get();
+            $products = $query->builder()->with( ProductCard::relations() )->limit( $this->limit )->get();
         } catch ( Throwable $exception ) {
             report( $exception );
 

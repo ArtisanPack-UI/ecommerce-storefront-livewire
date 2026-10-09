@@ -10,7 +10,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Database\Eloquent\Model;
 
 afterEach( function (): void {
-    removeAllFilters( 'ap.ecommerceStorefrontLivewire.productCard' );
+    removeAllFilters( 'ap.ecommerceStorefrontLivewire.catalog.productCard' );
 } );
 
 /**
@@ -106,7 +106,7 @@ it( 'shows the rating only when the product has reviews', function (): void {
 } );
 
 it( 'lets a satellite add badges and change the link through the productCard filter', function (): void {
-    addFilter( 'ap.ecommerceStorefrontLivewire.productCard', static function ( array $card, Product $product ): array {
+    addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', static function ( array $card, Product $product ): array {
         $card['badges'][] = 'New';
         $card['url']      = '/custom/' . $product->slug;
 
@@ -121,7 +121,7 @@ it( 'lets a satellite add badges and change the link through the productCard fil
 } );
 
 it( 'ignores filtered values of the wrong type', function (): void {
-    addFilter( 'ap.ecommerceStorefrontLivewire.productCard', static fn ( array $card ): array => [
+    addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', static fn ( array $card ): array => [
         ...$card,
         'price'     => 'free!',
         'stock'     => 'lots',

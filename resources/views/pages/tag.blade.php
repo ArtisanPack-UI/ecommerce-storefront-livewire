@@ -8,8 +8,16 @@
 --}}
 @extends( $ecommerceStorefrontLayout )
 
-@section( 'title', $tag->name )
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
+@section( 'title', $ecommerceSeo->title( $tag->name ) )
 
 @section( 'content' )
-    <livewire:artisanpack-ecommerce-storefront-tag-show :tag="$tag" />
+    @if ( null !== ( $ecommerceTemplate ?? null ) )
+        <x-dynamic-component :component="\ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontTemplates::COMPONENT" :slug="$ecommerceTemplate" />
+    @else
+        <livewire:artisanpack-ecommerce-storefront-tag-show :tag="$tag" />
+    @endif
 @endsection

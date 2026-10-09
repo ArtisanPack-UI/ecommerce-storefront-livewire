@@ -52,7 +52,7 @@ trait DescribesCart
      */
     protected function lines( Cart $cart ): array
     {
-        $items   = $cart->items()->with( [ 'product.images', 'variant' ] )->orderBy( 'id' )->get();
+        $items   = $cart->items()->with( [ 'product.images', 'product.inventoryItems', 'product.variants.inventoryItems', 'variant.inventoryItems' ] )->orderBy( 'id' )->get();
         $visible = Product::query()->storefrontVisible()->whereKey( $items->pluck( 'product_id' )->filter()->unique()->all() )->pluck( 'id' )->map( static fn ( $id ): int => (int) $id )->all();
         $hasUrl  = Route::has( 'artisanpack.ecommerce.storefront.product' );
         $code    = (string) $cart->currency;

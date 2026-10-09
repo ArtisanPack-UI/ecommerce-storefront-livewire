@@ -124,7 +124,8 @@ final class CheckoutSteps
     }
 
     /**
-     * The core steps for a cart that does (or doesn't) ship.
+     * The core steps for a cart that does (or doesn't) ship (also what
+     * the Checkout Steps block previews).
      *
      * @since 1.0.0
      *
@@ -132,7 +133,7 @@ final class CheckoutSteps
      *
      * @return array<string, array{key: string, label: string, component: null}>
      */
-    protected static function core( bool $requiresShipping ): array
+    public static function core( bool $requiresShipping ): array
     {
         $labels = [
             'contact'  => __( 'Contact' ),

@@ -122,7 +122,7 @@ it( 'passes the term, filters, sort, page, and currency to the active provider',
         ->and( $query->page )->toBe( 1 )
         ->and( $query->perPage )->toBe( 24 )
         ->and( $query->currency )->toBe( 'USD' )
-        ->and( $query->with )->toBe( [ 'images' ] );
+        ->and( $query->with )->toContain( 'images', 'prices', 'inventoryItems' )->toHaveKey( 'variants' );
 } );
 
 it( 'shows "did you mean" suggestions and searches for one', function (): void {

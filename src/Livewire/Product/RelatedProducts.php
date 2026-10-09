@@ -22,6 +22,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStoref
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Lazy;
@@ -205,12 +206,12 @@ class RelatedProducts extends Component
 
         try {
             if ( null !== $this->product ) {
-                return $related->for( $this->product, $this->type, $limit, [ 'images' ] );
+                return $related->for( $this->product, $this->type, $limit, ProductCard::relations() );
             }
 
             $cart = $this->forCart() ? $this->cart() : null;
 
-            return null === $cart ? new Collection() : $related->crossSellsForCart( $cart, $limit, [ 'images' ] );
+            return null === $cart ? new Collection() : $related->crossSellsForCart( $cart, $limit, ProductCard::relations() );
         } catch ( Throwable $exception ) {
             report( $exception );
 

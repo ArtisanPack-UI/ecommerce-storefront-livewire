@@ -59,9 +59,12 @@
                     data-gallery-zoom
                 >
                     @foreach ( $items as $index => $item )
+                        @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $item, 1200, 1200 ) )
                         <img
                             src="{{ $item['url'] }}"
                             @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
+                            width="{{ $ecommerceSize['width'] }}"
+                            height="{{ $ecommerceSize['height'] }}"
                             alt="{{ $item['alt'] }}"
                             @if ( $index !== $active ) loading="lazy" style="display: none" @endif
                             decoding="async"
@@ -75,9 +78,12 @@
             @else
                 <div class="block aspect-square w-full overflow-hidden" data-gallery-stage>
                     @foreach ( $items as $index => $item )
+                        @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $item, 1200, 1200 ) )
                         <img
                             src="{{ $item['url'] }}"
                             @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
+                            width="{{ $ecommerceSize['width'] }}"
+                            height="{{ $ecommerceSize['height'] }}"
                             alt="{{ $item['alt'] }}"
                             @if ( $index !== $active ) loading="lazy" style="display: none" @endif
                             decoding="async"
@@ -111,7 +117,7 @@
                             aria-label="{{ __( 'Show image :number of :total', [ 'number' => $index + 1, 'total' => count( $items ) ] ) }}"
                             data-gallery-thumbnail="{{ $index }}"
                         >
-                            <img src="{{ $item['url'] }}" alt="" loading="lazy" class="h-full w-full object-cover">
+                            <img src="{{ $item['url'] }}" @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="64px" @endif width="64" height="64" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
                         </button>
                     </li>
                 @endforeach

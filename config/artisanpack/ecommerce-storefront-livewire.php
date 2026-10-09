@@ -172,6 +172,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Performance
+    |--------------------------------------------------------------------------
+    |
+    | `cache_ttl` is how long, in seconds, the category tree and catalog
+    | filter counts stay cached. They are also cleared whenever a product,
+    | category, tag, or stock level changes. 0 turns the cache off (do this
+    | when the `ap.ecommerce.product.listQuery` filter shows different
+    | shoppers different products).
+    |
+    */
+    'performance' => [
+        'cache_ttl' => 600,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Visual editor
     |--------------------------------------------------------------------------
     |
