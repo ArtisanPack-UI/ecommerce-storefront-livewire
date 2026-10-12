@@ -156,8 +156,9 @@ it( 'lets a guest submit a review that waits for moderation', function (): void 
 
     expect( $review->status )->toBe( ProductReview::STATUS_PENDING )
         ->and( $review->rating )->toBe( 4 )
-        ->and( $review->title )->toBe( 'Great mug' )
-        ->and( $review->body )->toBe( 'Keeps tea hot.alert(1)' )
+        // Stored as typed (plain text); it is escaped wherever it is printed.
+        ->and( $review->title )->toBe( '<b>Great</b> mug' )
+        ->and( $review->body )->toBe( 'Keeps tea hot.<script>alert(1)</script>' )
         ->and( $review->author_name )->toBe( 'Dee' )
         ->and( $review->author_email )->toBe( 'dee@example.test' )
         ->and( $review->customer_id )->toBeNull();
@@ -286,6 +287,90 @@ it( 'explains why a shopper can\'t review', function ( Closure $arrange, string 
         return makeUser();
     }, 'Only customers who bought this product can review it.' ],
 ] );
+
+it( 'keeps text after a < and drops control characters', function (): void {
+    $product = makeProduct();
+
+    Livewire::test( Reviews::class, [ 'product' => $product ] )
+        ->call( 'openForm' )
+        ->set( 'rating', 5 )
+        ->set( 'title', "  Love it <3\x07 " )
+        ->set( 'body', "Love it <3 \u{2014} fits well\x00" )
+        ->set( 'authorName', "Dee\x1F" )
+        ->set( 'authorEmail', 'dee@example.test' )
+        ->call( 'submit' )
+        ->assertHasNoErrors();
+
+    $review = ProductReview::query()->sole();
+
+    expect( $review->title )->toBe( 'Love it <3' )
+        ->and( $review->body )->toBe( "Love it <3 \u{2014} fits well" )
+        ->and( $review->author_name )->toBe( 'Dee' );
+
+    $review->forceFill( [ 'status' => ProductReview::STATUS_APPROVED, 'approved_at' => now() ] )->save();
+
+    Livewire::test( Reviews::class, [ 'product' => $product ] )
+        ->assertSeeHtml( 'Love it &lt;3' )
+        ->assertDontSeeHtml( 'Love it <3' );
+} );
+
+it( 'won\'t file a review for a signed-in shopper the engine can\'t link to a customer', function ( bool $allowGuests ): void {
+    config()->set( 'artisanpack.ecommerce.reviews.allow_guests', $allowGuests );
+
+    $user = makeUser();
+    Customer::factory()->create( [ 'user_id' => null, 'email' => $user->email ] );
+
+    $unverified = new class extends User implements Illuminate\Contracts\Auth\MustVerifyEmail {
+        use Illuminate\Auth\MustVerifyEmail;
+    };
+    $unverified->setRawAttributes( $user->getAttributes(), true );
+    $unverified->exists = true;
+
+    Livewire::actingAs( $unverified )
+        ->test( Reviews::class, [ 'product' => makeProduct() ] )
+        ->assertSee( 'Verify your email address to review this product.' )
+        ->assertDontSee( 'Sign in to review this product.' )
+        ->assertDontSee( 'Write a review' )
+        ->set( 'rating', 4 )
+        ->call( 'submit' )
+        ->assertSet( 'submitted', false );
+
+    expect( ProductReview::query()->count() )->toBe( 0 );
+} )->with( [
+    'guest reviews on'  => [ true ],
+    'guest reviews off' => [ false ],
+] );
+
+it( 'says a shopper whose account can\'t hold a customer record can\'t review', function (): void {
+    $user = makeUser();
+    Customer::factory()->create( [ 'user_id' => null, 'email' => $user->email ] );
+
+    // The default user model doesn't verify emails, so it can't take over the guest record.
+    Livewire::actingAs( $user )
+        ->test( Reviews::class, [ 'product' => makeProduct() ] )
+        ->assertSee( 'You can\'t review this product.' )
+        ->assertDontSee( 'Write a review' );
+} );
+
+it( 'refuses rather than posting anonymously when the customer can\'t be created on submit', function (): void {
+    $user = makeUser();
+
+    $customers = Mockery::mock( app( CustomerService::class ) );
+    $customers->shouldReceive( 'customerForUser' )->andReturn( null );
+    $this->instance( CustomerService::class, $customers );
+
+    Livewire::actingAs( $user )
+        ->test( Reviews::class, [ 'product' => makeProduct() ] )
+        ->call( 'openForm' )
+        ->set( 'rating', 4 )
+        ->set( 'body', 'Nice.' )
+        ->call( 'submit' )
+        ->assertHasErrors( 'review' )
+        ->assertSee( 'You can\'t review this product.' )
+        ->assertSet( 'submitted', false );
+
+    expect( ProductReview::query()->count() )->toBe( 0 );
+} );
 
 it( 'links guests to the host\'s sign-in page when they must sign in', function (): void {
     config()->set( 'artisanpack.ecommerce.reviews.allow_guests', false );
