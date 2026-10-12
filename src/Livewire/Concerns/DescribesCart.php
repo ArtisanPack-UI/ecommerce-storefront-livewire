@@ -17,6 +17,7 @@ use ArtisanPackUI\Ecommerce\Inventory\StockLevels;
 use ArtisanPackUI\Ecommerce\Inventory\StockStatus;
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Models\CartItem;
+use ArtisanPackUI\Ecommerce\Models\InventoryReservation;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
@@ -59,10 +60,12 @@ trait DescribesCart
         $hasUrl  = Route::has( 'artisanpack.ecommerce.storefront.product' );
         $code    = (string) $cart->currency;
 
-        return $items->map( function ( CartItem $item ) use ( $cart, $visible, $hasUrl, $code ): array {
+        $holder  = $this->holdsStock( $cart ) ? $cart : null;
+
+        return $items->map( function ( CartItem $item ) use ( $holder, $visible, $hasUrl, $code ): array {
             $product      = $item->product;
             $name         = null === $product ? __( 'Unavailable product' ) : (string) $product->name;
-            $availability = $this->lineAvailability( $item, $visible, $cart );
+            $availability = $this->lineAvailability( $item, $visible, $holder );
 
             return [
                 'id'         => (int) $item->id,
@@ -151,6 +154,25 @@ trait DescribesCart
             'reason' => trans_choice( 'Only :count is left in stock.|Only :count are left in stock.', $available, [ 'count' => $available ] ),
             'short'  => true,
         ];
+    }
+
+    /**
+     * Whether the cart holds any stock (once checkout has started), so the
+     * per-line stock check only looks up its reservations when there are
+     * some.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart  $cart  The cart.
+     *
+     * @return bool
+     */
+    protected function holdsStock( Cart $cart ): bool
+    {
+        return InventoryReservation::query()
+            ->where( 'reservable_type', $cart->getMorphClass() )
+            ->where( 'reservable_id', $cart->getKey() )
+            ->exists();
     }
 
     /**
