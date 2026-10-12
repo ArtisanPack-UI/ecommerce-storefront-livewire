@@ -31,6 +31,7 @@ it( 'merges the config under the artisanpack key', function (): void {
         'route_prefix'   => 'shop',
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
+        'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
     ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.account' ) )->toBe( [
             'route_prefix'                  => 'account',
