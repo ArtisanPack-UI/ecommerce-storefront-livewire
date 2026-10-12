@@ -131,13 +131,14 @@ To get the links back, register your own routes under the storefront's names. Th
 use ArtisanPackUI\Ecommerce\Models\Product;
 use Illuminate\Support\Facades\Route;
 
+// Fixed paths first: the {product} wildcard below would also match /store/cart.
+Route::view( 'store/cart', 'store.cart' )->name( 'artisanpack.ecommerce.storefront.cart' );
+
 Route::get( 'store/{product}', function ( string $product ) {
     $model = Product::query()->storefrontVisible()->where( 'slug', $product )->firstOrFail();
 
     return view( 'store.product', [ 'product' => $model ] );
 } )->name( 'artisanpack.ecommerce.storefront.product' );
-
-Route::view( 'store/cart', 'store.cart' )->name( 'artisanpack.ecommerce.storefront.cart' );
 ```
 
 ```blade

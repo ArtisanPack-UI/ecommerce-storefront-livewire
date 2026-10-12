@@ -39,6 +39,7 @@ Shopper actions run through the engine's rate limit policies. They count against
 | `ecommerce.review.submit` | Submitting a review |
 | `ecommerce.lookup.attempt` | Guest order lookup |
 | `ecommerce.claim.attempt` | Claiming a guest order |
+| `ecommerce.catalog.read` | Header search suggestions |
 
 The limits are engine settings (`artisanpack.ecommerce.rate_limits`).
 
