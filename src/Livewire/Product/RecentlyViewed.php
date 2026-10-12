@@ -44,7 +44,8 @@ use Throwable;
  * }, 10, 4 );
  * ```
  *
- * Only storefront-visible products show; with none, nothing renders. The
+ * Only storefront-visible products whose type is installed show (of the
+ * first 50 ids), up to `limit`; with none, nothing renders. The
  * section loads after the page (`#[Lazy]`), showing skeleton cards until
  * then.
  *
@@ -69,6 +70,15 @@ class RecentlyViewed extends Component
      * @var string
      */
     public const SATELLITE = 'artisanpack-ui/ecommerce-recently-viewed';
+
+    /**
+     * The most ids taken from the satellite.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const MAX_IDS = 50;
 
     /**
      * The product being viewed, left out of the list.
@@ -178,11 +188,15 @@ class RecentlyViewed extends Component
                 return new Collection();
             }
 
-            $ids   = array_slice( $ids, 0, $this->limit );
+            // Hidden products and ones whose type is uninstalled are dropped
+            // before the list is cut to the limit, so they don't leave it short.
+            $ids   = array_slice( $ids, 0, self::MAX_IDS );
             $order = array_flip( $ids );
 
             return Product::query()->storefrontVisible()->whereKey( $ids )->with( ProductCard::relations() )->get()
+                ->reject( static fn ( Product $product ): bool => $product->typeIsMissing() )
                 ->sortBy( static fn ( Product $product ): int => $order[ (int) $product->id ] )
+                ->take( $this->limit )
                 ->values();
         } catch ( Throwable $exception ) {
             report( $exception );
