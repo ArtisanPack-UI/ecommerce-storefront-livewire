@@ -5,7 +5,9 @@
     layout a host uses must match this contract: a `title` section (plain
     text), a `content` section, `styles` / `scripts` stacks, and an include
     of `ecommerce-storefront::partials.global` (cart drawer, toasts, cart
-    merge prompt).
+    merge prompt). A `head` stack inside `<head>` receives each page's
+    description, canonical URL, robots directive, and structured data
+    (`ecommerce-storefront::partials.seo`).
 
     The package ships no CSS build. The host's Vite entries (filterable with
     `ap.ecommerceStorefrontLivewire.layout.viteEntries`) are loaded when a
@@ -46,6 +48,10 @@
     <title>@yield( 'title', __( 'Shop' ) ) &middot; {{ config( 'app.name' ) }}</title>
     @include( 'ecommerce-storefront::partials.vite-assets' )
     @livewireStyles
+    @stack( 'head' )
+    @if ( \ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo::seoPackageInstalled() )
+        <x-dynamic-component component="seo:schema" />
+    @endif
     @stack( 'styles' )
 </head>
 <body class="flex min-h-screen flex-col bg-base-100 font-sans antialiased">

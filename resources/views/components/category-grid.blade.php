@@ -19,9 +19,12 @@
                         @if ( $showImages )
                             <x-slot:figure class="aspect-[4/3] bg-base-200">
                                 @if ( null !== $tile['image'] )
+                                    @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $tile['image'], 800, 600 ) )
                                     <img
                                         src="{{ $tile['image']['url'] }}"
                                         @if ( null !== $tile['image']['srcset'] ) srcset="{{ $tile['image']['srcset'] }}" sizes="(min-width: 1024px) 33vw, 50vw" @endif
+                                        width="{{ $ecommerceSize['width'] }}"
+                                        height="{{ $ecommerceSize['height'] }}"
                                         alt=""
                                         loading="lazy"
                                         decoding="async"

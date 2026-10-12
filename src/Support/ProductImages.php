@@ -251,6 +251,30 @@ final class ProductImages
     }
 
     /**
+     * The `width` and `height` attributes for an image (spec §12), so the
+     * browser reserves its space before it loads: the image's own size
+     * when the media library knows it, else `$width` × `$height` (the
+     * aspect ratio of the box the image fills).
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>|null  $image   An image from this class.
+     * @param  int                        $width   Fallback width.
+     * @param  int                        $height  Fallback height.
+     *
+     * @return array{width: int, height: int}
+     */
+    public static function dimensions( ?array $image, int $width, int $height ): array
+    {
+        $ownWidth  = $image['width'] ?? null;
+        $ownHeight = $image['height'] ?? null;
+
+        return is_int( $ownWidth ) && is_int( $ownHeight ) && $ownWidth > 0 && $ownHeight > 0
+            ? [ 'width' => $ownWidth, 'height' => $ownHeight ]
+            : [ 'width' => $width, 'height' => $height ];
+    }
+
+    /**
      * A media-library image with its `srcset`, or null.
      *
      * @since 1.0.0
@@ -259,7 +283,7 @@ final class ProductImages
      * @param  string              $alt      Alternative text.
      * @param  array<int, string>  $sizes    Sizes for the `srcset`, smallest first.
      *
-     * @return array{url: string, srcset: string|null, full: string, alt: string}|null
+     * @return array{url: string, srcset: string|null, full: string, alt: string, width: int|null, height: int|null}|null
      */
     private static function fromMedia( ?int $mediaId, string $alt, array $sizes = self::CARD_SIZES ): ?array
     {
@@ -285,7 +309,8 @@ final class ProductImages
                 }
             }
 
-            $full = self::safeUrl( $media->imageUrl( 'full' ) );
+            $full     = self::safeUrl( $media->imageUrl( 'full' ) );
+            $original = [ (int) ( $media->width ?? 0 ), (int) ( $media->height ?? 0 ) ];
         } catch ( Throwable ) {
             return null;
         }
@@ -302,11 +327,41 @@ final class ProductImages
             }
         }
 
+        [ $width, $height ] = self::intrinsic( (int) reset( $sources ), $original[0], $original[1] );
+
         return [
             'url'    => (string) array_key_first( $sources ),
             'srcset' => count( $srcset ) > 1 ? implode( ', ', $srcset ) : null,
             'full'   => $full ?? (string) array_key_last( $sources ),
             'alt'    => '' !== trim( (string) ( $media->alt_text ?? '' ) ) ? (string) $media->alt_text : $alt,
+            'width'  => $width,
+            'height' => $height,
         ];
+    }
+
+    /**
+     * The rendered size of the first `srcset` source: its configured width
+     * at the original's aspect ratio, the original's size when no width is
+     * configured, or nulls when the original's size is unknown.
+     *
+     * @since 1.0.0
+     *
+     * @param  int  $sourceWidth     The first source's configured width (0 when unknown).
+     * @param  int  $originalWidth   The original's width (0 when unknown).
+     * @param  int  $originalHeight  The original's height (0 when unknown).
+     *
+     * @return array{0: int|null, 1: int|null}
+     */
+    private static function intrinsic( int $sourceWidth, int $originalWidth, int $originalHeight ): array
+    {
+        if ( $originalWidth <= 0 || $originalHeight <= 0 ) {
+            return [ null, null ];
+        }
+
+        if ( $sourceWidth <= 0 || $sourceWidth >= $originalWidth ) {
+            return [ $originalWidth, $originalHeight ];
+        }
+
+        return [ $sourceWidth, max( 1, (int) round( $sourceWidth * $originalHeight / $originalWidth ) ) ];
     }
 }

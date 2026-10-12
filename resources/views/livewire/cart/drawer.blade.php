@@ -58,7 +58,7 @@
                         <li class="flex gap-3 py-3" wire:key="drawer-line-{{ $line['id'] }}" data-cart-line="{{ $line['id'] }}">
                             <div class="h-16 w-16 shrink-0 overflow-hidden rounded-box bg-base-200">
                                 @if ( null !== $line['image'] )
-                                    <img src="{{ $line['image']['url'] }}" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
+                                    <img src="{{ $line['image']['url'] }}" @if ( null !== ( $line['image']['srcset'] ?? null ) ) srcset="{{ $line['image']['srcset'] }}" sizes="64px" @endif width="64" height="64" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
                                 @endif
                             </div>
 

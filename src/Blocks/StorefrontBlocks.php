@@ -29,7 +29,8 @@ use Illuminate\Contracts\Foundation\Application;
  * previews through the server. Their names are added to visual-editor's
  * `enabled_blocks` allow-list when the host uses one, and `products` is
  * mapped in visual-editor's resources (`ap.visualEditor.resources`) so
- * preview requests can name the product being edited.
+ * preview requests can name the product being edited. The default
+ * templates and patterns are offered too ({@see StorefrontTemplates}).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -64,6 +65,9 @@ final class StorefrontBlocks
         ProductPriceBlock::class,
         AddToCartBlock::class,
         ProductReviewsBlock::class,
+        ProductCatalogBlock::class,
+        CartContentsBlock::class,
+        CheckoutStepsBlock::class,
     ];
 
     /**
@@ -101,6 +105,8 @@ final class StorefrontBlocks
         }
 
         addFilter( 'ap.visualEditor.resources', [ self::class, 'mapResources' ] );
+
+        StorefrontTemplates::boot( $app );
 
         $app->booted( static function () use ( $app ): void {
             self::register( $app );

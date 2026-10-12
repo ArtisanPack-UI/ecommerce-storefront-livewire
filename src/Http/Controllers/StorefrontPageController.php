@@ -23,13 +23,16 @@ use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontTemplates;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search\Index as Search;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -47,9 +50,13 @@ use Throwable;
  * Livewire component. Catalog subjects (category, tag, product) are resolved
  * here so an unknown or hidden one is a 404; owned records (orders) are
  * passed through unresolved for their component to load and authorize.
- * Checkout, confirmation, and account pages are marked private and
- * `noindex`. The product, category, or (verified) order a page is about
- * goes into the request's `StorefrontContext` for visual-editor blocks.
+ * Cart, checkout, confirmation, lookup, and account pages are marked
+ * private and `noindex`. Each page is described for search engines through
+ * the request's `StorefrontSeo` (spec §12). The page, and the product,
+ * category, tag, or (verified) order it is about, go into the request's
+ * `StorefrontContext` for visual-editor blocks; with visual-editor
+ * templates on, catalog, product, cart, checkout, and search pages render
+ * the saved template for the page (`$ecommerceTemplate`, spec §11.4).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -63,11 +70,16 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
+     * @param  Request  $request  The request.
+     *
      * @return View
      */
-    public function catalog(): View
+    public function catalog( Request $request ): View
     {
-        return view( 'ecommerce-storefront::pages.catalog' );
+        app( StorefrontContext::class )->setPage( 'catalog' );
+        app( StorefrontSeo::class )->catalog( $request );
+
+        return view( 'ecommerce-storefront::pages.catalog', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'catalog' ) ] );
     }
 
     /**
@@ -98,9 +110,10 @@ class StorefrontPageController extends Controller
             return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ ...$request->query(), 'path' => $canonical ], 301 );
         }
 
-        app( StorefrontContext::class )->setCategory( $category );
+        app( StorefrontContext::class )->setPage( 'category' )->setCategory( $category );
+        app( StorefrontSeo::class )->category( $category, $request );
 
-        return view( 'ecommerce-storefront::pages.category', [ 'category' => $category ] );
+        return view( 'ecommerce-storefront::pages.category', [ 'category' => $category, 'ecommerceTemplate' => StorefrontTemplates::for( 'category', $category ) ] );
     }
 
     /**
@@ -108,17 +121,21 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @param  string  $tag  The tag slug.
+     * @param  Request  $request  The request.
+     * @param  string   $tag      The tag slug.
      *
      * @return View
      */
-    public function tag( string $tag ): View
+    public function tag( Request $request, string $tag ): View
     {
         $model = ProductTag::query()->where( 'slug', $tag )->first();
 
         abort_if( null === $model, 404 );
 
-        return view( 'ecommerce-storefront::pages.tag', [ 'tag' => $model ] );
+        app( StorefrontContext::class )->setPage( 'tag' )->setTag( $model );
+        app( StorefrontSeo::class )->tag( $model, $request );
+
+        return view( 'ecommerce-storefront::pages.tag', [ 'tag' => $model, 'ecommerceTemplate' => StorefrontTemplates::for( 'tag', $model ) ] );
     }
 
     /**
@@ -127,20 +144,22 @@ class StorefrontPageController extends Controller
      *
      * @since 1.0.0
      *
-     * @param  CatalogQuery  $catalog  The engine's catalog query.
-     * @param  string        $product  The product slug.
+     * @param  CatalogQuery    $catalog  The engine's catalog query.
+     * @param  StorefrontCart  $carts    The shopper's cart.
+     * @param  string          $product  The product slug.
      *
      * @return View
      */
-    public function product( CatalogQuery $catalog, string $product ): View
+    public function product( CatalogQuery $catalog, StorefrontCart $carts, string $product ): View
     {
         $model = $catalog->productBySlug( $product );
 
         abort_if( null === $model || $model->typeIsMissing(), 404 );
 
-        app( StorefrontContext::class )->setProduct( $model );
+        app( StorefrontContext::class )->setPage( 'product' )->setProduct( $model );
+        app( StorefrontSeo::class )->product( DisplayData::for( $model ), $carts->currency() );
 
-        return view( 'ecommerce-storefront::pages.product', [ 'product' => $model ] );
+        return view( 'ecommerce-storefront::pages.product', [ 'product' => $model, 'ecommerceTemplate' => StorefrontTemplates::for( 'product', $model ) ] );
     }
 
     /**
@@ -156,26 +175,33 @@ class StorefrontPageController extends Controller
     public function search( Request $request ): Response
     {
         $term = $request->query( 'q' );
+        $term = is_string( $term ) ? mb_substr( Search::normalizeTerm( $term ), 0, Search::MAX_TERM_LENGTH ) : '';
+
+        app( StorefrontContext::class )->setPage( 'search' );
+        app( StorefrontSeo::class )->search( $term );
 
         $response = response()->view( 'ecommerce-storefront::pages.search', [
-            'term' => is_string( $term ) ? mb_substr( Search::normalizeTerm( $term ), 0, Search::MAX_TERM_LENGTH ) : '',
+            'term'              => $term,
+            'ecommerceTemplate' => StorefrontTemplates::for( 'search' ),
         ] );
 
-        $response->headers->set( 'X-Robots-Tag', 'noindex, follow' );
+        $response->headers->set( 'X-Robots-Tag', StorefrontSeo::NOINDEX_FOLLOW );
 
         return $response;
     }
 
     /**
-     * The cart page.
+     * The cart page. Never cached or indexed: it is the shopper's own.
      *
      * @since 1.0.0
      *
-     * @return View
+     * @return Response
      */
-    public function cart(): View
+    public function cart(): Response
     {
-        return view( 'ecommerce-storefront::pages.cart' );
+        app( StorefrontContext::class )->setPage( 'cart' );
+
+        return $this->privateView( 'cart', 'ecommerce-storefront::pages.cart', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'cart' ) ] );
     }
 
     /**
@@ -187,7 +213,9 @@ class StorefrontPageController extends Controller
      */
     public function checkout(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.checkout' ) );
+        app( StorefrontContext::class )->setPage( 'checkout' );
+
+        return $this->privateView( 'checkout', 'ecommerce-storefront::pages.checkout', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'checkout' ) ] );
     }
 
     /**
@@ -276,10 +304,10 @@ class StorefrontPageController extends Controller
     {
         $token = $request->query( 'token' );
 
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.confirmation', [
+        return $this->privateView( 'confirmation', 'ecommerce-storefront::pages.confirmation', [
             'order' => $order,
             'token' => is_string( $token ) ? $token : null,
-        ] ) );
+        ] );
     }
 
     /**
@@ -291,7 +319,7 @@ class StorefrontPageController extends Controller
      */
     public function lookup(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.lookup' ) );
+        return $this->privateView( 'lookup', 'ecommerce-storefront::pages.lookup' );
     }
 
     /**
@@ -314,10 +342,10 @@ class StorefrontPageController extends Controller
 
         app( StorefrontContext::class )->setOrder( $order );
 
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.order-view', [
+        return $this->privateView( 'order-view', 'ecommerce-storefront::pages.order-view', [
             'order' => (int) $order->id,
             'token' => $token,
-        ] ) );
+        ] );
     }
 
     /**
@@ -329,7 +357,7 @@ class StorefrontPageController extends Controller
      */
     public function accountDashboard(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.dashboard' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.dashboard' );
     }
 
     /**
@@ -341,7 +369,7 @@ class StorefrontPageController extends Controller
      */
     public function accountOrders(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.orders' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.orders' );
     }
 
     /**
@@ -356,7 +384,7 @@ class StorefrontPageController extends Controller
      */
     public function accountOrder( string $order ): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.order', [ 'order' => $order ] ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.order', [ 'order' => $order ] );
     }
 
     /**
@@ -368,7 +396,7 @@ class StorefrontPageController extends Controller
      */
     public function accountAddresses(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.addresses' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.addresses' );
     }
 
     /**
@@ -380,7 +408,7 @@ class StorefrontPageController extends Controller
      */
     public function accountDownloads(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.downloads' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.downloads' );
     }
 
     /**
@@ -440,7 +468,7 @@ class StorefrontPageController extends Controller
      */
     public function accountProfile(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.profile' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.profile' );
     }
 
     /**
@@ -452,7 +480,7 @@ class StorefrontPageController extends Controller
      */
     public function accountClaim(): Response
     {
-        return $this->keepPrivate( response()->view( 'ecommerce-storefront::pages.account.claim' ) );
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.claim' );
     }
 
     /**
@@ -550,6 +578,25 @@ class StorefrontPageController extends Controller
     }
 
     /**
+     * A page that is never indexed (`noindex` in its head and headers) or
+     * cached.
+     *
+     * @since 1.0.0
+     *
+     * @param  string                $page  The page, for `StorefrontSeo`.
+     * @param  string                $view  The page view.
+     * @param  array<string, mixed>  $data  View data.
+     *
+     * @return Response
+     */
+    protected function privateView( string $page, string $view, array $data = [] ): Response
+    {
+        app( StorefrontSeo::class )->noindex( $page );
+
+        return $this->keepPrivate( response()->view( $view, $data ) );
+    }
+
+    /**
      * Marks a response private: not stored by any cache, not indexed
      * (spec §12), and not leaking its URL — which can carry a guest's
      * signed order-view token — to other sites in the `Referer`.
@@ -565,7 +612,7 @@ class StorefrontPageController extends Controller
     protected function keepPrivate( SymfonyResponse $response ): SymfonyResponse
     {
         $response->headers->set( 'Cache-Control', 'no-store, private' );
-        $response->headers->set( 'X-Robots-Tag', 'noindex, nofollow' );
+        $response->headers->set( 'X-Robots-Tag', StorefrontSeo::NOINDEX );
         $response->headers->set( 'Referrer-Policy', 'same-origin' );
 
         return $response;

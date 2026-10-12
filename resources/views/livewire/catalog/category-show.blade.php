@@ -15,9 +15,12 @@
 
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start">
         @if ( null !== $image )
+            @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $image, 384, 384 ) )
             <img
                 src="{{ $image['url'] }}"
                 @if ( null !== $image['srcset'] ) srcset="{{ $image['srcset'] }}" sizes="(min-width: 640px) 12rem, 100vw" @endif
+                width="{{ $ecommerceSize['width'] }}"
+                height="{{ $ecommerceSize['height'] }}"
                 alt="{{ $image['alt'] }}"
                 class="aspect-square w-full rounded-box object-cover sm:w-48"
                 data-category-image

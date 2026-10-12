@@ -9,7 +9,11 @@
 --}}
 @extends( $ecommerceStorefrontLayout )
 
-@section( 'title', __( 'Your order' ) )
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
+@section( 'title', $ecommerceSeo->title( __( 'Your order' ) ) )
 
 @section( 'content' )
     <div class="flex flex-col gap-6">

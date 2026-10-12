@@ -24,7 +24,9 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithSto
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
@@ -501,7 +503,7 @@ class Index extends Component
         return $this->catalogQuery()
             ->sort( $this->sort )
             ->builder()
-            ->with( [ 'images' ] )
+            ->with( ProductCard::relations() )
             ->paginate( $this->perPage );
     }
 
@@ -859,7 +861,29 @@ class Index extends Component
     }
 
     /**
-     * Facets over the listing without some filters (memoised per request).
+     * Everything a listing's facet counts depend on: the currency, the
+     * scope, and the shopper's filters.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, mixed>
+     */
+    protected function facetScope(): array
+    {
+        return [
+            'currency'   => $this->currency(),
+            'category'   => $this->category,
+            'tag'        => $this->tag,
+            'featured'   => $this->featured,
+            'ids'        => $this->ids,
+            'filterable' => $this->filterable,
+            'filters'    => [ $this->categoryFilter, $this->tagFilter, $this->priceMin, $this->priceMax, $this->attributeFilters, $this->inStock, $this->onSale, $this->minRating, $this->extraFilters ],
+        ];
+    }
+
+    /**
+     * Facets over the listing without some filters (memoised per request
+     * and cached across requests, {@see StorefrontCache}).
      *
      * @since 1.0.0
      *
@@ -871,7 +895,10 @@ class Index extends Component
     {
         $key = implode( '|', $except );
 
-        return $this->facetCache[ $key ] ??= $this->catalogQuery( $except )->facets();
+        return $this->facetCache[ $key ] ??= StorefrontCache::remember(
+            StorefrontCache::key( 'facets', [ $this->facetScope(), $except ] ),
+            fn (): array => $this->catalogQuery( $except )->facets(),
+        );
     }
 
     /**

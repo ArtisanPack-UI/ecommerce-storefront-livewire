@@ -124,6 +124,8 @@ class RecentlyViewedBlock extends StorefrontBlock
                 'limit'   => $attrs['limit'],
                 'columns' => $attrs['columns'],
                 'heading' => '' === $attrs['heading'] ? null : $attrs['heading'],
+                // The editor canvas doesn't run Livewire, so a preview can't lazy-load.
+                ...( self::previewing() ? [ 'lazy' => false ] : [] ),
             ],
         ] )->render();
     }

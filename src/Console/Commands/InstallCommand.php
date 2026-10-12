@@ -176,6 +176,7 @@ class InstallCommand extends Command
         $this->newLine();
         $this->components->info( __( 'Storefront pages use the package layout. To use your own, set storefront.layout in the config to a layout that yields "title" and "content" and includes:' ) );
         $this->line( '    ' . self::LAYOUT_INCLUDE );
+        $this->components->info( __( 'Add @stack( \'head\' ) inside its <head> for page descriptions, canonical URLs, and structured data.' ) );
 
         $this->newLine();
         $this->components->info( __( 'If your layout is a Blade component, point storefront.layout at a view containing just:' ) );

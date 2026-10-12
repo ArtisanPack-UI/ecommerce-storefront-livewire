@@ -92,9 +92,11 @@ class CategoryPaths
             }
         };
 
-        $walk( $this->tree->tree(), 0 );
+        return $this->nodes = StorefrontCache::remember( 'category-nodes', function () use ( $walk, &$nodes ): array {
+            $walk( $this->tree->tree(), 0 );
 
-        return $this->nodes = $nodes;
+            return $nodes;
+        } );
     }
 
     /**

@@ -81,6 +81,21 @@ final class CheckoutLayout
     public const TERMS_URL_PATTERN = '#^(https?://\\S+|/(?![/\\\\])\\S*)$#i';
 
     /**
+     * `$override` when it is a layout, else the store's choice
+     * ({@see self::current()}).
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $override  `multi_step`, `single_page`, or empty.
+     *
+     * @return string {@see self::MULTI_STEP} or {@see self::SINGLE_PAGE}.
+     */
+    public static function resolve( ?string $override ): string
+    {
+        return in_array( $override, [ self::MULTI_STEP, self::SINGLE_PAGE ], true ) ? $override : self::current();
+    }
+
+    /**
      * The layout to show.
      *
      * @since 1.0.0

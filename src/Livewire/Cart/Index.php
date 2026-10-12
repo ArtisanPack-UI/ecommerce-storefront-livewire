@@ -15,6 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
 
 use ArtisanPackUI\Ecommerce\Exceptions\CartOperationException;
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\ProductRelation;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\ValueObjects\Address;
 use ArtisanPackUI\Ecommerce\ValueObjects\ShippingRate;
@@ -51,8 +52,14 @@ use Throwable;
  *   it carries into checkout and lets the engine estimate tax.
  * - **Unsellable lines** — flagged with the reason and a "Remove" button;
  *   "Checkout" is disabled until they are gone.
- * - **Cross-sells** for the cart, and an empty state with "Continue
- *   shopping".
+ * - **Sections** below the cart — the cart's cross-sells by default —
+ *   from `ap.ecommerceStorefrontLivewire.cart.sections` (key => `component`,
+ *   `params`, `position`; each component also receives `cart`, the cart
+ *   or null), and an empty state with "Continue shopping".
+ *
+ * The Cart Contents block turns cross-sells (`showCrossSells`) and the
+ * coupon field (`showCoupon`) off; with the field off, `applyCoupon()`
+ * does nothing.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -65,6 +72,26 @@ class Index extends Component
     use ManagesCartLines;
     use RateLimitsStorefront;
     use SendsToasts;
+
+    /**
+     * Show the cart's cross-sells.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showCrossSells = true;
+
+    /**
+     * Show the coupon field.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showCoupon = true;
 
     /**
      * The coupon code being entered.
@@ -166,6 +193,10 @@ class Index extends Component
      */
     public function applyCoupon(): void
     {
+        if ( ! $this->showCoupon ) {
+            return;
+        }
+
         $this->resetErrorBag( 'couponCode' );
         $this->announcement = '';
 
@@ -369,7 +400,52 @@ class Index extends Component
             'postcodeLabel'    => AddressFormats::postcodeLabel( $this->estimateCountry ),
             'catalogUrl'       => Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ? route( 'artisanpack.ecommerce.storefront.catalog' ) : null,
             'checkoutUrl'      => Route::has( 'artisanpack.ecommerce.storefront.checkout' ) ? route( 'artisanpack.ecommerce.storefront.checkout' ) : null,
+            'sections'         => $this->sections( $cart ),
         ] );
+    }
+
+    /**
+     * The sections below the cart (the cart's cross-sells by default),
+     * through `ap.ecommerceStorefrontLivewire.cart.sections`, in position
+     * order.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart|null  $cart  The shopper's cart.
+     *
+     * @return array<string, array{component: string, params: array<string, mixed>}>
+     */
+    protected function sections( ?Cart $cart ): array
+    {
+        $defaults = $this->showCrossSells
+            ? [ 'cross-sells' => [ 'component' => 'artisanpack-ecommerce-storefront-related-products', 'params' => [ 'type' => ProductRelation::CROSS_SELL ], 'position' => 10 ] ]
+            : [];
+
+        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.cart.sections', $defaults, $cart );
+        $sections = [];
+
+        foreach ( is_array( $filtered ) ? $filtered : [] as $key => $section ) {
+            if ( ! is_string( $key ) || ! is_array( $section ) || ! is_string( $section['component'] ?? null ) || '' === $section['component'] ) {
+                continue;
+            }
+
+            if ( 'cross-sells' === $key && ! $this->showCrossSells ) {
+                continue;
+            }
+
+            $params = is_array( $section['params'] ?? null ) ? $section['params'] : [];
+
+            $sections[ $key ] = [
+                'component' => $section['component'],
+                'position'  => is_int( $section['position'] ?? null ) ? $section['position'] : 100,
+                // Cross-sells find the cart themselves; other sections get it.
+                'params'    => 'cross-sells' === $key ? $params : [ ...$params, 'cart' => $cart ],
+            ];
+        }
+
+        uasort( $sections, static fn ( array $a, array $b ): int => $a['position'] <=> $b['position'] );
+
+        return array_map( static fn ( array $section ): array => [ 'component' => $section['component'], 'params' => $section['params'] ], $sections );
     }
 
     /**

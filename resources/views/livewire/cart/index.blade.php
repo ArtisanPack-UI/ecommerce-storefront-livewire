@@ -42,7 +42,7 @@
                         <li class="flex gap-4 py-4 first:pt-0" wire:key="cart-line-{{ $line['id'] }}" data-cart-line="{{ $line['id'] }}">
                             <div class="h-24 w-24 shrink-0 overflow-hidden rounded-box bg-base-200">
                                 @if ( null !== $line['image'] )
-                                    <img src="{{ $line['image']['url'] }}" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
+                                    <img src="{{ $line['image']['url'] }}" @if ( null !== ( $line['image']['srcset'] ?? null ) ) srcset="{{ $line['image']['srcset'] }}" sizes="96px" @endif width="96" height="96" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
                                 @else
                                     <div class="flex h-full w-full items-center justify-center" aria-hidden="true">
                                         <x-artisanpack-icon name="o-photo" class="h-8 w-8 opacity-30" />
@@ -131,36 +131,38 @@
             <aside class="flex flex-col gap-6" aria-labelledby="ec-cart-summary-heading" data-cart-summary>
                 <h2 id="ec-cart-summary-heading" class="text-xl font-bold">{{ __( 'Order summary' ) }}</h2>
 
-                <div class="flex flex-col gap-2" data-cart-coupon>
-                    @if ( null !== $coupon )
-                        <div class="flex flex-wrap items-center gap-2 text-sm">
-                            <span>{{ __( 'Coupon applied:' ) }}</span>
-                            <x-artisanpack-badge :value="$coupon" class="badge-neutral" data-cart-coupon-code />
-                            <x-artisanpack-button
-                                :label="__( 'Remove' )"
-                                class="btn-ghost btn-xs"
-                                :aria-label="__( 'Remove coupon :code', [ 'code' => $coupon ] )"
-                                wire:click="removeCoupon( {{ \Illuminate\Support\Js::from( $coupon ) }} )"
-                                data-cart-coupon-remove
-                            />
-                        </div>
-                    @endif
+                @if ( $showCoupon )
+                    <div class="flex flex-col gap-2" data-cart-coupon>
+                        @if ( null !== $coupon )
+                            <div class="flex flex-wrap items-center gap-2 text-sm">
+                                <span>{{ __( 'Coupon applied:' ) }}</span>
+                                <x-artisanpack-badge :value="$coupon" class="badge-neutral" data-cart-coupon-code />
+                                <x-artisanpack-button
+                                    :label="__( 'Remove' )"
+                                    class="btn-ghost btn-xs"
+                                    :aria-label="__( 'Remove coupon :code', [ 'code' => $coupon ] )"
+                                    wire:click="removeCoupon( {{ \Illuminate\Support\Js::from( $coupon ) }} )"
+                                    data-cart-coupon-remove
+                                />
+                            </div>
+                        @endif
 
-                    <form wire:submit="applyCoupon" class="flex items-end gap-2" novalidate>
-                        <div class="grow">
-                            <x-artisanpack-input
-                                id="ec-cart-coupon"
-                                :label="__( 'Coupon code' )"
-                                wire:model="couponCode"
-                                autocomplete="off"
-                                autocapitalize="characters"
-                                maxlength="64"
-                                error-field="couponCode"
-                            />
-                        </div>
-                        <x-artisanpack-button type="submit" :label="__( 'Apply' )" spinner="applyCoupon" wire:loading.attr="disabled" wire:target="applyCoupon" data-cart-coupon-apply />
-                    </form>
-                </div>
+                        <form wire:submit="applyCoupon" class="flex items-end gap-2" novalidate>
+                            <div class="grow">
+                                <x-artisanpack-input
+                                    id="ec-cart-coupon"
+                                    :label="__( 'Coupon code' )"
+                                    wire:model="couponCode"
+                                    autocomplete="off"
+                                    autocapitalize="characters"
+                                    maxlength="64"
+                                    error-field="couponCode"
+                                />
+                            </div>
+                            <x-artisanpack-button type="submit" :label="__( 'Apply' )" spinner="applyCoupon" wire:loading.attr="disabled" wire:target="applyCoupon" data-cart-coupon-apply />
+                        </form>
+                    </div>
+                @endif
 
                 @if ( $requiresShipping )
                     <form wire:submit="estimateShipping" class="flex flex-col gap-3 border-t border-base-content/10 pt-4" aria-labelledby="ec-cart-estimate-heading" novalidate data-cart-estimate>
@@ -238,5 +240,9 @@
         </div>
     @endif
 
-    <livewire:artisanpack-ecommerce-storefront-related-products type="cross_sell" :key="'cart-cross-sells'" />
+    @foreach ( $sections as $key => $section )
+        <div data-cart-section="{{ $key }}" wire:key="cart-section-{{ $key }}">
+            @livewire( $section['component'], $section['params'], key( 'cart-section-' . $key ) )
+        </div>
+    @endforeach
 </div>

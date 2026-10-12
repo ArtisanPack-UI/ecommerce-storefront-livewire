@@ -18,6 +18,7 @@ use ArtisanPackUI\Ecommerce\Registries\SearchProviderRegistry;
 use ArtisanPackUI\Ecommerce\Search\SearchQuery;
 use ArtisanPackUI\Ecommerce\Search\SearchResult;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index as CatalogIndex;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -400,7 +401,7 @@ class Index extends CatalogIndex
         }
 
         try {
-            return $this->result = $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, [ 'images' ] );
+            return $this->result = $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() );
         } catch ( Throwable $exception ) {
             report( $exception );
 

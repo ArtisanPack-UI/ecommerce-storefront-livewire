@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Models\ProductRelation;
 use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
@@ -171,7 +172,7 @@ class Show extends Component
     {
         $product  = $this->product;
         $variant  = null === $this->variantId ? null : $this->ownVariant( $this->variantId );
-        $subject  = $variant ?? $product;
+        $subject  = $variant ?? DisplayData::for( $product );
         $currency = app( StorefrontCart::class )->currency();
 
         return view( 'ecommerce-storefront::livewire.product.show', [

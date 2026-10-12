@@ -8,7 +8,11 @@
 --}}
 @extends( $ecommerceStorefrontLayout )
 
-@section( 'title', __( 'Orders' ) )
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
+@section( 'title', $ecommerceSeo->title( __( 'Orders' ) ) )
 
 @section( 'content' )
     <x-artisanpack-ec-account-shell :title="__( 'Orders' )">

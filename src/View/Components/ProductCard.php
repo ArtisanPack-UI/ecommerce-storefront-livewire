@@ -20,6 +20,7 @@ use ArtisanPackUI\Ecommerce\Pricing\DisplayPrice;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\Ecommerce\ProductTypes\SimpleProductType;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
+use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Component;
@@ -34,7 +35,7 @@ use Illuminate\View\Component;
  * products that can be bought, an "Add to cart" button that calls the
  * parent component's `quickAdd()` ({@see \ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart}).
  *
- * The card's data runs through the `ap.ecommerceStorefrontLivewire.productCard`
+ * The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard`
  * filter (the data array and the product) so a satellite can add a badge or
  * change the link; see {@see self::cardData()} for the keys.
  *
@@ -52,7 +53,7 @@ class ProductCard extends Component
      *
      * @since 1.0.0
      *
-     * @var array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: DisplayPrice|null, stock: EngineStockStatus, rating: float, reviews: int, reviews_url: string|null, quick_add: bool, badges: array<int, string>, heading_level: int}
+     * @var array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: DisplayPrice|null, stock: EngineStockStatus, rating: float, reviews: int, reviews_url: string|null, quick_add: bool, badges: array<int, string>, actions: array<string, mixed>, heading_level: int}
      */
     public array $card;
 
@@ -87,7 +88,9 @@ class ProductCard extends Component
      * Keys: `id`, `name`, `url` (null renders the name unlinked), `image`
      * (`url`, `srcset`, `alt`, or null), `price` (a `DisplayPrice` or null),
      * `stock` (a `StockStatus`), `rating`, `reviews`, `reviews_url`,
-     * `quick_add`, `badges` (extra badge texts), and `heading_level`.
+     * `quick_add`, `badges` (extra badge texts), `actions` (buttons over
+     * the image, such as a wishlist heart: key => view name, rendered with
+     * `$product`, or an `Htmlable`), and `heading_level`.
      *
      * @since 1.0.0
      *
@@ -119,12 +122,27 @@ class ProductCard extends Component
                 && null !== $price
                 && $stock->purchasable(),
             'badges'        => [],
+            'actions'       => [],
             'heading_level' => max( 2, min( 6, $this->headingLevel ) ),
         ];
 
-        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.productCard', $defaults, $product );
+        $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.catalog.productCard', $defaults, $product );
 
         return is_array( $filtered ) ? self::normalize( $filtered, $defaults ) : $defaults;
+    }
+
+    /**
+     * The relations a card reads, for listings to eager-load so a page of
+     * cards runs no query per product: the gallery (for the image) and the
+     * engine's display data (prices, stock, variants).
+     *
+     * @since 1.0.0
+     *
+     * @return array<int|string, Closure|string>
+     */
+    public static function relations(): array
+    {
+        return [ 'images', ...Product::displayRelations() ];
     }
 
     /**
@@ -163,6 +181,7 @@ class ProductCard extends Component
             'reviews_url'   => static fn ( mixed $value ): bool => null === $value || is_string( $value ),
             'quick_add'     => static fn ( mixed $value ): bool => is_bool( $value ),
             'badges'        => static fn ( mixed $value ): bool => is_array( $value ),
+            'actions'       => static fn ( mixed $value ): bool => is_array( $value ),
             'heading_level' => static fn ( mixed $value ): bool => is_int( $value ) && $value >= 2 && $value <= 6,
         ];
 

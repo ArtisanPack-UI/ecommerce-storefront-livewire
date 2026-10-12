@@ -52,6 +52,9 @@ it( 'registers the commerce blocks as server blocks when visual-editor is instal
         'artisanpack-commerce/product-price',
         'artisanpack-commerce/add-to-cart',
         'artisanpack-commerce/product-reviews',
+        'artisanpack-commerce/product-catalog',
+        'artisanpack-commerce/cart-contents',
+        'artisanpack-commerce/checkout-steps',
     ] );
 
     $grid = $editor->blocks['artisanpack-commerce/product-grid'];
