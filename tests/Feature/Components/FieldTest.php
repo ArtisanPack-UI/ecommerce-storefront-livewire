@@ -76,3 +76,15 @@ it( 'makes ids safe from dotted model paths', function (): void {
 it( 'refuses an unknown control', function (): void {
     $this->withViewErrors( [] )->blade( '<x-artisanpack-ec-field control="radio" id="x" label="X" />' );
 } )->throws( Illuminate\View\ViewException::class, 'Unknown field control "radio".' );
+
+it( 'names a select and a textarea, which the library labels with a legend', function (): void {
+    $this->withViewErrors( [] )
+        ->blade( <<<'BLADE'
+            <x-artisanpack-ec-field control="select" id="country" label="Country" :options="[]" wire:model="country" />
+            <x-artisanpack-ec-field control="textarea" id="note" label="Order note" wire:model="note" />
+            <x-artisanpack-ec-field id="city" label="City" wire:model="city" />
+            BLADE )
+        ->assertSee( 'aria-label="Country"', false )
+        ->assertSee( 'aria-label="Order note"', false )
+        ->assertDontSee( 'aria-label="City"', false );
+} );

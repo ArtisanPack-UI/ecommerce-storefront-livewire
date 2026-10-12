@@ -26,7 +26,9 @@ use InvalidArgumentException;
  * `aria-describedby` points at the error and the hint, each rendered here
  * with its own id. The library prints both without ids and never marks
  * the control invalid (livewire-ui-components#117), so it is told to omit
- * its own error.
+ * its own error. A select or textarea also gets its label as
+ * `aria-label`: the library labels them with a `<legend>`, which doesn't
+ * name the control (same issue).
  *
  * The error key is `error-field`, or else the `wire:model` property.
  * Every other attribute (`wire:model`, `type`, `required`, `autocomplete`,

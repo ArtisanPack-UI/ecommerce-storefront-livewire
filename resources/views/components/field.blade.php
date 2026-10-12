@@ -17,6 +17,8 @@
     $ecommerceFieldErrorId = $baseId() . '-error';
     $ecommerceFieldHintId  = $baseId() . '-hint';
     $ecommerceFieldAria    = array_filter( [
+        // The library labels selects and textareas with a <legend>, which doesn't name the control (#117).
+        'aria-label'       => in_array( $control, [ 'select', 'textarea' ], true ) && null !== $label && ! $attributes->has( 'aria-label' ) && ! $attributes->has( 'aria-labelledby' ) ? $label : null,
         'aria-invalid'     => $ecommerceFieldInvalid ? 'true' : null,
         'aria-describedby' => trim( implode( ' ', array_filter( [
             (string) $attributes->get( 'aria-describedby', '' ),
