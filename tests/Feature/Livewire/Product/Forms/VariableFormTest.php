@@ -78,6 +78,21 @@ it( 'matches a variant, puts it in the URL, tells the page, and adds it', functi
     expect( Cart::query()->sole()->items()->sole()->product_variant_id )->toBe( $blueL->id );
 } );
 
+it( 'chooses values through the choose action the swatches call', function (): void {
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] );
+
+    expect( $component->html() )->toContain( '$wire.choose( ' . $this->colour . ', $event.target.value )' )
+        ->not->toContain( 'wire:model.live="selected.' );
+
+    $component->call( 'choose', $this->colour, (string) $this->values['red']->id )
+        ->call( 'choose', $this->colour, (string) $this->values['blue']->id )
+        ->call( 'choose', $this->size, (string) $this->values['l']->id )
+        ->assertSet( 'selected', [ $this->colour => $this->values['blue']->id, $this->size => $this->values['l']->id ] )
+        ->assertSet( 'variant', $this->made['variants']['blue/l']->id )
+        ->call( 'choose', 999, '1' )
+        ->assertSet( 'variant', $this->made['variants']['blue/l']->id );
+} );
+
 it( 'resolves the variant when Livewire replaces the whole selection at once', function (): void {
     // Livewire 4 can send `selected` whole (no key) instead of
     // `selected.{id}`, for example while the selection is still empty.

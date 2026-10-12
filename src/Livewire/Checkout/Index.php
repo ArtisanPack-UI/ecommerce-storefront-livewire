@@ -446,6 +446,22 @@ class Index extends Component
     public ?string $placedOrder = null;
 
     /**
+     * Whether this checkout has placed its order.
+     *
+     * Placing the order empties the cart and dispatches
+     * `ecommerce-cart-updated`, which this component also listens to. On
+     * Livewire 3 that listener's request could run before the redirect to
+     * the confirmation page and send the shopper to the (now empty) cart
+     * instead, so the listener does nothing once this is set.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $orderPlaced = false;
+
+    /**
      * The layout: `multi_step` or `single_page` ({@see CheckoutLayout}).
      *
      * @since 1.0.0
@@ -535,7 +551,7 @@ class Index extends Component
     #[On( 'ecommerce-cart-updated' )]
     public function cartUpdated(): void
     {
-        if ( $this->signInRequired || null !== $this->unavailable || null !== $this->placement ) {
+        if ( $this->orderPlaced || $this->signInRequired || null !== $this->unavailable || null !== $this->placement ) {
             return;
         }
 
@@ -1196,6 +1212,7 @@ class Index extends Component
     {
         CheckoutPlacement::forget();
 
+        $this->orderPlaced    = true;
         $this->placement      = null;
         $this->payment        = null;
         $this->paymentProblem = null;

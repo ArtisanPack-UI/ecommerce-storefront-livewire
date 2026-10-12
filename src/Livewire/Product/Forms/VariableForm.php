@@ -136,15 +136,39 @@ class VariableForm extends PurchaseForm
     }
 
     /**
-     * Keeps a new choice, clears the choices it rules out, and resolves the
-     * variant.
+     * Chooses `$valueId` for the variation attribute `$attributeId`: what
+     * a swatch change calls.
+     *
+     * The swatches call this action rather than binding `selected` with
+     * `wire:model.live`. On Livewire 3 a response that arrives after the
+     * shopper has already moved on (arrowing from Red to Blue while Red is
+     * still saving) overwrote the pending model change, so Blue was lost.
+     * Actions are queued and always run, in order.
      *
      * @since 1.0.0
+     *
+     * @param  int|string  $attributeId  The attribute id.
+     * @param  mixed       $valueId      The chosen value id.
+     *
+     * @return void
+     */
+    public function choose( int|string $attributeId, mixed $valueId ): void
+    {
+        $this->selected[ (int) $attributeId ] = $valueId;
+
+        $this->updatedSelected( $valueId, (int) $attributeId );
+    }
+
+    /**
+     * Keeps a new choice, clears the choices it rules out, and resolves the
+     * variant.
      *
      * Livewire passes no key when it replaces the whole selection (it can
      * send `selected` at once instead of `selected.{id}`, for example while
      * the selection is still empty); the selection is then cleaned and
      * resolved as it stands.
+     *
+     * @since 1.0.0
      *
      * @param  mixed            $value  The chosen value id, or the whole selection.
      * @param  int|string|null  $key    The attribute id; null for the whole selection.
