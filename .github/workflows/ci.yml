@@ -243,6 +243,9 @@ jobs:
         run: npm run build:browser
 
       - name: Run browser tests
+        # The browser plugin waits without a deadline on an action Playwright
+        # never finishes (e.g. clicking a disabled button), so fail early.
+        timeout-minutes: 10
         env:
           XDEBUG_MODE: off
         run: vendor/bin/pest --group=browser --no-coverage

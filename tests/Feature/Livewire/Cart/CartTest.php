@@ -91,6 +91,22 @@ it( 'lists the lines and the totals', function (): void {
         ->assertSeeLivewire( RelatedProducts::class );
 } );
 
+it( 'applies quantities when Livewire sends every line at once', function (): void {
+    $mug      = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    $bowl     = makeProduct( 500, [ 'name' => 'Bowl' ] );
+    $cart     = shopperCartWith( [ $mug, $bowl ] );
+    $mugLine  = $cart->items()->where( 'product_id', $mug->id )->sole();
+    $bowlLine = $cart->items()->where( 'product_id', $bowl->id )->sole();
+
+    Livewire::test( Index::class )
+        ->set( 'quantities', [ $mugLine->id => 2, $bowlLine->id => 1 ] )
+        ->assertHasNoErrors()
+        ->assertSet( 'announcement', 'Cart updated. Total: $25.00.' );
+
+    expect( (int) $mugLine->fresh()->quantity )->toBe( 2 )
+        ->and( (int) $bowlLine->fresh()->quantity )->toBe( 1 );
+} );
+
 it( 'changes a quantity and announces the new total', function (): void {
     $mug  = makeProduct( 1000, [ 'name' => 'Mug' ] );
     $cart = shopperCartWith( [ $mug ] );

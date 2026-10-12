@@ -83,8 +83,13 @@ it( 'chooses a variant and adds it to the cart', function (): void {
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'journey-shirt' ] ) )
         ->assertButtonDisabled( '[data-add-to-cart]' )
         ->click( '[data-purchase-form] label[title="Blue"]' )
+        ->assertScript( 'document.querySelector( \'[data-purchase-form] label[title="Blue"] input\' ).checked' )
         ->click( '[data-purchase-form] label >> internal:text="L"s' )
-        ->assertSee( '$29.00' )
+        // "$29.00" is already on the page in the price range, so wait for
+        // the variant to resolve: a disabled button would make the click
+        // wait for it to be enabled, with no timeout.
+        ->assertScript( '! document.querySelector( "[data-add-to-cart]" ).disabled' )
+        ->assertSeeIn( '[data-product-summary]', '$29.00' )
         ->click( '[data-add-to-cart]' )
         ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Blue / L' )
         ->assertNoJavaScriptErrors();
