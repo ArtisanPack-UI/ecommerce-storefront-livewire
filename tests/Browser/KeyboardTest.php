@@ -191,3 +191,16 @@ it( 'moves focus to "Add an address" after deleting one', function (): void {
         ->assertNotPresent( '[data-account-address]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-account-address-add" )' );
 } );
+
+it( 'names the zoom button from the image and announces an image change', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Gallery mug', 'slug' => 'gallery-mug' ] );
+
+    ArtisanPackUI\Ecommerce\Models\ProductImage::factory()->create( [ 'product_id' => $product->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/front.jpg', 'alt_text' => 'Mug from the front', 'position' => 0 ] );
+    ArtisanPackUI\Ecommerce\Models\ProductImage::factory()->create( [ 'product_id' => $product->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/side.jpg', 'alt_text' => 'Mug from the side', 'position' => 1 ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->assertAttribute( '[data-gallery-zoom]', 'aria-label', 'Zoom image: Mug from the front' )
+        ->keys( '[data-gallery-thumbnail="1"]', 'Enter' )
+        ->assertSeeIn( '[data-gallery-announcement]', 'Image 2 of 2: Mug from the side' )
+        ->assertAttribute( '[data-gallery-zoom]', 'aria-label', 'Zoom image: Mug from the side' );
+} );
