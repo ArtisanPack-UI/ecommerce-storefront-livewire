@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\ValueObjects\PendingCartMerge;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -32,7 +33,10 @@ use Livewire\Component;
  * guest and their account cart are in different currencies (parent plan
  * §7.1). The engine's login listener merges same-currency carts itself and
  * leaves a mismatch pending in the session; this modal offers the three
- * resolutions and applies the one chosen through `CurrentCart`.
+ * resolutions and applies the one chosen through `CurrentCart`. The
+ * resulting cart's currency becomes the shopper's display currency, so the
+ * prices shown match the lines added. When the guest cart expired in the
+ * meantime the shopper is told their saved cart is unchanged.
  *
  * Mounted once by `ecommerce-storefront::partials.global`.
  *
@@ -138,6 +142,18 @@ class MergePrompt extends Component
 
         $this->open = false;
         $this->cartChanged( $cart );
+
+        if ( null === $cart && CartMergeResolution::CancelMerge !== $choice ) {
+            $this->toastWarning( __( 'Your guest cart has expired.' ), __( 'Your saved cart is unchanged.' ) );
+
+            return;
+        }
+
+        $current = app( StorefrontCart::class )->current();
+
+        if ( null !== $current ) {
+            app( StorefrontCart::class )->rememberCurrency( (string) $current->currency );
+        }
 
         $this->toastSuccess( match ( $choice ) {
             CartMergeResolution::KeepGuestCurrency       => __( 'Your carts are combined in :currency.', [ 'currency' => $this->guestCurrency ] ),

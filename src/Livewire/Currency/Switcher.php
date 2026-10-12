@@ -13,7 +13,6 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
 
-use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Exceptions\CartOperationException;
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Services\StoreCurrencies;
@@ -24,7 +23,6 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CurrencyNames;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Cookie;
 use Livewire\Component;
 
 /**
@@ -65,7 +63,7 @@ class Switcher extends Component
      *
      * @var int
      */
-    public const COOKIE_MINUTES = 525_600;
+    public const COOKIE_MINUTES = StorefrontCart::CURRENCY_COOKIE_MINUTES;
 
     /**
      * The chosen currency.
@@ -175,12 +173,7 @@ class Switcher extends Component
     }
 
     /**
-     * Stores the choice: through the resolver (the default resolver keeps
-     * it in the session) and in the engine's currency cookie.
-     *
-     * The engine's `CurrencyResolver` contract only promises `resolve()`,
-     * so the choice counts as kept only when the resolver now answers with
-     * it.
+     * Stores the choice through {@see StorefrontCart::rememberCurrency()}.
      *
      * @since 1.0.0
      *
@@ -190,14 +183,6 @@ class Switcher extends Component
      */
     protected function remember( string $currency ): bool
     {
-        $resolver = app( CurrencyResolver::class );
-
-        if ( method_exists( $resolver, 'remember' ) ) {
-            $resolver->remember( request(), $currency );
-        }
-
-        Cookie::queue( (string) config( 'artisanpack.ecommerce.currency.cookie', 'ecommerce_currency' ), $currency, self::COOKIE_MINUTES );
-
-        return strtoupper( $resolver->resolve( request() ) ) === $currency;
+        return app( StorefrontCart::class )->rememberCurrency( $currency );
     }
 }

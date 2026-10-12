@@ -101,6 +101,28 @@ it( 'counts the units in the cart', function (): void {
     expect( $carts->count() )->toBe( 5 );
 } );
 
+it( 'follows the open cart\'s currency, else the shopper\'s choice', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    expect( freshCarts()->currency() )->toBe( 'USD' );
+
+    withCartCookie( app( StorefrontCartService::class )->create( 'EUR' )->token );
+
+    expect( freshCarts()->currency() )->toBe( 'EUR' );
+} );
+
+it( 'stores a display currency in the session and the currency cookie', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+    app( 'request' )->setLaravelSession( session()->driver() );
+
+    expect( freshCarts()->rememberCurrency( 'eur' ) )->toBeTrue()
+        ->and( session( 'ecommerce.currency' ) )->toBe( 'EUR' )
+        ->and( Cookie::queued( 'ecommerce_currency' )?->getValue() )->toBe( 'EUR' )
+        ->and( freshCarts()->currency() )->toBe( 'EUR' )
+        // A currency the store doesn't sell isn't kept.
+        ->and( freshCarts()->rememberCurrency( 'GBP' ) )->toBeFalse();
+} );
+
 it( 'stops returning a cart once it has expired', function (): void {
     $carts = freshCarts();
     $cart  = $carts->current( true );

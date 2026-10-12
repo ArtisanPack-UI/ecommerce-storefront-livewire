@@ -6,11 +6,16 @@ use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
+use ArtisanPackUI\Ecommerce\Models\ProductPrice;
+use ArtisanPackUI\Ecommerce\Services\CustomerService;
+use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
+use ArtisanPackUI\Ecommerce\Support\GuestCartCookie;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\SimpleForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\VariableForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Show;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Livewire\Component;
 use Livewire\Livewire;
 
@@ -134,6 +139,34 @@ it( 'opens on the variant from the query string', function (): void {
         ->test( Show::class, [ 'product' => $made['product'] ] )
         ->assertSet( 'variantId', $made['variants']['blue/l']->id )
         ->assertSee( 'SKU: SHIRT-BLUE-L' );
+} );
+
+it( 'shows prices in the currency of the shopper\'s open cart', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    $user    = makeUser();
+    $product = makeProduct( 2000, [ 'name' => 'Linen shirt' ] );
+    ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'EUR', 'price_amount' => 1800, 'compare_at_amount' => null ] );
+
+    $customer = app( CustomerService::class )->customerForUser( $user, true );
+    app( StorefrontCartService::class )->create( 'EUR', $customer->email, $customer );
+
+    $this->actingAs( $user );
+
+    Livewire::test( Show::class, [ 'product' => $product ] )
+        ->assertSee( '€18.00' )
+        ->assertDontSee( '$20.00' );
+} );
+
+it( 'ignores an open cart in a currency the store no longer sells', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    $cart = app( StorefrontCartService::class )->create( 'EUR' );
+    app( 'request' )->cookies->set( GuestCartCookie::name(), $cart->token );
+
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD' ] );
+
+    expect( app( StorefrontCart::class )->currency() )->toBe( 'USD' );
 } );
 
 it( 'renders extra sections from the filter, in position order', function (): void {
