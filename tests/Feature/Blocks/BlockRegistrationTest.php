@@ -36,6 +36,13 @@ it( 'registers nothing without visual-editor', function (): void {
     expect( applyFilters( 'ap.visualEditor.resources', [] ) )->toBe( [] );
 } );
 
+it( 'registers nothing on a visual-editor older than 1.8, which has no server blocks', function (): void {
+    installVisualEditor();
+    app()->instance( StorefrontBlocks::EDITOR, new stdClass() );
+
+    expect( StorefrontBlocks::register( app() ) )->toBe( [] );
+} );
+
 it( 'registers the commerce blocks as server blocks when visual-editor is installed', function (): void {
     $editor = installVisualEditor();
 

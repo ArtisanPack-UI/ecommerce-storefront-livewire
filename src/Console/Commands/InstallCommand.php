@@ -15,6 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands;
 
 use ArtisanPackUI\Ecommerce\Gateways\Stripe\StripeGateway;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -63,15 +64,6 @@ class InstallCommand extends Command
      * @var string
      */
     public const COMPONENT_LAYOUT_WRAPPER = "<x-layouts.app :title=\"\$__env->yieldContent( 'title' )\">@yield( 'content' ) @include( 'ecommerce-storefront::partials.global' )</x-layouts.app>";
-
-    /**
-     * The visual-editor facade whose presence means the editor is installed.
-     *
-     * @since 1.0.0
-     *
-     * @var string
-     */
-    public const VISUAL_EDITOR_FACADE = 'ArtisanPackUI\\VisualEditor\\Facades\\VisualEditor';
 
     /**
      * The config file the install publishes.
@@ -256,7 +248,8 @@ class InstallCommand extends Command
      */
     protected function checkVisualEditor(): void
     {
-        if ( ! class_exists( self::VISUAL_EDITOR_FACADE ) ) {
+        // The same check block registration makes, so the two never disagree.
+        if ( ! class_exists( StorefrontBlocks::EDITOR ) || ! $this->laravel->bound( StorefrontBlocks::EDITOR ) ) {
             return;
         }
 

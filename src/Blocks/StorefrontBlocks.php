@@ -71,7 +71,8 @@ final class StorefrontBlocks
     ];
 
     /**
-     * Whether blocks can be registered: visual-editor is installed and
+     * Whether blocks can be registered: visual-editor 1.8 or later (the
+     * release that added `registerServerBlock()`) is installed and
      * `visual_editor.blocks` is on.
      *
      * @since 1.0.0
@@ -84,6 +85,7 @@ final class StorefrontBlocks
     {
         return (bool) config( 'artisanpack.ecommerce-storefront-livewire.visual_editor.blocks', true )
             && class_exists( self::EDITOR )
+            && method_exists( self::EDITOR, 'registerServerBlock' )
             && $app->bound( self::EDITOR );
     }
 
@@ -126,6 +128,10 @@ final class StorefrontBlocks
     {
         $editor = $app->make( self::EDITOR );
         $names  = [];
+
+        if ( ! method_exists( $editor, 'registerServerBlock' ) ) {
+            return $names;
+        }
 
         foreach ( self::blocks( $app ) as $block ) {
             if ( ! $block->available() ) {

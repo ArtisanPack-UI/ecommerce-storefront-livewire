@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Contracts\PaymentGateway;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -135,7 +136,7 @@ it( 'reports the gateways that are ready', function (): void {
 } );
 
 it( 'says nothing about templates when visual-editor is absent', function (): void {
-    expect( class_exists( InstallCommand::VISUAL_EDITOR_FACADE ) )->toBeFalse();
+    expect( app()->bound( StorefrontBlocks::EDITOR ) )->toBeFalse();
 
     $this->artisan( 'ecommerce-storefront:install' )
         ->doesntExpectOutputToContain( 'visual-editor' )
@@ -143,8 +144,9 @@ it( 'says nothing about templates when visual-editor is absent', function (): vo
 } );
 
 it( 'explains the template option when visual-editor is installed with templates off, and confirms it when on', function (): void {
-    // Stand in for the visual-editor facade.
-    class_alias( stdClass::class, InstallCommand::VISUAL_EDITOR_FACADE );
+    require_once dirname( __DIR__, 2 ) . '/Fixtures/VisualEditor/VisualEditorStub.php';
+
+    app()->instance( StorefrontBlocks::EDITOR, new ArtisanPackUI\VisualEditor\VisualEditor() );
 
     $this->artisan( 'ecommerce-storefront:install' )
         ->expectsOutputToContain( 'visual_editor.templates is off' )
