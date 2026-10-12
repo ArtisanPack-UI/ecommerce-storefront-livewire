@@ -415,7 +415,9 @@ class StorefrontPageController extends Controller
      * Sends one of the shopper's files as an attachment, spending a
      * download (engine `DigitalDownloadService::redeemOwned()`). Another
      * customer's entitlement is a 404; one that is expired, used up, or
-     * streaming-only goes back to the downloads page saying why.
+     * streaming-only goes back to the downloads page saying why. The route
+     * only accepts the downloads page's temporary signed links (403
+     * otherwise).
      *
      * @since 1.0.0
      *
@@ -441,7 +443,7 @@ class StorefrontPageController extends Controller
      * Streams one of the shopper's files for the browser's player
      * (byte-range aware); the first request of a stream spends a download.
      * A refusal answers with its status, since a media player can't follow
-     * a redirect to a page.
+     * a redirect to a page. Like downloads, the link must be signed.
      *
      * @since 1.0.0
      *

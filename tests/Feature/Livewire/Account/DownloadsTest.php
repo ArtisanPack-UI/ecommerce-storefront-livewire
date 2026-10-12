@@ -10,10 +10,12 @@ use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account\Downloads;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
 
 beforeEach( function (): void {
     Storage::fake( 'local' );
+    $this->freezeTime();
 
     Route::get( 'login', static fn (): string => 'login' )->middleware( 'web' )->name( 'login' );
     app( 'router' )->getRoutes()->refreshNameLookups();
@@ -35,6 +37,18 @@ function ownedDownload( ?Customer $customer, array $download = [], array $file =
     Storage::disk( 'local' )->put( $model->path, 'PDF bytes' );
 
     return DigitalDownload::factory()->create( $download + [ 'order_item_id' => $item->id, 'digital_file_id' => $model->id ] );
+}
+
+/**
+ * The temporary signed link the downloads page renders for `$download`.
+ *
+ * @param  string  $kind  `file` or `stream`.
+ */
+function signedDownloadUrl( string $kind, DigitalDownload $download ): string
+{
+    $minutes = 'stream' === $kind ? Downloads::STREAM_LINK_MINUTES : Downloads::DOWNLOAD_LINK_MINUTES;
+
+    return URL::temporarySignedRoute( 'artisanpack.ecommerce.account.downloads.' . $kind, now()->addMinutes( $minutes ), [ 'download' => $download->id ] );
 }
 
 /**
@@ -63,7 +77,7 @@ it( 'lists the shopper\'s entitlements with the file, version, downloads left, e
         ->assertSee( 'Version 2.1' )
         ->assertSee( '3 downloads left' )
         ->assertSee( 'Available until' )
-        ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) . '"' );
+        ->assertSeeHtml( 'href="' . signedDownloadUrl( 'file', $download ) . '"' );
 } );
 
 it( 'opens a streaming-only file in the player instead of downloading it', function (): void {
@@ -74,7 +88,7 @@ it( 'opens a streaming-only file in the player instead of downloading it', funct
     Livewire::test( Downloads::class )
         ->assertSeeHtml( 'data-account-download-play' )
         ->assertDontSeeHtml( 'data-account-download-button' )
-        ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => $download->id ] ) . '"' );
+        ->assertSeeHtml( 'href="' . signedDownloadUrl( 'stream', $download ) . '"' );
 } );
 
 it( 'explains expired and used-up entitlements instead of offering them', function (): void {
@@ -88,8 +102,8 @@ it( 'explains expired and used-up entitlements instead of offering them', functi
         ->assertSee( 'This download expired on' )
         ->assertSeeHtml( 'data-account-download-reason="exhausted"' )
         ->assertSee( 'You\'ve used all the downloads for this file.' )
-        ->assertDontSeeHtml( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $expired->id ] ) . '"' )
-        ->assertDontSeeHtml( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $exhausted->id ] ) . '"' );
+        ->assertDontSeeHtml( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $expired->id ] ) . '?' )
+        ->assertDontSeeHtml( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $exhausted->id ] ) . '?' );
 } );
 
 it( 'lists licence keys with a copy button and the activation count', function (): void {
@@ -140,7 +154,7 @@ it( 'sends the file and spends a download through the owner route', function ():
     [ , $customer ] = shopper();
     $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ] );
 
-    $response = $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) )
+    $response = $this->get( signedDownloadUrl( 'file', $download ) )
         ->assertOk()
         ->assertHeader( 'X-Robots-Tag', 'noindex, nofollow' );
 
@@ -149,15 +163,46 @@ it( 'sends the file and spends a download through the owner route', function ():
         ->and( $download->download_count )->toBe( 1 );
 } );
 
+it( 'refuses an unsigned or expired download link without spending a download', function ( string $kind ): void {
+    [ , $customer ] = shopper();
+    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ], [ 'is_streaming_only' => 'stream' === $kind ] );
+
+    $this->get( route( 'artisanpack.ecommerce.account.downloads.' . $kind, [ 'download' => $download->id ] ) )->assertForbidden();
+
+    $signed = signedDownloadUrl( $kind, $download );
+    $this->travel( ( 'stream' === $kind ? Downloads::STREAM_LINK_MINUTES : Downloads::DOWNLOAD_LINK_MINUTES ) + 1 )->minutes();
+
+    $this->get( $signed )->assertForbidden();
+
+    expect( $download->refresh()->downloads_remaining )->toBe( 2 )
+        ->and( $download->download_count )->toBe( 0 );
+} )->with( [ 'file', 'stream' ] );
+
+it( 'downloads through the signed link the downloads page renders', function (): void {
+    [ , $customer ] = shopper();
+    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ] );
+
+    $html = Livewire::test( Downloads::class )->html();
+
+    preg_match( '/href="([^"]*\/downloads\/' . $download->id . '\?[^"]*)"/', $html, $link );
+
+    expect( $link[1] ?? '' )->toContain( 'signature=' );
+
+    $response = $this->get( html_entity_decode( $link[1] ) )->assertOk();
+
+    expect( $response->streamedContent() )->toBe( 'PDF bytes' )
+        ->and( $download->refresh()->downloads_remaining )->toBe( 1 );
+} );
+
 it( 'streams a file through the owner route', function (): void {
     [ , $customer ] = shopper();
     $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ], [ 'is_streaming_only' => true ] );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => $download->id ] ) )->assertOk();
+    $this->get( signedDownloadUrl( 'stream', $download ) )->assertOk();
 
     expect( $download->refresh()->downloads_remaining )->toBe( 1 );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) )
+    $this->get( signedDownloadUrl( 'file', $download ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.account.downloads' ) );
 } );
 
@@ -165,24 +210,24 @@ it( 'sends an expired download back to the downloads page with the reason', func
     [ , $customer ] = shopper();
     $download       = ownedDownload( $customer, [ 'expires_at' => now()->subDay() ] );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) )
+    $this->get( signedDownloadUrl( 'file', $download ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.account.downloads' ) )
         ->assertSessionHas( ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload::SESSION_KEY );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => $download->id ] ) )->assertStatus( 410 );
+    $this->get( signedDownloadUrl( 'stream', $download ) )->assertStatus( 410 );
 } );
 
 it( 'answers 404 for another customer\'s download, or a user without a customer record', function (): void {
     $stranger = ownedDownload( Customer::factory()->create() );
 
     $this->actingAs( makeUser() )
-        ->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $stranger->id ] ) )
+        ->get( signedDownloadUrl( 'file', $stranger ) )
         ->assertNotFound();
 
     shopper();
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $stranger->id ] ) )->assertNotFound();
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => $stranger->id ] ) )->assertNotFound();
+    $this->get( signedDownloadUrl( 'file', $stranger ) )->assertNotFound();
+    $this->get( signedDownloadUrl( 'stream', $stranger ) )->assertNotFound();
 
     expect( $stranger->refresh()->download_count )->toBe( 0 );
 } );
@@ -190,5 +235,5 @@ it( 'answers 404 for another customer\'s download, or a user without a customer 
 it( 'sends a guest to sign in from the download route', function (): void {
     $download = ownedDownload( null );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) )->assertRedirect( route( 'login' ) );
+    $this->get( signedDownloadUrl( 'file', $download ) )->assertRedirect( route( 'login' ) );
 } );

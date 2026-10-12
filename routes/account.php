@@ -7,7 +7,9 @@
  * `artisanpack.ecommerce.account.`, and every route runs
  * `account.middleware` (`web`, `auth` by default). The non-group entries
  * are also registered as Livewire persistent middleware, so update requests
- * from these pages are re-checked (spec §6).
+ * from these pages are re-checked (spec §6). The two download routes also
+ * need a valid signature (the temporary signed links the downloads page
+ * renders), so a cross-site GET or a prefetcher can't spend a download.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -18,6 +20,7 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers\StorefrontPageController;
+use Illuminate\Routing\Middleware\ValidateSignature;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix( trim( (string) config( 'artisanpack.ecommerce-storefront-livewire.account.route_prefix', 'account' ), '/' ) )
@@ -29,8 +32,8 @@ Route::prefix( trim( (string) config( 'artisanpack.ecommerce-storefront-livewire
         Route::get( 'orders/{order}', [ StorefrontPageController::class, 'accountOrder' ] )->where( 'order', '[A-Za-z0-9_\-]+' )->name( 'orders.show' );
         Route::get( 'addresses', [ StorefrontPageController::class, 'accountAddresses' ] )->name( 'addresses' );
         Route::get( 'downloads', [ StorefrontPageController::class, 'accountDownloads' ] )->name( 'downloads' );
-        Route::get( 'downloads/{download}', [ StorefrontPageController::class, 'accountDownloadFile' ] )->whereNumber( 'download' )->name( 'downloads.file' );
-        Route::get( 'downloads/{download}/stream', [ StorefrontPageController::class, 'accountDownloadStream' ] )->whereNumber( 'download' )->name( 'downloads.stream' );
+        Route::get( 'downloads/{download}', [ StorefrontPageController::class, 'accountDownloadFile' ] )->whereNumber( 'download' )->middleware( ValidateSignature::class )->name( 'downloads.file' );
+        Route::get( 'downloads/{download}/stream', [ StorefrontPageController::class, 'accountDownloadStream' ] )->whereNumber( 'download' )->middleware( ValidateSignature::class )->name( 'downloads.stream' );
         Route::get( 'profile', [ StorefrontPageController::class, 'accountProfile' ] )->name( 'profile' );
         Route::get( 'claim', [ StorefrontPageController::class, 'accountClaim' ] )->name( 'claim' );
     } );
