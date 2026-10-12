@@ -207,6 +207,15 @@ it( 'shows a flashed toast after the reload', function (): void {
     expect( session()->has( ToastPayload::SESSION_KEY ) )->toBeFalse();
 } );
 
+it( 'gives the flashed toast script the CSP nonce', function (): void {
+    Illuminate\Support\Facades\Vite::useCspNonce( 'abc123' );
+    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', 'Prices changed', null, 'alert-success' ) );
+
+    $html = $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
+
+    expect( $html )->toMatch( '/<script\\s+nonce="abc123"\\s+data-ecommerce-flash-toast>/' );
+} );
+
 it( 'is in the package header', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->assertSeeLivewire( Switcher::class )
