@@ -13,10 +13,12 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Actions;
 
+use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\CustomerStatsService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Contracts\CreatesCustomerAccounts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutMarketingConsent;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
@@ -32,13 +34,23 @@ use RuntimeException;
  *
  * The user is an instance of `auth.providers.users.model` with `name`
  * (from the order's address, else the email), `email`, and the hashed
- * password. The engine customer for the email is linked to the user
- * (`CustomerService::linkUser()`), the order just placed is attached to
- * that customer, and the user is signed in. `Registered` fires, so a
- * host that verifies email sends its verification message.
+ * password, and is signed in. `Registered` fires, so a host that verifies
+ * email sends its verification message.
  *
- * Only the order just placed is attached: earlier guest orders under the
- * same email still need the claim flow, which verifies the shopper.
+ * The checkout email isn't verified, so the user only gets a customer
+ * record the engine's `CustomerService::customerForUser( $user, true )`
+ * allows: a new one when no customer has the email yet, or the existing
+ * one when the user's email is verified (`MustVerifyEmail`). An existing
+ * customer record — saved addresses, orders, preferences someone else
+ * built up under the email — is never handed to an unverified account;
+ * the engine links it once the user verifies their email. The one
+ * exception is a record this order's own marketing consent just created
+ * ({@see CheckoutMarketingConsent}), which holds nothing else. When there
+ * is no customer for the user, the order stays a guest order.
+ *
+ * The order just placed is attached to the customer. Earlier guest orders
+ * under the same email still need the claim flow, which verifies the
+ * shopper.
  *
  * Swap it through `auth.create_account_action` when registration needs
  * more (a username, extra consent, another user model).
@@ -116,7 +128,7 @@ class CreateCustomerAccount implements CreatesCustomerAccounts
                 'password' => Hash::make( $password ),
             ] )->save();
 
-            $customer = $this->customers->linkUser( $user );
+            $customer = $this->customers->customerForUser( $user, true ) ?? $this->consentCustomer( $order, $user );
             $attached = null !== $customer && 1 === Order::query()
                 ->whereKey( $order->getKey() )
                 ->whereNull( 'customer_id' )
@@ -139,6 +151,32 @@ class CreateCustomerAccount implements CreatesCustomerAccounts
         }
 
         return $user;
+    }
+
+    /**
+     * The guest customer record this order's marketing consent created,
+     * linked to the new user; null when there is none (or it has since
+     * been linked to someone else).
+     *
+     * @since 1.0.0
+     *
+     * @param  Order            $order  The order just placed.
+     * @param  Authenticatable  $user   The new user.
+     *
+     * @return Customer|null
+     */
+    protected function consentCustomer( Order $order, Authenticatable $user ): ?Customer
+    {
+        $customer = Customer::query()
+            ->whereNull( 'user_id' )
+            ->where( 'email', mb_strtolower( trim( (string) $order->email ) ) )
+            ->first();
+
+        if ( null === $customer || ! CheckoutMarketingConsent::createdCustomerFor( $order->fresh() ?? $order, $customer ) ) {
+            return null;
+        }
+
+        return $this->customers->linkUser( $user );
     }
 
     /**

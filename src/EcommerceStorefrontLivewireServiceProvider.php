@@ -32,6 +32,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutMarketingConsent;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
@@ -243,6 +244,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerOrderViewUrl();
         $this->registerVisualEditorBlocks();
         $this->registerCacheInvalidation();
+        $this->registerMarketingConsent();
     }
 
     /**
@@ -637,5 +639,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         // this into queued emails, and a webhook can boot the app on an
         // internal host or plain http.
         config( [ 'artisanpack.ecommerce.checkout.order_view_url' => '' === $base ? url( $path ) : $base . '/' . $path ] );
+    }
+
+    /**
+     * Keeps the marketing consent given at checkout on the placed order
+     * and the customer, including for orders the provider's webhook
+     * places ({@see CheckoutMarketingConsent}).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerMarketingConsent(): void
+    {
+        CheckoutMarketingConsent::boot();
     }
 }
