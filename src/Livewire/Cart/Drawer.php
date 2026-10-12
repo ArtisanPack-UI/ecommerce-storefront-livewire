@@ -87,15 +87,25 @@ class Drawer extends Component
     }
 
     /**
-     * Follows changes made elsewhere (add to cart, the cart page).
+     * Follows changes made elsewhere (add to cart, the cart page). Its own
+     * `ecommerce-cart-updated` (sent with `source` set to this class) is
+     * skipped without re-rendering: the change that sent it already did.
      *
      * @since 1.0.0
+     *
+     * @param  string|null  $source  The component that changed the cart.
      *
      * @return void
      */
     #[On( 'ecommerce-cart-updated' )]
-    public function cartUpdated(): void
+    public function cartUpdated( ?string $source = null ): void
     {
+        if ( static::class === $source ) {
+            $this->skipRender();
+
+            return;
+        }
+
         if ( $this->loaded ) {
             $this->syncQuantities();
         }

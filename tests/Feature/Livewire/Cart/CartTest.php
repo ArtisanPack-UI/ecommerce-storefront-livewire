@@ -457,3 +457,16 @@ it( 'renders the cart page route with the component', function (): void {
         ->assertSeeLivewire( Index::class )
         ->assertDontSeeHtml( 'data-screen-pending' );
 } );
+
+it( 'skips its own cart event and follows the drawer\'s', function (): void {
+    $line = shopperCartWith( [ makeProduct() ] )->items()->sole();
+
+    $component = Livewire::test( Index::class )->assertSet( "quantities.{$line->id}", 1 );
+
+    $line->update( [ 'quantity' => 4 ] );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 4, source: Index::class )
+        ->assertSet( "quantities.{$line->id}", 1 )
+        ->dispatch( 'ecommerce-cart-updated', count: 4, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 4 );
+} );

@@ -227,3 +227,28 @@ it( 'hands focus on after a removal and an undo', function (): void {
 
     expect( $component->get( 'restoredLineId' ) )->toBe( app( StorefrontCart::class )->current()->items()->sole()->id );
 } );
+
+it( 'skips its own cart event and follows everyone else\'s', function (): void {
+    $line = drawerCartWith( 'Mug', 1 )->items()->sole();
+
+    $component = Livewire::test( Drawer::class )->dispatch( 'ecommerce-cart-open' )->assertSet( "quantities.{$line->id}", 1 );
+
+    $line->update( [ 'quantity' => 3 ] );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 3, source: Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 1 )
+        ->dispatch( 'ecommerce-cart-updated', count: 3, source: HeaderButton::class )
+        ->assertSet( "quantities.{$line->id}", 3 )
+        ->dispatch( 'ecommerce-cart-updated', count: 3 )
+        ->assertSet( "quantities.{$line->id}", 3 );
+} );
+
+it( 'tags its cart event with its class and keeps its lines current itself', function (): void {
+    $line = drawerCartWith( 'Mug', 1 )->items()->sole();
+
+    Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->set( "quantities.{$line->id}", 2 )
+        ->assertDispatched( 'ecommerce-cart-updated', count: 2, source: Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 2 );
+} );

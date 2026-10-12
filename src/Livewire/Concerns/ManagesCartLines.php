@@ -205,6 +205,9 @@ trait ManagesCartLines
         }
 
         $this->cartChanged( $cart );
+        // The component skips its own cart event, so re-read the lines here
+        // (a promotion may have added or dropped one).
+        $this->syncQuantities();
         $this->linesChanged();
     }
 
