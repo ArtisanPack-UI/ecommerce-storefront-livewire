@@ -16,7 +16,9 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Show;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 afterEach( function (): void {
@@ -130,6 +132,41 @@ it( 'follows the variant the purchase form matches', function (): void {
         ->assertSet( 'variantId', $made['variants']['blue/l']->id )
         ->call( 'variantSelected', $made['product']->id, makeVariableProduct( [ 'red/m' => [ 'price' => 1 ] ], [], 'OTHER' )['variants']['red/m']->id )
         ->assertSet( 'variantId', null );
+} );
+
+it( 'does not re-query the gallery or attributes when the variant changes', function (): void {
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2000, 'stock' => 4 ],
+        'blue/l' => [ 'price' => 2600, 'stock' => 4 ],
+    ] );
+
+    ProductImage::factory()->create( [ 'product_id' => $made['product']->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/shirt.jpg', 'alt_text' => 'Shirt front', 'position' => 0 ] );
+    $made['product']->forceFill( [ 'description' => '<p>Woven in Portugal.</p>' ] )->save();
+
+    $component = Livewire::test( Show::class, [ 'product' => $made['product'] ] );
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $component->call( 'variantSelected', $made['product']->id, $made['variants']['blue/l']->id );
+
+    $tables = collect( DB::getQueryLog() )->pluck( 'query' )->implode( "\n" );
+
+    DB::disableQueryLog();
+
+    expect( $tables )->not->toContain( 'product_images' )
+        ->not->toContain( 'product_attributes' );
+
+    $component->assertSee( 'SKU: SHIRT-BLUE-L' )
+        ->assertSeeHtml( 'src="https://cdn.example.test/shirt.jpg"' )
+        ->assertSeeHtml( 'alt="Shirt front"' )
+        ->assertSee( 'Woven in Portugal.' )
+        ->assertSee( 'Colour' );
+} );
+
+it( 'keeps the precomputed content out of the browser\'s reach', function (): void {
+    expect( fn () => Livewire::test( Show::class, [ 'product' => makeProduct() ] )->set( 'content.description', '<script>alert(1)</script>' ) )
+        ->toThrow( CannotUpdateLockedPropertyException::class );
 } );
 
 it( 'opens on the variant from the query string', function (): void {

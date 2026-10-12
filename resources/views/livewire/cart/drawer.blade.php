@@ -68,7 +68,12 @@
                 </div>
             @endif
 
-            @if ( [] === $lines )
+            @if ( ! $loaded && $count > 0 )
+                {{-- The lines are listed once the drawer first opens. --}}
+                <div class="flex grow items-center justify-center py-10 text-sm text-base-content/70" aria-busy="true" data-cart-loading>
+                    <p>{{ __( 'Loading…' ) }}</p>
+                </div>
+            @elseif ( [] === $lines )
                 <div class="flex grow flex-col items-center justify-center gap-4 py-10 text-center" data-cart-empty>
                     <x-artisanpack-icon name="o-shopping-cart" class="h-10 w-10 opacity-40" aria-hidden="true" />
                     <p>{{ __( 'Your cart is empty' ) }}</p>
