@@ -43,7 +43,7 @@ It calls the engine's services in-process and owns no tables of its own.
 - **Command:** `ecommerce-storefront:install` publishes config, prints the Tailwind `@source` line and the layout include, checks for the host's login and register routes, and warns when no payment gateway is configured.
 - **Satellite lifecycle:** the package registers with the engine's `SatelliteRegistry` and registers nothing while it is uninstalled.
 - **Browser test suite** (Pest 4 and Playwright): browsing, adding to the cart, guest and registered checkout, the account, keyboard flows, and an axe check on every screen.
-- **Releases** run the engine's satellite contract verification (`--allow-empty`: the storefront registers no engine contract implementations) and attach the signed report to the GitHub release.
+- **Releases** run the engine's satellite contract verification (`--allow-empty`: the storefront registers no engine contract implementations) and attach the signed report to the GitHub release. A tag whose report isn't signed gets no release.
 
 ### Security
 

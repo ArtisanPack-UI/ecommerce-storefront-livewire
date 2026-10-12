@@ -137,19 +137,22 @@ jobs:
           echo "$NOTES" > release_notes.txt
 
       # Releases are immutable once published, so the report and its
-      # signature go in with the release, not after it. The report is
-      # attached as ecommerce-verify-report.json: GitHub renames an asset
-      # whose name starts with a dot to default.<name>.
+      # signature go in with the release, not after it. A release without
+      # them would stay unverified until the next version: refuse to
+      # publish one.
+      - name: Require a signed verification report
+        if: ${{ needs.verify.outputs.signed != 'true' }}
+        run: |
+          echo "::error::The verification report was not signed (is ECOMMERCE_VERIFY_SIGNING_KEY available to this repository?). No release was created; fix the secret and re-run this workflow."
+          exit 1
+
+      # The report is attached as ecommerce-verify-report.json: GitHub
+      # renames an asset whose name starts with a dot to default.<name>.
       - name: Download the signed verification report
-        if: ${{ needs.verify.outputs.signed == 'true' }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: ecommerce-verify-signature
           path: verification
-
-      - name: Warn when the report is not signed
-        if: ${{ needs.verify.outputs.signed != 'true' }}
-        run: echo "::warning::ECOMMERCE_VERIFY_SIGNING_KEY is not set, so the verification report is not signed or attached. The satellite stays unverified on the engine's satellites page."
 
       - name: Create GitHub Release
         # SHA-pinned: this step runs with contents: write.
@@ -158,9 +161,10 @@ jobs:
           name: v${{ steps.version.outputs.version }}
           body_path: release_notes.txt
           generate_release_notes: false
+          fail_on_unmatched_files: true
           files: |
-            ${{ needs.verify.outputs.signed == 'true' && 'verification/ecommerce-verify-report.json' || '' }}
-            ${{ needs.verify.outputs.signed == 'true' && 'verification/verify-report.sig' || '' }}
+            verification/ecommerce-verify-report.json
+            verification/verify-report.sig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
