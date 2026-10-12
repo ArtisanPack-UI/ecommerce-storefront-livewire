@@ -114,3 +114,12 @@ it( 'has no accessibility violations when showing errors', function (): void {
 
     Accessibility::assertAccessible( $page );
 } );
+
+it( 'still reports a missing label inside the page content (the drawer exclusion is narrow)', function (): void {
+    $page = visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertPresent( '#ecommerce-storefront-content' );
+
+    $page->script( 'document.getElementById( "ecommerce-storefront-content" ).insertAdjacentHTML( "afterbegin", "<input type=\"text\" data-probe>" )' );
+
+    expect( fn () => Accessibility::assertAccessible( $page ) )
+        ->toThrow( PHPUnit\Framework\AssertionFailedError::class, '(label)' );
+} );
