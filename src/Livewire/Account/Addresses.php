@@ -127,6 +127,17 @@ class Addresses extends Component
     public bool $confirmingDelete = false;
 
     /**
+     * Counts deletions, to key the focus hand-off after each: the deleted
+     * card's "Delete", where focus would return, is gone.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $deletions = 0;
+
+    /**
      * The address waiting for the delete confirmation.
      *
      * @since 1.0.0
@@ -290,6 +301,7 @@ class Addresses extends Component
         }, $this->rateLimitSubject() );
 
         if ( true === $deleted ) {
+            $this->deletions++;
             $this->toastSuccess( __( 'Address deleted' ) );
         }
     }

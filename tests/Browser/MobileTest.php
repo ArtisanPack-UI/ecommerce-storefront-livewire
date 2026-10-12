@@ -30,6 +30,15 @@ function recordFocus(): string
 }
 
 /**
+ * JavaScript: whether the filters drawer has finished sliding and fading
+ * in, so axe sees its final colours.
+ */
+function filtersDrawerShown(): string
+{
+    return '( ( panel ) => [ "none", "0%", "0px" ].includes( getComputedStyle( panel ).translate ) && getComputedStyle( panel.closest( ".drawer-side" ) ).opacity === "1" )( document.querySelector( "[data-filters-drawer]" ) )';
+}
+
+/**
  * The first storefront-visible demo product without variants.
  */
 function phoneProduct(): Product
@@ -41,7 +50,7 @@ it( 'has no accessibility violations on a phone', function ( Closure $open ): vo
     Accessibility::assertAccessible( $open()->assertNoJavaScriptErrors() );
 } )->with( [
     'catalog'              => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) ) ],
-    'catalog with filters' => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )->click( '[data-filters-open]' )->assertVisible( '[data-filters-close]' ) ],
+    'catalog with filters' => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )->click( '[data-filters-open]' )->assertScript( 'document.activeElement?.id', 'ecommerce-catalog-filters-title' )->assertScript( filtersDrawerShown() ) ],
     'product'              => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => phoneProduct()->slug ] ) ) ],
 ] );
 

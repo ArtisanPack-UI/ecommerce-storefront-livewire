@@ -18,12 +18,18 @@
     x-data="{
         returnTo: null,
         focusTitle( tries = 20 ) {
-            const title = document.getElementById( 'ecommerce-cart-drawer-title' );
+            const title  = document.getElementById( 'ecommerce-cart-drawer-title' );
+            const active = document.activeElement;
 
-            title?.focus();
+            {{-- Stop once the shopper has moved on inside the panel (the focus trap's own first stop is the close button). --}}
+            if ( ! title || active === title || ( active?.closest( '#ecommerce-cart-drawer-panel' ) && ! active.hasAttribute( 'data-cart-drawer-close' ) ) ) {
+                return;
+            }
+
+            title.focus();
 
             {{-- The panel can't take focus until it has slid in. --}}
-            if ( title && document.activeElement !== title && tries > 0 ) {
+            if ( document.activeElement !== title && tries > 0 ) {
                 setTimeout( () => this.focusTitle( tries - 1 ), 25 );
             }
         },
@@ -60,6 +66,8 @@
             </div>
 
             <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ $announcement }}</p>
+
+            @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '#ecommerce-cart-drawer-panel', 'fallback' => '#ecommerce-cart-drawer-title' ] )
 
             @if ( null !== $removedLine )
                 <div class="flex items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-sm" data-cart-undo>

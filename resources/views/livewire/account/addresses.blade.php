@@ -7,6 +7,23 @@
     @since      1.0.0
 --}}
 <div class="flex flex-col gap-6" data-account-addresses>
+    @if ( $deletions > 0 )
+        {{-- After a delete, focus (left on the removed card, or nowhere) moves to "Add an address". The modal hands focus back as it closes, so this waits for it. --}}
+        <span
+            hidden
+            wire:key="account-address-focus-{{ $deletions }}"
+            x-data
+            x-init="setTimeout( () => {
+                if ( document.activeElement && document.activeElement !== document.body && document.activeElement.isConnected ) {
+                    return;
+                }
+
+                $el.closest( '[data-account-addresses]' )?.querySelector( '[data-account-address-add]' )?.focus();
+            }, 100 )"
+            data-account-address-focus
+        ></span>
+    @endif
+
     @if ( $failed )
         <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your addresses couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-addresses-failed />
     @endif

@@ -151,3 +151,43 @@ it( 'names the quick-add button starting with its visible text', function (): vo
         ->assertScript( 'document.querySelector( \'[data-quick-add="' . $product->id . '"]\' ).textContent.replace( /\\s+/g, " " ).trim()', 'Add to cart: Quick mug' )
         ->assertPresent( 'internal:role=button[name=/^Add to cart\\s*:\\s*Quick mug$/]' );
 } );
+
+it( 'keeps focus in the drawer when a line is removed, then on the restored line after undo', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Removable mug', 'slug' => 'removable-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->keys( '[data-add-to-cart]', 'Enter' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Removable mug' )
+        ->keys( '#ecommerce-cart-drawer-panel [data-cart-line-remove]', 'Enter' )
+        ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-undo-button]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-undo-button" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' )
+        ->keys( '#ecommerce-cart-drawer-panel [data-cart-undo-button]', 'Enter' )
+        ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-line-remove]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-line-remove" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' );
+} );
+
+it( 'moves focus into the review form and back to its toggle on cancel', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Toggle mug', 'slug' => 'toggle-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'false' )
+        ->keys( '[data-review-open]', 'Enter' )
+        ->assertScript( 'document.activeElement?.id', 'ec-review-form-' . $product->id . '-heading' )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'true' )
+        ->keys( '[data-review-cancel]', 'Enter' )
+        ->assertNotPresent( '[data-review-form]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-review-open" )' )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'false' );
+} );
+
+it( 'moves focus to "Add an address" after deleting one', function (): void {
+    [ , $customer ] = shopper();
+
+    $customer->addresses()->create( [ 'first_name' => 'Ada', 'last_name' => 'Lovelace', 'address1' => '1 Main Street', 'city' => 'Springfield', 'region_code' => 'IL', 'postal_code' => '62701', 'country_code' => 'US' ] );
+
+    visit( route( 'artisanpack.ecommerce.account.addresses' ) )
+        ->click( '[data-account-address-delete]' )
+        ->click( '[data-account-address-delete-confirm]' )
+        ->assertNotPresent( '[data-account-address]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-account-address-add" )' );
+} );

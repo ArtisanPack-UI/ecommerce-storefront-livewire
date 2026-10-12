@@ -470,3 +470,12 @@ it( 'is a product page section', function (): void {
         ->assertSeeLivewire( Reviews::class )
         ->assertSeeHtml( 'data-product-section="reviews"' );
 } );
+
+it( 'keeps the review toggle while the form is open and reports its state', function (): void {
+    Livewire::test( Reviews::class, [ 'product' => makeProduct() ] )
+        ->assertSeeHtml( 'aria-expanded="false"' )
+        ->call( 'openForm' )
+        ->assertSeeHtml( 'data-review-open' )
+        ->assertSeeHtml( 'aria-expanded="true"' )
+        ->assertSeeHtml( 'data-review-cancel' );
+} );

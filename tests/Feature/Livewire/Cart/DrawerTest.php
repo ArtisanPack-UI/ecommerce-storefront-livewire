@@ -210,3 +210,20 @@ it( 'renders the header button in the package layout', function (): void {
         ->assertSeeLivewire( HeaderButton::class )
         ->assertSee( 'data-header-action="cart"', false );
 } );
+
+it( 'hands focus on after a removal and an undo', function (): void {
+    $line = drawerCartWith( 'Mug' )->items()->sole();
+
+    $component = Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertDontSeeHtml( 'data-cart-focus-after-change' )
+        ->call( 'removeLine', $line->id )
+        ->assertSet( 'lineChanges', 1 )
+        ->assertSet( 'restoredLineId', null )
+        ->assertSeeHtml( 'wire:key="cart-focus-1"' )
+        ->call( 'undoRemove' )
+        ->assertSet( 'lineChanges', 2 )
+        ->assertSeeHtml( 'wire:key="cart-focus-2"' );
+
+    expect( $component->get( 'restoredLineId' ) )->toBe( app( StorefrontCart::class )->current()->items()->sole()->id );
+} );

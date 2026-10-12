@@ -148,11 +148,16 @@
             class="lg:hidden"
             x-data="{
                 focusTitle( tries = 20 ) {
-                    const title = document.getElementById( 'ecommerce-catalog-filters-title' );
+                    const title  = document.getElementById( 'ecommerce-catalog-filters-title' );
+                    const active = document.activeElement;
 
-                    title?.focus();
+                    if ( ! title || active === title || ( active?.closest( '[data-filters-drawer]' ) && ! active.hasAttribute( 'data-filters-close' ) ) ) {
+                        return;
+                    }
 
-                    if ( title && document.activeElement !== title && tries > 0 ) {
+                    title.focus();
+
+                    if ( document.activeElement !== title && tries > 0 ) {
                         setTimeout( () => this.focusTitle( tries - 1 ), 25 );
                     }
                 },

@@ -12,6 +12,8 @@
 <div class="flex flex-col gap-10" data-ecommerce-cart>
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-cart-announcement>{{ $announcement }}</p>
 
+    @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '[data-ecommerce-cart]', 'fallback' => '[data-cart-line-remove], [data-cart-empty] a, #ecommerce-storefront-content' ] )
+
     @if ( null !== $removedLine )
         <x-artisanpack-alert icon="o-information-circle" :title="__( ':name was removed from your cart.', [ 'name' => $removedLine['name'] ] )" data-cart-undo>
             <x-slot:actions>
