@@ -41,7 +41,7 @@ use Throwable;
  * ```php
  * addFilter( 'ap.ecommerceStorefrontLivewire.recentlyViewed.productIds', function ( array $ids, int $limit, ?Customer $customer, ?Product $exclude ): array {
  *     return $history->latest( $customer, $limit, $exclude?->id );
- * }, 10, 4 );
+ * } );
  * ```
  *
  * Only storefront-visible products whose type is installed show (of the
