@@ -236,8 +236,8 @@ it( 'asks only for a billing address when nothing ships', function (): void {
         ->set( 'billing', checkoutAddress() )
         ->call( 'saveAddress' )
         ->assertHasNoErrors()
-        ->assertSet( 'step', 'payment' )
-        ->assertSet( 'announcement', 'Step 3 of 4: Payment' );
+        ->assertSet( 'step', 'review' )
+        ->assertSet( 'announcement', 'Step 3 of 4: Review order' );
 
     expect( $cart->refresh() )
         ->shipping_address->toBeNull()
@@ -330,4 +330,28 @@ it( 'resumes with the address already on the cart', function (): void {
         ->assertSet( 'step', 'address' )
         ->assertSet( 'shipping.address1', '7 Saved Street' )
         ->assertSet( 'billingSameAsShipping', true );
+} );
+
+it( 'refuses a field sent as an array instead of failing', function ( string $field ): void {
+    checkoutShipping();
+    checkoutCart();
+
+    checkoutAtAddress()
+        ->set( 'shipping', checkoutAddress() )
+        ->set( 'shipping.' . $field, [ 'x' ] )
+        ->call( 'saveAddress' )
+        ->assertHasErrors( 'shipping.' . $field )
+        ->assertSet( 'step', 'address' );
+} )->with( [ 'city', 'country_code' ] );
+
+it( 'refuses an address with array values without failing', function (): void {
+    checkoutShipping();
+    checkoutCart();
+
+    $component = checkoutAtAddress();
+    $instance  = $component->instance();
+
+    $instance->shipping = checkoutAddress( [ 'city' => [ 'x' ] ] );
+
+    expect( fn () => $instance->saveAddress() )->not->toThrow( Throwable::class );
 } );

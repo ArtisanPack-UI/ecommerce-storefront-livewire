@@ -43,7 +43,7 @@ trait EditsAddresses
      */
     protected function addressErrors( array $address, string $model ): array
     {
-        $value   = static fn ( string $field ): string => trim( (string) ( $address[ $field ] ?? '' ) );
+        $value   = static fn ( string $field ): string => is_scalar( $address[ $field ] ?? null ) ? trim( (string) $address[ $field ] ) : '';
         $country = strtoupper( $value( 'country_code' ) );
         $regions = AddressFormats::regions( $country );
         $errors  = [];
@@ -94,10 +94,10 @@ trait EditsAddresses
     protected function toAddress( array $address ): Address
     {
         $fields  = [];
-        $country = strtoupper( trim( (string) ( $address['country_code'] ?? '' ) ) );
+        $country = strtoupper( is_scalar( $address['country_code'] ?? null ) ? trim( (string) $address['country_code'] ) : '' );
 
         foreach ( AddressForm::FIELDS as $field ) {
-            $value            = trim( (string) ( $address[ $field ] ?? '' ) );
+            $value            = is_scalar( $address[ $field ] ?? null ) ? trim( (string) $address[ $field ] ) : '';
             $fields[ $field ] = '' === $value ? null : $value;
         }
 
@@ -147,7 +147,8 @@ trait EditsAddresses
     }
 
     /**
-     * After an edit: a new country clears the region.
+     * After an edit: a value that isn't text (an array sent from the
+     * browser) becomes empty, and a new country clears the region.
      *
      * @since 1.0.0
      *
@@ -158,6 +159,12 @@ trait EditsAddresses
      */
     protected function addressChanged( array $address, ?string $field ): array
     {
+        foreach ( AddressForm::FIELDS as $name ) {
+            if ( array_key_exists( $name, $address ) && null !== $address[ $name ] && ! is_scalar( $address[ $name ] ) ) {
+                $address[ $name ] = '';
+            }
+        }
+
         if ( 'country_code' === $field ) {
             $address['region_code'] = '';
             $address['region']      = '';
