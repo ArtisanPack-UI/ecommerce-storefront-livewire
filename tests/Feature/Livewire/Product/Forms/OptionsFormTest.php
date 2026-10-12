@@ -80,3 +80,24 @@ it( 'adds separately-added fields as their own lines', function (): void {
 
     expect( Cart::query()->sole()->items()->sole()->product_id )->toBe( $mug->id );
 } );
+
+it( 'keeps a separately-added quantity the engine refused and clears the rest', function (): void {
+    $group   = Product::factory()->grouped()->create();
+    $mug     = makeProduct( 900, [ 'name' => 'Mug' ] );
+    $vase    = makeProduct( 2500, [ 'name' => 'Vase' ] );
+    $mugRow  = ProductChild::factory()->create( [ 'parent_product_id' => $group->id, 'child_product_id' => $mug->id, 'position' => 0 ] );
+    $vaseRow = ProductChild::factory()->create( [ 'parent_product_id' => $group->id, 'child_product_id' => $vase->id, 'position' => 1 ] );
+
+    setStock( $vase, 2 );
+
+    Livewire::test( OptionsForm::class, [ 'product' => $group ] )
+        ->set( "options.items.{$mugRow->id}", 1 )
+        ->set( "options.items.{$vaseRow->id}", 5 )
+        ->call( 'addToCart' )
+        ->assertHasErrors( "options.items.{$vaseRow->id}" )
+        ->assertDispatched( 'ecommerce-cart-updated', count: 1 )
+        ->assertSet( "options.items.{$vaseRow->id}", 5 )
+        ->assertSet( "options.items.{$mugRow->id}", 0 );
+
+    expect( Cart::query()->sole()->items()->sole()->product_id )->toBe( $mug->id );
+} );

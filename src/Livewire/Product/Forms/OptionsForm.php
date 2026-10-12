@@ -131,8 +131,11 @@ class OptionsForm extends PurchaseForm
         }
 
         if ( [] !== $this->addLines( $lines ) ) {
+            // Keep the quantities the engine refused, next to their errors.
             foreach ( $separately as $field ) {
-                data_set( $this->options, $field['name'], 0 );
+                if ( ! $this->getErrorBag()->has( 'options.' . $field['name'] ) ) {
+                    data_set( $this->options, $field['name'], 0 );
+                }
             }
         }
     }
