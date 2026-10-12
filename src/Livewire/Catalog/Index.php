@@ -86,6 +86,11 @@ use Throwable;
  * A custom group's value is in the query string under `f[{key}]`; `apply`
  * gets the chosen option values (or true for a toggle).
  *
+ * The query-string properties are declared `mixed`, since a crawler or a
+ * mangled link can send anything (`per_page=abc`, `sort[]=x`), and Livewire 3
+ * fails on a value that doesn't fit a typed property. They are normalised
+ * to the types their `@var` tags give before anything reads them.
+ *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
  *
@@ -152,22 +157,28 @@ class Index extends Component
     /**
      * The sort key.
      *
+     * Untyped because the query string can hold anything (`sort[]=x`);
+     * {@see self::mount()} and the `updated*()` hooks turn it into a string.
+     *
      * @since 1.0.0
      *
-     * @var string
+     * @var mixed
      */
     #[Url( history: true )]
-    public string $sort = '';
+    public mixed $sort = '';
 
     /**
      * Products per page.
      *
+     * Untyped because the query string can hold anything (`per_page=abc`);
+     * {@see self::mount()} and the `updated*()` hooks turn it into an int.
+     *
      * @since 1.0.0
      *
-     * @var int
+     * @var mixed
      */
     #[Url( as: 'per_page', history: true )]
-    public int $perPage = 0;
+    public mixed $perPage = 0;
 
     /**
      * Show the filter sidebar and drawer.
@@ -187,7 +198,7 @@ class Index extends Component
      * @var string
      */
     #[Url( as: 'category', history: true )]
-    public string $categoryFilter = '';
+    public mixed $categoryFilter = '';
 
     /**
      * The chosen tag's slug.
@@ -197,7 +208,7 @@ class Index extends Component
      * @var string
      */
     #[Url( as: 'tag', history: true )]
-    public string $tagFilter = '';
+    public mixed $tagFilter = '';
 
     /**
      * The lowest price, in minor units of the shopper's currency.
@@ -207,7 +218,7 @@ class Index extends Component
      * @var int|null
      */
     #[Url( as: 'price_min', history: true )]
-    public ?int $priceMin = null;
+    public mixed $priceMin = null;
 
     /**
      * The highest price, in minor units of the shopper's currency.
@@ -217,7 +228,7 @@ class Index extends Component
      * @var int|null
      */
     #[Url( as: 'price_max', history: true )]
-    public ?int $priceMax = null;
+    public mixed $priceMax = null;
 
     /**
      * The chosen attribute values, attribute key => values.
@@ -227,7 +238,7 @@ class Index extends Component
      * @var array<string, array<int, string>>
      */
     #[Url( as: 'attr', history: true )]
-    public array $attributeFilters = [];
+    public mixed $attributeFilters = [];
 
     /**
      * Only products that can be bought now.
@@ -237,7 +248,7 @@ class Index extends Component
      * @var bool
      */
     #[Url( as: 'in_stock', history: true )]
-    public bool $inStock = false;
+    public mixed $inStock = false;
 
     /**
      * Only products on sale.
@@ -247,7 +258,7 @@ class Index extends Component
      * @var bool
      */
     #[Url( as: 'on_sale', history: true )]
-    public bool $onSale = false;
+    public mixed $onSale = false;
 
     /**
      * The minimum average rating (0 for any).
@@ -257,7 +268,7 @@ class Index extends Component
      * @var int
      */
     #[Url( as: 'rating', history: true )]
-    public int $minRating = 0;
+    public mixed $minRating = 0;
 
     /**
      * The values of filter groups added through the `catalog.filters` hook,
@@ -268,7 +279,7 @@ class Index extends Component
      * @var array<string, array<int, string>|string>
      */
     #[Url( as: 'f', history: true )]
-    public array $extraFilters = [];
+    public mixed $extraFilters = [];
 
     /**
      * The filter group definitions after the hook, for this request.
@@ -299,8 +310,8 @@ class Index extends Component
     public function mount(): void
     {
         $this->ids     = array_values( array_unique( array_filter( array_map( 'intval', $this->ids ), static fn ( int $id ): bool => $id > 0 ) ) );
-        $this->sort    = $this->validSort( $this->sort );
-        $this->perPage = $this->validPerPage( $this->perPage );
+        $this->sort    = $this->validSort( is_string( $this->sort ) ? $this->sort : '' );
+        $this->perPage = $this->validPerPage( self::queryInt( $this->perPage ) ?? 0 );
 
         $this->sanitizeFilters();
     }
@@ -389,7 +400,7 @@ class Index extends Component
      */
     public function updatedSort(): void
     {
-        $this->sort = $this->validSort( $this->sort );
+        $this->sort = $this->validSort( is_string( $this->sort ) ? $this->sort : '' );
         $this->resetPage();
     }
 
@@ -402,7 +413,7 @@ class Index extends Component
      */
     public function updatedPerPage(): void
     {
-        $this->perPage = $this->validPerPage( $this->perPage );
+        $this->perPage = $this->validPerPage( self::queryInt( $this->perPage ) ?? 0 );
         $this->resetPage();
     }
 
@@ -770,6 +781,8 @@ class Index extends Component
      */
     protected function sanitizeFilters(): void
     {
+        $this->normalizeFilterTypes();
+
         $definitions = $this->filterDefinitions();
 
         if ( '' !== $this->categoryFilter ) {
@@ -837,6 +850,60 @@ class Index extends Component
         }
 
         $this->extraFilters = $extra;
+    }
+
+    /**
+     * Gives each filter property the type its `@var` tag declares,
+     * whatever the query string or the browser sent: a non-string slug
+     * becomes empty, a non-numeric price null, a non-array filter map
+     * empty, and an unknown toggle value off.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function normalizeFilterTypes(): void
+    {
+        $this->categoryFilter   = is_string( $this->categoryFilter ) ? $this->categoryFilter : '';
+        $this->tagFilter        = is_string( $this->tagFilter ) ? $this->tagFilter : '';
+        $this->priceMin         = self::queryInt( $this->priceMin );
+        $this->priceMax         = self::queryInt( $this->priceMax );
+        $this->attributeFilters = is_array( $this->attributeFilters ) ? $this->attributeFilters : [];
+        $this->inStock          = self::queryBool( $this->inStock );
+        $this->onSale           = self::queryBool( $this->onSale );
+        $this->minRating        = self::queryInt( $this->minRating ) ?? 0;
+        $this->extraFilters     = is_array( $this->extraFilters ) ? $this->extraFilters : [];
+    }
+
+    /**
+     * A query-string value as an int, or null when it isn't a whole number.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return int|null
+     */
+    protected static function queryInt( mixed $value ): ?int
+    {
+        $int = is_int( $value ) || is_string( $value ) ? filter_var( $value, FILTER_VALIDATE_INT ) : false;
+
+        return false === $int ? null : $int;
+    }
+
+    /**
+     * A query-string value as a toggle: on for `true`, `1`, `'1'`, `'true'`,
+     * or `'on'`; off for anything else.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return bool
+     */
+    protected static function queryBool( mixed $value ): bool
+    {
+        return in_array( $value, [ true, 1, '1', 'true', 'on' ], true );
     }
 
     /**

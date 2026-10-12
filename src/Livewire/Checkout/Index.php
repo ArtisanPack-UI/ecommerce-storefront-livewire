@@ -187,12 +187,16 @@ class Index extends Component
      * The step on screen. Empty until mount picks the furthest step the
      * shopper can reach (or the one in the query string).
      *
+     * Untyped because the query string can hold anything (`step[]=x`),
+     * which Livewire 3 can't put in a typed property; mount() makes it a
+     * string.
+     *
      * @since 1.0.0
      *
      * @var string
      */
     #[Url( as: 'step', history: true, except: '' )]
-    public string $step = '';
+    public mixed $step = '';
 
     /**
      * The cart this checkout started with, so an order placed from it
@@ -554,6 +558,7 @@ class Index extends Component
      */
     public function mount(): void
     {
+        $this->step   = is_string( $this->step ) ? $this->step : '';
         $this->layout = CheckoutLayout::resolve( $this->layoutOverride );
 
         $cart = $this->cart();
@@ -643,7 +648,7 @@ class Index extends Component
                 $this->quoteRates( $cart );
             }
 
-            if ( ! $this->canVisit( $this->step, $cart ) ) {
+            if ( ! is_string( $this->step ) || ! $this->canVisit( $this->step, $cart ) ) {
                 $this->moveTo( $this->furthestStep( $cart ), $cart );
             } elseif ( 'payment' === $this->step ) {
                 // A session made for the old total can't pay for the new one.

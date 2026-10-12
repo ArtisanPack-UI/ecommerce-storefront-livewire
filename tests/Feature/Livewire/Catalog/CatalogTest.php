@@ -135,6 +135,59 @@ it( 'falls back to the defaults for an unknown sort or page size', function (): 
         ->assertSet( 'perPage', 24 );
 } );
 
+it( 'normalises malformed query-string values instead of failing (Livewire 3)', function (): void {
+    Livewire::withQueryParams( [
+        'sort'      => [ 'x' ],
+        'per_page'  => 'abc',
+        'category'  => [ 'a' ],
+        'tag'       => [ 'a' ],
+        'price_min' => 'cheap',
+        'price_max' => [ '1' ],
+        'attr'      => 'red',
+        'in_stock'  => [ '1' ],
+        'on_sale'   => 'true',
+        'rating'    => 'x',
+        'f'         => 'x',
+    ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'sort', 'newest' )
+        ->assertSet( 'perPage', 24 )
+        ->assertSet( 'categoryFilter', '' )
+        ->assertSet( 'tagFilter', '' )
+        ->assertSet( 'priceMin', null )
+        ->assertSet( 'priceMax', null )
+        ->assertSet( 'attributeFilters', [] )
+        ->assertSet( 'inStock', false )
+        ->assertSet( 'onSale', true )
+        ->assertSet( 'minRating', 0 )
+        ->assertSet( 'extraFilters', [] );
+} );
+
+it( 'reads numeric query-string values given as strings', function (): void {
+    Livewire::withQueryParams( [ 'per_page' => '12', 'price_min' => '500', 'rating' => '3', 'in_stock' => '1' ] )
+        ->test( Index::class )
+        ->assertSet( 'perPage', 12 )
+        ->assertSet( 'priceMin', 500 )
+        ->assertSet( 'minRating', 3 )
+        ->assertSet( 'inStock', true );
+} );
+
+it( 'normalises malformed values set from the browser', function (): void {
+    Livewire::test( Index::class )
+        ->set( 'sort', [ 'x' ] )
+        ->assertSet( 'sort', 'newest' )
+        ->set( 'perPage', 'abc' )
+        ->assertSet( 'perPage', 24 )
+        ->set( 'perPage', '48' )
+        ->assertSet( 'perPage', 48 )
+        ->set( 'minRating', [ 4 ] )
+        ->assertSet( 'minRating', 0 )
+        ->set( 'attributeFilters', 'red' )
+        ->assertSet( 'attributeFilters', [] )
+        ->assertOk();
+} );
+
 it( 'rejects an unknown sort or page size set from the browser', function (): void {
     Livewire::test( Index::class )
         ->set( 'sort', 'relevance' )

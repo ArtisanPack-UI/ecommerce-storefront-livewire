@@ -76,12 +76,15 @@ class Index extends CatalogIndex
     /**
      * The search term.
      *
+     * Untyped because the query string can hold anything (`q[]=x`);
+     * {@see self::mount()} and {@see self::updatedQ()} turn it into a string.
+     *
      * @since 1.0.0
      *
      * @var string
      */
     #[Url( as: 'q', history: true, except: '' )]
-    public string $q = '';
+    public mixed $q = '';
 
     /**
      * The search for this request (memoised; null before it runs).
@@ -110,7 +113,7 @@ class Index extends CatalogIndex
      */
     public function mount(): void
     {
-        $this->q = self::normalizeTerm( $this->q );
+        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
 
         parent::mount();
         $this->checkTerm();
@@ -125,7 +128,7 @@ class Index extends CatalogIndex
      */
     public function updatedQ(): void
     {
-        $this->q = self::normalizeTerm( $this->q );
+        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
 
         $this->checkTerm();
         $this->resetPage();

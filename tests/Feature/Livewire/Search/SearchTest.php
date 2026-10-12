@@ -64,6 +64,28 @@ it( 'lists matching products in the catalog grid, by relevance', function (): vo
         ->assertSeeHtml( 'data-product-card="' . $this->linen->id . '"' );
 } );
 
+it( 'treats a malformed term or page size in the query string as missing (Livewire 3)', function (): void {
+    Livewire::withQueryParams( [ 'q' => [ 'x' ] ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'q', '' )
+        ->assertSeeHtml( 'data-empty-reason="idle"' );
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'per_page' => 'abc' ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'perPage', 24 )
+        ->assertSee( 'Linen shirt' );
+} );
+
+it( 'treats a malformed term set from the browser as empty', function (): void {
+    Livewire::withQueryParams( [ 'q' => 'linen' ] )
+        ->test( Index::class )
+        ->set( 'q', [ 'x' ] )
+        ->assertOk()
+        ->assertSet( 'q', '' );
+} );
+
 it( 'offers relevance and the catalog sorts', function (): void {
     $component = Livewire::withQueryParams( [ 'q' => 'linen' ] )->test( Index::class );
 
