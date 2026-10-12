@@ -31,14 +31,16 @@ final class Accessibility
         // `drawer-toggle` checkbox is unlabelled and outside any landmark.
         [ 'label', '.drawer' ],
         [ 'region', '.drawer' ],
-        // LIBRARY_BREADCRUMBS: `x-artisanpack-breadcrumbs` puts the separator
-        // <span>s straight into its <ul>.
+        // ArtisanPack-UI/livewire-ui-components#129:
+        // `x-artisanpack-breadcrumbs` puts the separator <span>s straight
+        // into its <ul>.
         [ 'list', 'nav[aria-label="Breadcrumb"]' ],
-        // LIBRARY_COLLAPSE: `x-artisanpack-collapse` inside an accordion
-        // renders an unlabelled radio as the section toggle.
+        // ArtisanPack-UI/livewire-ui-components#130: `x-artisanpack-collapse`
+        // inside an accordion renders an unlabelled radio as the section
+        // toggle.
         [ 'label', '.collapse' ],
-        // LIBRARY_ERROR_CONTRAST: form components print field errors in
-        // `text-error`, about 3:1 on the default light theme.
+        // ArtisanPack-UI/livewire-ui-components#131: form components print
+        // field errors in `text-error`, about 3:1 on the default light theme.
         [ 'color-contrast', '[x-class="text-error"]' ],
     ];
 

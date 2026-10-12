@@ -41,9 +41,9 @@ These come from `artisanpack-ui/livewire-ui-components` markup the storefront ca
 
 - **Select names.** `x-artisanpack-select` labels with a `<legend>`, so the select itself has no accessible name ([livewire-ui-components#117](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/117)).
 - **Drawer toggle.** The library drawer's `drawer-toggle` checkbox is unlabelled and outside any landmark ([livewire-ui-components#117](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/117)). The cart drawer takes it out of the tab order and hides it from screen readers, and moves focus to its title instead.
-- **Breadcrumbs.** `x-artisanpack-breadcrumbs` puts its separator `<span>`s straight into its `<ul>`, so the list markup is invalid. Filed on livewire-ui-components.
-- **Accordion sections.** `x-artisanpack-collapse` inside an accordion renders an unlabelled radio as the section toggle (the product page's details sections). Filed on livewire-ui-components.
-- **Field error contrast.** Form components print field errors in `text-error`, about 3:1 on the default light theme. Filed on livewire-ui-components.
+- **Breadcrumbs.** `x-artisanpack-breadcrumbs` puts its separator `<span>`s straight into its `<ul>`, so the list markup is invalid ([livewire-ui-components#129](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/129)).
+- **Accordion sections.** `x-artisanpack-collapse` inside an accordion renders an unlabelled radio as the section toggle (the product page's details sections) ([livewire-ui-components#130](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/130)).
+- **Field error contrast.** Form components print field errors in `text-error`, about 3:1 on the default light theme ([livewire-ui-components#131](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/131)).
 
 Each is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it sits inside that selector, so nothing else can regress unnoticed. An exclusion is removed when the library fixes it.
 
