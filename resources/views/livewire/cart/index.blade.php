@@ -154,7 +154,7 @@
 
                         <form wire:submit="applyCoupon" class="flex items-end gap-2" novalidate>
                             <div class="grow">
-                                <x-artisanpack-input
+                                <x-artisanpack-ec-field
                                     id="ec-cart-coupon"
                                     :label="__( 'Coupon code' )"
                                     wire:model="couponCode"
@@ -173,7 +173,8 @@
                     <form wire:submit="estimateShipping" class="flex flex-col gap-3 border-t border-base-content/10 pt-4" aria-labelledby="ec-cart-estimate-heading" novalidate data-cart-estimate>
                         <h3 id="ec-cart-estimate-heading" class="font-semibold">{{ __( 'Estimate shipping' ) }}</h3>
 
-                        <x-artisanpack-select
+                        <x-artisanpack-ec-field
+                            control="select"
                             id="ec-cart-estimate-country"
                             :label="__( 'Country' )"
                             :options="$countries"
@@ -184,7 +185,8 @@
                         />
 
                         @if ( [] !== $regions )
-                            <x-artisanpack-select
+                            <x-artisanpack-ec-field
+                                control="select"
                                 id="ec-cart-estimate-region"
                                 :label="__( 'Region' )"
                                 :options="$regions"
@@ -195,7 +197,7 @@
                             />
                         @endif
 
-                        <x-artisanpack-input
+                        <x-artisanpack-ec-field
                             id="ec-cart-estimate-postcode"
                             :label="$postcodeLabel"
                             wire:model="estimatePostcode"

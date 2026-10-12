@@ -95,14 +95,14 @@
 
                     <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required />
 
-                    <x-artisanpack-input :id="$ecommerceFormId . '-title'" :label="__( 'Title' )" wire:model="title" maxlength="255" error-field="title" />
+                    <x-artisanpack-ec-field :id="$ecommerceFormId . '-title'" :label="__( 'Title' )" wire:model="title" maxlength="255" error-field="title" />
 
-                    <x-artisanpack-textarea :id="$ecommerceFormId . '-body'" :label="__( 'Your review' )" wire:model="body" rows="5" maxlength="10000" error-field="body" />
+                    <x-artisanpack-ec-field control="textarea" :id="$ecommerceFormId . '-body'" :label="__( 'Your review' )" wire:model="body" rows="5" maxlength="10000" error-field="body" />
 
                     @if ( $guest )
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <x-artisanpack-input :id="$ecommerceFormId . '-name'" :label="__( 'Your name' )" wire:model="authorName" autocomplete="name" required error-field="authorName" />
-                            <x-artisanpack-input :id="$ecommerceFormId . '-email'" type="email" :label="__( 'Your email' )" :hint="__( 'Not shown with your review.' )" wire:model="authorEmail" autocomplete="email" required error-field="authorEmail" />
+                            <x-artisanpack-ec-field :id="$ecommerceFormId . '-name'" :label="__( 'Your name' )" wire:model="authorName" autocomplete="name" required error-field="authorName" />
+                            <x-artisanpack-ec-field :id="$ecommerceFormId . '-email'" type="email" :label="__( 'Your email' )" :hint="__( 'Not shown with your review.' )" wire:model="authorEmail" autocomplete="email" required error-field="authorEmail" />
                         </div>
                     @endif
 

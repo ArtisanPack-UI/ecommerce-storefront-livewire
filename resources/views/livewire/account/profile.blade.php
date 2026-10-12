@@ -11,11 +11,11 @@
         <h2 id="ec-account-profile-details" class="text-xl font-bold">{{ __( 'Your details' ) }}</h2>
 
         <form wire:submit="saveProfile" class="grid max-w-2xl gap-4 sm:grid-cols-2" novalidate data-account-profile-form>
-            <x-artisanpack-input id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
-            <x-artisanpack-input id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
+            <x-artisanpack-ec-field id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
+            <x-artisanpack-ec-field id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
 
             <div class="sm:col-span-2">
-                <x-artisanpack-input id="profile.phone" type="tel" :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
+                <x-artisanpack-ec-field id="profile.phone" type="tel" :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
             </div>
 
             <div class="sm:col-span-2">

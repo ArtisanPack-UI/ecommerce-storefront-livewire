@@ -243,6 +243,19 @@ it( 'validates the form', function ( array $input, string $field, string $messag
     'long title'     => [ [ 'title' => str_repeat( 'a', 256 ) ], 'title', 'Keep the title under 255 characters.' ],
 ] );
 
+it( 'links a review field to its error', function (): void {
+    $product = makeProduct();
+
+    Livewire::test( Reviews::class, [ 'product' => $product ] )
+        ->call( 'openForm' )
+        ->set( 'rating', 4 )
+        ->set( 'authorEmail', 'nope' )
+        ->call( 'submit' )
+        ->assertHasErrors( 'authorEmail' )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-ec-review-form-' . $product->id . '-email-error ec-field-ec-review-form-' . $product->id . '-email-hint"' )
+        ->assertSeeHtml( '<p id="ec-field-ec-review-form-' . $product->id . '-email-error"' );
+} );
+
 it( 'files a honeypot submission as spam but thanks the sender as usual', function (): void {
     Livewire::test( Reviews::class, [ 'product' => makeProduct() ] )
         ->call( 'openForm' )

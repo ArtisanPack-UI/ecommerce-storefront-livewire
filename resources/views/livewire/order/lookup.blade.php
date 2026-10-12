@@ -16,8 +16,8 @@
     </div>
 
     <form wire:submit="find" class="flex flex-col gap-4" novalidate data-order-lookup-form>
-        <x-artisanpack-input id="email" type="email" :label="__( 'Email' )" autocomplete="email" required wire:model="email" />
-        <x-artisanpack-input id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
+        <x-artisanpack-ec-field id="email" type="email" :label="__( 'Email' )" autocomplete="email" required wire:model="email" />
+        <x-artisanpack-ec-field id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
 
         <div>
             <x-artisanpack-button type="submit" :label="__( 'Find my order' )" color="primary" spinner="find" wire:loading.attr="disabled" wire:target="find" data-order-lookup-submit />

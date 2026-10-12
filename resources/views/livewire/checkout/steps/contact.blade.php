@@ -29,7 +29,8 @@
     @endif
 
     <div data-field="email">
-        <x-artisanpack-input
+        <x-artisanpack-ec-field
+            id="ec-checkout-email"
             type="email"
             :label="__( 'Email' )"
             :hint="__( 'We\'ll send your order confirmation here.' )"

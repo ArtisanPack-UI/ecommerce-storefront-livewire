@@ -94,6 +94,20 @@ it( 'saves the shipping address, billing the same, and moves on to shipping', fu
         ] );
 } );
 
+it( 'marks invalid address fields and links each to its error and hint', function (): void {
+    checkoutCart();
+
+    checkoutAtAddress()
+        ->set( 'shipping', checkoutAddress( [ 'city' => '', 'postal_code' => 'nope' ] ) )
+        ->call( 'saveAddress' )
+        ->assertHasErrors( [ 'shipping.city', 'shipping.postal_code' ] )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-shipping-city-error"' )
+        ->assertSeeHtml( '<p id="ec-field-shipping-city-error"' )
+        ->assertSeeHtml( 'aria-describedby="ec-field-shipping-postal_code-error ec-field-shipping-postal_code-hint"' )
+        ->assertSeeHtml( '<p id="ec-field-shipping-postal_code-hint"' )
+        ->assertSeeHtml( 'data-field="shipping.city"' );
+} );
+
 it( 'takes a Canadian address with a province', function (): void {
     $cart = checkoutCart();
 

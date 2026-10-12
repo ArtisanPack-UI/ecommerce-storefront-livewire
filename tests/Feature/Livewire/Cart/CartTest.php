@@ -223,7 +223,8 @@ it( 'shows the engine\'s coupon messages inline', function ( string $code, strin
         ->set( 'couponCode', $code )
         ->call( 'applyCoupon' )
         ->assertHasErrors( 'couponCode' )
-        ->assertSee( $message );
+        ->assertSee( $message )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-ec-cart-coupon-error"' );
 } )->with( [
     'empty'   => [ '  ', 'Enter a coupon code.' ],
     'unknown' => [ 'NOPE', 'That coupon code is not valid.' ],

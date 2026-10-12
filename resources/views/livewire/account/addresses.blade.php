@@ -58,7 +58,7 @@
 
     <x-artisanpack-modal wire:model="editing" :title="null === $editingId ? __( 'Add an address' ) : __( 'Edit address' )" box-class="max-w-2xl" data-account-address-modal>
         <form wire:submit="save" class="flex flex-col gap-4" novalidate>
-            <x-artisanpack-input id="form.label" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
+            <x-artisanpack-ec-field id="form.label" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
 
             <x-artisanpack-ec-address-form model="form" :country="$form['country_code'] ?? null" />
 

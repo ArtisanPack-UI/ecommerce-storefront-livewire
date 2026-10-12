@@ -79,7 +79,8 @@ it( 'validates the profile', function (): void {
         ->set( 'profile.first_name', str_repeat( 'a', 256 ) )
         ->set( 'profile.phone', 'call me maybe' )
         ->call( 'saveProfile' )
-        ->assertHasErrors( [ 'profile.first_name', 'profile.phone' ] );
+        ->assertHasErrors( [ 'profile.first_name', 'profile.phone' ] )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-profile-phone-error"' );
 
     expect( $customer->refresh()->first_name )->toBe( 'Ada' );
 } );

@@ -113,6 +113,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'address-form'    => Components\AddressForm::class,
         'category-grid'   => Components\CategoryGrid::class,
         'empty-state'     => Components\EmptyState::class,
+        'field'           => Components\Field::class,
         'gallery'         => Components\Gallery::class,
         'money'           => Components\Money::class,
         'price'           => Components\Price::class,

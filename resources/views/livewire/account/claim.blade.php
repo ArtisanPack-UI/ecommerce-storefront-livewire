@@ -16,8 +16,8 @@
     </div>
 
     <form wire:submit="claim" class="flex flex-col gap-4" novalidate data-account-claim-form>
-        <x-artisanpack-input id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
-        <x-artisanpack-input id="postalCode" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
+        <x-artisanpack-ec-field id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
+        <x-artisanpack-ec-field id="postalCode" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
 
         <div>
             <x-artisanpack-button type="submit" :label="__( 'Claim orders' )" color="primary" spinner="claim" wire:loading.attr="disabled" wire:target="claim" data-account-claim-submit />

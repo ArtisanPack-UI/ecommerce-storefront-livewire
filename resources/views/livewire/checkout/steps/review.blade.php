@@ -71,7 +71,9 @@
     </section>
 
     <div data-field="orderNote">
-        <x-artisanpack-textarea
+        <x-artisanpack-ec-field
+            control="textarea"
+            id="ec-checkout-order-note"
             :label="__( 'Order note (optional)' )"
             :hint="__( 'Anything the store should know about your order. Up to :max characters.', [ 'max' => $noteMaxLength ] )"
             rows="3"
@@ -87,7 +89,7 @@
 
             @if ( $createAccount )
                 <div data-field="password">
-                    <x-artisanpack-password :label="__( 'Password' )" autocomplete="new-password" wire:model="password" data-checkout-password />
+                    <x-artisanpack-ec-field control="password" id="ec-checkout-password" :label="__( 'Password' )" autocomplete="new-password" wire:model="password" data-checkout-password />
                 </div>
             @endif
         </div>
@@ -95,7 +97,7 @@
 
     @if ( null !== $termsUrl )
         <div class="flex flex-col gap-1" data-field="acceptTerms">
-            <x-artisanpack-checkbox :label="__( 'I accept the terms and conditions' )" wire:model="acceptTerms" data-checkout-terms />
+            <x-artisanpack-ec-field control="checkbox" id="ec-checkout-terms" :label="__( 'I accept the terms and conditions' )" wire:model="acceptTerms" data-checkout-terms />
             <a href="{{ $termsUrl }}" class="link text-sm" target="_blank" rel="noopener" data-checkout-terms-link>
                 {{ __( 'Read the terms and conditions' ) }}<span class="sr-only"> {{ __( '(opens in a new tab)' ) }}</span>
             </a>
