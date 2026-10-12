@@ -11,6 +11,7 @@ follows [Semantic Versioning](https://semver.org/).
 The first stable release of the Livewire storefront for the ArtisanPack UI
 ecommerce engine. It runs on engine 1.1, Laravel 12 or 13, and Livewire 3.6+ or 4.
 It calls the engine's services in-process and owns no tables of its own.
+The package is licensed under MIT.
 
 ### Added
 
