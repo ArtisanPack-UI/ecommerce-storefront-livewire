@@ -271,8 +271,10 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     }
 
     /**
-     * The middleware classes behind `account.middleware`, without groups
-     * (`web`), which Livewire's update route already has.
+     * The middleware classes behind `account.middleware`. Groups are
+     * expanded (recursively, guarding against cycles), except `web` and
+     * any group on Livewire's update route, which every update request
+     * already runs.
      *
      * @since 1.0.0
      *
@@ -283,25 +285,17 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $router  = app( 'router' );
         $aliases = $router->getMiddleware();
         $groups  = $router->getMiddlewareGroups();
-        $classes = [];
+        $skip    = [ 'web' => true ];
 
-        foreach ( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ) as $entry ) {
-            if ( ! is_string( $entry ) || '' === $entry ) {
-                continue;
-            }
-
-            $name = explode( ':', $entry, 2 )[0];
-
-            if ( isset( $groups[ $name ] ) ) {
-                continue;
-            }
-
-            $class = $aliases[ $name ] ?? $name;
-
-            if ( is_string( $class ) && class_exists( $class ) ) {
-                $classes[] = $class;
+        foreach ( [ 'livewire.update', 'default-livewire.update' ] as $updateRoute ) {
+            foreach ( (array) $router->getRoutes()->getByName( $updateRoute )?->middleware() as $routeMiddleware ) {
+                if ( is_string( $routeMiddleware ) && isset( $groups[ $routeMiddleware ] ) ) {
+                    $skip[ $routeMiddleware ] = true;
+                }
             }
         }
+
+        $classes = self::expandMiddleware( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ), $aliases, $groups, $skip );
 
         return array_values( array_unique( $classes ) );
     }
@@ -322,6 +316,49 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         if ( [] !== $middleware ) {
             Livewire::addPersistentMiddleware( $middleware );
         }
+    }
+
+    /**
+     * The middleware classes behind `$entries`, expanding groups not in
+     * `$skip`. A group being expanded is added to `$skip` so a group that
+     * (directly or indirectly) contains itself ends.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, mixed>                $entries  Middleware aliases, classes, or group names.
+     * @param  array<string, mixed>             $aliases  The router's middleware aliases.
+     * @param  array<string, array<int, mixed>> $groups   The router's middleware groups.
+     * @param  array<string, true>              $skip     Groups to leave out.
+     *
+     * @return array<int, class-string>
+     */
+    protected static function expandMiddleware( array $entries, array $aliases, array $groups, array $skip ): array
+    {
+        $classes = [];
+
+        foreach ( $entries as $entry ) {
+            if ( ! is_string( $entry ) || '' === $entry ) {
+                continue;
+            }
+
+            $name = explode( ':', $entry, 2 )[0];
+
+            if ( isset( $groups[ $name ] ) ) {
+                if ( ! isset( $skip[ $name ] ) ) {
+                    $classes = array_merge( $classes, self::expandMiddleware( (array) $groups[ $name ], $aliases, $groups, $skip + [ $name => true ] ) );
+                }
+
+                continue;
+            }
+
+            $class = $aliases[ $name ] ?? $name;
+
+            if ( is_string( $class ) && class_exists( $class ) ) {
+                $classes[] = $class;
+            }
+        }
+
+        return $classes;
     }
 
     /**
@@ -576,7 +613,8 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
      * Points the engine's guest order links (confirmation emails,
      * `checkout.order_view_url`) at the storefront's signed order page
      * (spec §7.6), unless the host set its own. Skipped when the storefront
-     * doesn't register its routes.
+     * doesn't register its routes. The base is `app.url` (the current
+     * request's only when that's empty).
      *
      * @since 1.0.0
      *
@@ -592,6 +630,12 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $prefix = trim( (string) config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix', 'shop' ), '/' );
 
-        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => url( ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}' ) ] );
+        $path = ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}';
+        $base = rtrim( trim( (string) config( 'app.url', '' ) ), '/' );
+
+        // Built from `app.url`, not the booting request: the engine bakes
+        // this into queued emails, and a webhook can boot the app on an
+        // internal host or plain http.
+        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => '' === $base ? url( $path ) : $base . '/' . $path ] );
     }
 }

@@ -11,8 +11,11 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\EcommerceStorefrontLivewireService
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
@@ -103,6 +106,37 @@ it( 'makes the account middleware persistent, leaving out groups', function (): 
     app()->getProvider( EcommerceStorefrontLivewireServiceProvider::class )->registerPersistentMiddleware();
 
     expect( app( PersistentMiddleware::class )->getPersistentMiddleware() )->toContain( Authenticate::class );
+} );
+
+it( 'expands custom middleware groups in the account middleware, but not web', function (): void {
+    Route::middlewareGroup( 'customer', [ 'auth', 'verified' ] );
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [ 'web', 'customer' ] );
+
+    $middleware = EcommerceStorefrontLivewireServiceProvider::accountPersistentMiddleware();
+
+    expect( $middleware )->toBe( [ Authenticate::class, EnsureEmailIsVerified::class ] )
+        ->and( array_intersect( $middleware, Route::getMiddlewareGroups()['web'] ) )->toBe( [] );
+} );
+
+it( 'stops expanding a middleware group that contains itself', function (): void {
+    Route::middlewareGroup( 'loop-a', [ 'auth', 'loop-b' ] );
+    Route::middlewareGroup( 'loop-b', [ 'verified', 'loop-a' ] );
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [ 'loop-a' ] );
+
+    expect( EcommerceStorefrontLivewireServiceProvider::accountPersistentMiddleware() )->toBe( [ Authenticate::class, EnsureEmailIsVerified::class ] );
+} );
+
+it( 'builds the guest order-view link from app.url, not the booting request', function (): void {
+    config()->set( 'app.url', 'https://shop.example/' );
+    config()->set( 'artisanpack.ecommerce.checkout.order_view_url', null );
+
+    $request = Request::create( 'http://internal.local/webhooks/stripe' );
+    app()->instance( 'request', $request );
+    url()->setRequest( $request );
+
+    ( fn () => $this->registerOrderViewUrl() )->call( app()->getProvider( EcommerceStorefrontLivewireServiceProvider::class ) );
+
+    expect( config( 'artisanpack.ecommerce.checkout.order_view_url' ) )->toBe( 'https://shop.example/shop/order/{token}' );
 } );
 
 it( 'resolves the current cart once per request', function (): void {
