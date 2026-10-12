@@ -15,6 +15,8 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
+use ArtisanPackUI\Ecommerce\Models\Product as ProductModel;
+use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
@@ -39,6 +41,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -245,6 +248,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerVisualEditorBlocks();
         $this->registerCacheInvalidation();
         $this->registerMarketingConsent();
+        $this->registerListingFilter();
     }
 
     /**
@@ -609,6 +613,24 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     protected function registerCacheInvalidation(): void
     {
         StorefrontCache::boot();
+    }
+
+    /**
+     * Leaves products whose type package is uninstalled out of every
+     * catalog listing (`ap.ecommerce.product.listQuery`), since their pages
+     * 404. Covers the catalog, product grids, and database search.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerListingFilter(): void
+    {
+        addFilter( 'ap.ecommerce.product.listQuery', static function ( mixed $query ): mixed {
+            return $query instanceof Builder
+                ? $query->whereIn( ( new ProductModel() )->qualifyColumn( 'type' ), app( ProductTypeRegistry::class )->keys() )
+                : $query;
+        } );
     }
 
     /**

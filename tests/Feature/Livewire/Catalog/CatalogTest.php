@@ -484,3 +484,28 @@ it( 'adds to the cart in hosts that prevent lazy loading', function (): void {
         ->call( 'quickAdd', $mug->id )
         ->assertDispatched( 'ecommerce-cart-updated', count: 1 );
 } );
+
+it( 'leaves products whose type package is uninstalled out of listings', function (): void {
+    makeProduct( 1000, [ 'name' => 'Kept kettle' ] );
+    makeProduct( 1000, [ 'name' => 'Ghost kettle', 'type' => 'uninstalled-satellite-type' ] );
+
+    Livewire::test( Index::class )
+        ->assertSee( 'Kept kettle' )
+        ->assertDontSee( 'Ghost kettle' )
+        ->assertSee( '1 product' );
+
+    Livewire::test( ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\ProductGrid::class )
+        ->assertSee( 'Kept kettle' )
+        ->assertDontSee( 'Ghost kettle' );
+} );
+
+it( 'moves a page past the end to the last page', function (): void {
+    foreach ( range( 1, 14 ) as $i ) {
+        makeProduct( 1000 + $i, [ 'name' => 'Pot ' . $i ] );
+    }
+
+    Livewire::withQueryParams( [ 'per_page' => 12, 'page' => 999 ] )
+        ->test( Index::class )
+        ->assertSet( 'paginators.page', 2 )
+        ->assertSee( 'Pot ' );
+} );

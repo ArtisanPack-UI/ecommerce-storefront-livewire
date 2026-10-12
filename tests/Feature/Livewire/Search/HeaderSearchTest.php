@@ -24,6 +24,7 @@ beforeEach( function (): void {
 
 afterEach( function (): void {
     RateLimiter::clear( 'ecommerce.catalog.read' );
+    removeAllFilters( 'ap.ecommerce.pricing.priceDisplay' );
 } );
 
 it( 'renders a combobox in a search form without suggestions at first', function (): void {
@@ -137,4 +138,24 @@ it( 'is in the package layout and available as a Blade component for host header
         ->toContain( 'aria-controls="host-search-results"' )
         ->and( view( 'ecommerce-storefront::partials.header.search' )->render() )
         ->toContain( 'data-header-search' );
+} );
+
+it( 'leaves out products whose type package is uninstalled', function (): void {
+    makeProduct( 1000, [ 'name' => 'Mug ghost', 'type' => 'uninstalled-satellite-type' ] );
+
+    Livewire::test( HeaderSearch::class )
+        ->set( 'q', 'mug' )
+        ->assertSee( 'Mug item' )
+        ->assertDontSee( 'Mug ghost' );
+} );
+
+it( 'prices suggestions for the signed-in customer', function (): void {
+    addFilter( 'ap.ecommerce.pricing.priceDisplay', static fn ( Money\Money $price, mixed $subject, ?ArtisanPackUI\Ecommerce\Models\Customer $customer ): Money\Money => null === $customer ? $price : $price->divide( 2 ) );
+
+    Livewire::test( HeaderSearch::class )->set( 'q', 'mug cosy' )->assertSee( '$15.00' );
+
+    shopper();
+    app()->forgetScopedInstances();
+
+    Livewire::test( HeaderSearch::class )->set( 'q', 'mug cosy' )->assertSee( '$7.50' )->assertDontSee( '$15.00' );
 } );
