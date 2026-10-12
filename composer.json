@@ -2,7 +2,7 @@
   "name": "artisanpack-ui/ecommerce-storefront-livewire",
   "description": "Livewire storefront for the ArtisanPack UI ecommerce engine.",
   "type": "library",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "version": "1.0.0",
   "keywords": [
     "laravel",

@@ -73,4 +73,4 @@ guidelines](CONTRIBUTING.md) to learn more about how you can contribute to this 
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

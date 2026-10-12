@@ -74,7 +74,7 @@ Out of scope: the admin (`15-…`), the kanban UI (`16-…`), the React/Vue stor
 | Translations | `lang/{en,es,fr,de}.json`, loaded with `loadJsonTranslationsFrom()` |
 | Publish tags | `ecommerce-storefront-config`, `ecommerce-storefront-views`, `ecommerce-storefront-lang` |
 | Block namespace (visual-editor) | `artisanpack-commerce/{block}` |
-| License | GPL-3.0-or-later |
+| License | MIT (changed from GPL-3.0-or-later before 1.0.0) |
 
 ## 4. Dependencies
 
