@@ -45,7 +45,8 @@ it( 'offers quick add for a simple product that can be bought', function (): voi
 
     expect( renderCard( $product ) )
         ->toContain( 'wire:click="quickAdd( ' . $product->id . ' )"' )
-        ->toContain( 'aria-label="Add Ceramic mug to cart"' );
+        ->toContain( 'Add to cart<span class="sr-only">: Ceramic mug</span>' )
+        ->not->toContain( 'aria-label="Add Ceramic mug to cart"' );
 } );
 
 it( 'leaves quick add off for products that need choices, can\'t be bought, or when disabled', function ( Closure $make, string $props ): void {

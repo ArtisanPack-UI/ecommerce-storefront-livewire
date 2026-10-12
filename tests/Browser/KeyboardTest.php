@@ -142,3 +142,12 @@ it( 'focuses the error summary after an empty review submit', function (): void 
         ->click( '[data-error-summary-link="rating"]' )
         ->assertScript( focusIsIn( '[data-field-key="rating"]' ) );
 } );
+
+it( 'names the quick-add button starting with its visible text', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Quick mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
+        ->assertPresent( '[data-quick-add="' . $product->id . '"]' )
+        ->assertScript( 'document.querySelector( \'[data-quick-add="' . $product->id . '"]\' ).textContent.replace( /\\s+/g, " " ).trim()', 'Add to cart: Quick mug' )
+        ->assertPresent( 'internal:role=button[name=/^Add to cart\\s*:\\s*Quick mug$/]' );
+} );
