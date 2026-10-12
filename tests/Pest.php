@@ -348,3 +348,22 @@ if ( ! function_exists( 'shopper' ) ) {
         return [ $user, $record ];
     }
 }
+
+if ( ! function_exists( 'verifiedShopper' ) ) {
+    /**
+     * A signed-in user whose model verifies emails and who has verified,
+     * with a customer record: one that may claim guest orders.
+     *
+     * @return array{0: Tests\Fixtures\VerifiedUser, 1: ArtisanPackUI\Ecommerce\Models\Customer}
+     */
+    function verifiedShopper( array $customer = [] ): array
+    {
+        $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email_verified_at' => now() ] )->id );
+
+        $record = ArtisanPackUI\Ecommerce\Models\Customer::factory()->create( $customer + [ 'user_id' => $user->id, 'email' => $user->email ] );
+
+        test()->actingAs( $user );
+
+        return [ $user, $record ];
+    }
+}

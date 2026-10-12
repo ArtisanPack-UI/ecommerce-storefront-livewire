@@ -15,6 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Registries\AccountMenuRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
@@ -31,7 +32,9 @@ use Throwable;
  * account pages, then the entries satellites register with the engine's
  * `AccountMenuRegistry` (subscriptions, wishlists, …) that the shopper may
  * see, all sorted by position (the storefront's use 10–60; a satellite's
- * default is 100). The entry for the current page is marked active and
+ * default is 100). The engine's own entries (`ENGINE_CORE_ENTRIES`) are
+ * left out, and "Claim an order" shows only to shoppers who may claim
+ * (`OrderAccess::canClaim()`). The entry for the current page is marked active and
  * `aria-current="page"`; an entry stays active on its sub-pages (an
  * order's detail under "Orders").
  *
@@ -60,6 +63,26 @@ class AccountShell extends Component
     ];
 
     /**
+     * The engine's own account-menu entries (key => `ecommerce.account.*`
+     * route), which the storefront's pages already cover: its profile page
+     * holds the email preferences and its downloads page the license keys.
+     * They're left out so a host that defines those routes doesn't get
+     * every page twice.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const ENGINE_CORE_ENTRIES = [
+        'profile'       => 'ecommerce.account.profile',
+        'orders'        => 'ecommerce.account.orders',
+        'addresses'     => 'ecommerce.account.addresses',
+        'downloads'     => 'ecommerce.account.downloads',
+        'license-keys'  => 'ecommerce.account.license-keys',
+        'notifications' => 'ecommerce.account.notifications',
+    ];
+
+    /**
      * @since 1.0.0
      *
      * @param  string  $title  The page heading.
@@ -85,7 +108,7 @@ class AccountShell extends Component
         foreach ( self::CORE_ENTRIES as $route => $entry ) {
             $name = 'artisanpack.ecommerce.account.' . $route;
 
-            if ( ! Route::has( $name ) ) {
+            if ( ! Route::has( $name ) || ( 'claim' === $route && ! OrderAccess::canClaim( auth()->user() ) ) ) {
                 continue;
             }
 
@@ -101,7 +124,7 @@ class AccountShell extends Component
         }
 
         foreach ( $this->satelliteEntries() as $entry ) {
-            if ( null === $entry['url'] || '' === trim( (string) $entry['label'] ) ) {
+            if ( null === $entry['url'] || '' === trim( (string) $entry['label'] ) || ( self::ENGINE_CORE_ENTRIES[ $entry['key'] ] ?? null ) === $entry['route'] ) {
                 continue;
             }
 

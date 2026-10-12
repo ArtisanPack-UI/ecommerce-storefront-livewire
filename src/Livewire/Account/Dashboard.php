@@ -20,7 +20,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerOrderHistory;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesOrder;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Livewire\Component;
@@ -136,8 +136,8 @@ class Dashboard extends Component
 
     /**
      * How many unclaimed guest orders were placed with the shopper's email.
-     * None while the email is unverified, so an account can't learn what a
-     * stranger's address ordered.
+     * None while the shopper can't claim (`OrderAccess::canClaim()`), so an
+     * account can't learn what a stranger's address ordered.
      *
      * @since 1.0.0
      *
@@ -150,7 +150,7 @@ class Dashboard extends Component
         $user  = auth()->user();
         $email = $customer?->email ?? ( is_string( $user?->email ?? null ) ? $user->email : null );
 
-        if ( null === $user || ! is_string( $email ) || '' === trim( $email ) || ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() ) ) {
+        if ( ! OrderAccess::canClaim( $user ) || ! is_string( $email ) || '' === trim( $email ) ) {
             return 0;
         }
 

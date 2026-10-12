@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerClaimService;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -39,8 +40,10 @@ use Throwable;
  * order under the account's email and, when they match, claims every guest
  * order under that email. The shopper then lands on their order history.
  *
- * The account's email must be verified (when the user model verifies
- * emails): a claim takes over every guest order under that email.
+ * The account's email must be verified (`OrderAccess::canClaim()`): a
+ * claim takes over every guest order under that email. By default
+ * (`account.claim_requires_verified_email`) a user model that doesn't
+ * implement `MustVerifyEmail` can't claim at all.
  *
  * Attempts count against `ecommerce.claim.attempt` (per user and per IP)
  * and the engine's own failed-attempt cap. A wrong number, a wrong
@@ -127,8 +130,10 @@ class Claim extends Component
 
         // The engine claims every guest order under the customer's email, so
         // the account must have proved it owns that email first.
-        if ( null === $user || ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() ) ) {
-            $this->failure = __( 'Your account can\'t claim orders yet. Verify your email address and try again.' );
+        if ( ! OrderAccess::canClaim( $user ) ) {
+            $this->failure = null === $user || $user instanceof MustVerifyEmail
+                ? __( 'Your account can\'t claim orders yet. Verify your email address and try again.' )
+                : __( 'Guest orders can\'t be added to your account. Contact us if you need help with an earlier order.' );
 
             return;
         }

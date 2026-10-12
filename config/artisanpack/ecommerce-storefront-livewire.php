@@ -38,10 +38,17 @@ return [
     | Order history, addresses, downloads, and preferences. These routes always
     | require an authenticated user; add `verified` here when needed.
     |
+    | Claiming guest orders attaches every unclaimed guest order placed with
+    | the account's email, so with `claim_requires_verified_email` only users
+    | that implement `MustVerifyEmail` and have verified may claim. Turn it off
+    | only when your user model doesn't verify emails and you accept that any
+    | account can claim orders placed with its address.
+    |
     */
     'account' => [
-        'route_prefix' => 'account',
-        'middleware'   => [ 'web', 'auth' ],
+        'route_prefix'                  => 'account',
+        'middleware'                    => [ 'web', 'auth' ],
+        'claim_requires_verified_email' => true,
     ],
 
     /*
