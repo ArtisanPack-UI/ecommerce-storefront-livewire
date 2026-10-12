@@ -4,14 +4,17 @@ declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\CartItem;
 use ArtisanPackUI\Ecommerce\Models\InventoryItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
 use ArtisanPackUI\Ecommerce\Models\ProductPrice;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Support\GuestCartCookie;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Fixtures\ProductTypes\EngravedProductType;
 
 afterEach( function (): void {
     removeAllFilters( 'ap.ecommerceStorefrontLivewire.catalog.sorts' );
@@ -318,6 +322,45 @@ it( 'explains why a product could not be added', function ( Closure $make, strin
     }, 'stock' ],
     'not visible'  => [ fn (): Product => Product::factory()->draft()->create(), 'That product is not available.' ],
 ] );
+
+it( 'refuses quick add for products that need a choice', function ( Closure $make ): void {
+    $product = $make();
+
+    $component = Livewire::test( Index::class )
+        ->call( 'quickAdd', $product->id )
+        ->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    expect( CartItem::query()->count() )->toBe( 0 )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )
+        ->toContain( 'Not added to your cart' )
+        ->toContain( 'options on its page' );
+} )->with( [
+    'digital with licence types' => [ function (): Product {
+        $product = Product::factory()->digital()->create( [ 'name' => 'Field guide', 'meta' => [ 'licensing' => [ 'types' => [ 'personal', 'team' ] ] ] ] );
+        ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'USD', 'price_amount' => 1500, 'compare_at_amount' => null ] );
+
+        return $product;
+    } ],
+    'variable'     => [ fn (): Product => makeVariableProduct( [ 'red/m' => [ 'price' => 2000, 'stock' => 5 ] ] )['product'] ],
+    'options form' => [ function (): Product {
+        app( ProductTypeRegistry::class )->register( EngravedProductType::KEY, new EngravedProductType() );
+
+        $product = Product::factory()->create( [ 'type' => EngravedProductType::KEY, 'name' => 'Pocket watch' ] );
+        ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'USD', 'price_amount' => 9900, 'compare_at_amount' => null ] );
+
+        return $product;
+    } ],
+] );
+
+it( 'offers quick add on the card only for a quick-addable product', function (): void {
+    $mug     = makeProduct( 1200, [ 'name' => 'Mug' ] );
+    $shirt   = makeVariableProduct( [ 'red/m' => [ 'price' => 2000, 'stock' => 5 ] ] )['product'];
+
+    expect( ProductCard::quickAddable( $mug ) )->toBeTrue()
+        ->and( ProductCard::quickAddable( $shirt ) )->toBeFalse()
+        ->and( ( new ProductCard( $mug ) )->card['quick_add'] )->toBeTrue()
+        ->and( ( new ProductCard( $shirt ) )->card['quick_add'] )->toBeFalse();
+} );
 
 it( 'throttles quick adds per cart', function (): void {
     config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 2 );

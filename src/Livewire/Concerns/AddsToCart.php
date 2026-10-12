@@ -15,15 +15,18 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
 
 use ArtisanPackUI\Ecommerce\Exceptions\CartOperationException;
 use ArtisanPackUI\Ecommerce\Models\CartItem;
+use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 
 /**
  * The `quickAdd` action behind the product card's "Add to cart" button.
  *
  * Any component that renders `<x-artisanpack-ec-sf-product-card>` with quick
  * add on uses this concern. The engine checks the product is visible,
- * sellable, priced, and in stock; its message is shown when it isn't. The
- * cart is created on the first add and the call counts against the
+ * sellable, priced, and in stock; its message is shown when it isn't. A
+ * product the card wouldn't offer quick add for ({@see ProductCard::quickAddable()})
+ * is refused, since it has a choice to make on its page. The cart is created on the first add and the call counts against the
  * `ecommerce.cart.mutate` limit.
  *
  * Uses {@see InteractsWithStorefrontCart}, {@see RateLimitsStorefront}, and
@@ -47,6 +50,15 @@ trait AddsToCart
      */
     public function quickAdd( int $productId ): void
     {
+        $product = Product::query()->storefrontVisible()->find( $productId );
+
+        // A product that isn't visible is left to the engine, which explains why.
+        if ( $product instanceof Product && ! ProductCard::quickAddable( $product ) ) {
+            $this->toastError( __( 'Not added to your cart' ), __( 'Choose this product\'s options on its page.' ) );
+
+            return;
+        }
+
         try {
             $item = $this->rateLimited(
                 'ecommerce.cart.mutate',

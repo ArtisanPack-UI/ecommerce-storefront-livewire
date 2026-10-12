@@ -117,8 +117,7 @@ class ProductCard extends Component
             'reviews'       => (int) $product->reviews_count,
             'reviews_url'   => null === $url ? null : $url . '#reviews',
             'quick_add'     => $this->quickAdd
-                && SimpleProductType::KEY === $product->type
-                && ! $product->typeIsMissing()
+                && self::quickAddable( $product )
                 && null !== $price
                 && $stock->purchasable(),
             'badges'        => [],
@@ -129,6 +128,23 @@ class ProductCard extends Component
         $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.catalog.productCard', $defaults, $product );
 
         return is_array( $filtered ) ? self::normalize( $filtered, $defaults ) : $defaults;
+    }
+
+    /**
+     * Whether "Add to cart" can add the product straight from a card: only
+     * a simple product whose type is installed, since every other type has
+     * a choice to make on its page (a variant, a licence, satellite
+     * options).
+     *
+     * @since 1.0.0
+     *
+     * @param  Product  $product  The product.
+     *
+     * @return bool
+     */
+    public static function quickAddable( Product $product ): bool
+    {
+        return SimpleProductType::KEY === $product->type && ! $product->typeIsMissing();
     }
 
     /**
