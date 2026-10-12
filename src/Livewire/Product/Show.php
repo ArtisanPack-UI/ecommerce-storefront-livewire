@@ -198,7 +198,7 @@ class Show extends Component
 
         return view( 'ecommerce-storefront::livewire.product.show', [
             'images'           => $this->content['images'],
-            'price'            => app( PriceDisplayResolver::class )->for( $subject, $currency ),
+            'price'            => app( PriceDisplayResolver::class )->for( $subject, $currency, null, app( StorefrontCart::class )->customer() ),
             'stock'            => StockStatus::for( $subject ),
             'sku'              => $variant?->sku ?? $product->sku,
             'shortDescription' => $this->content['shortDescription'],

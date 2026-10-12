@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 
 afterEach( function (): void {
     removeAllFilters( 'ap.ecommerceStorefrontLivewire.catalog.productCard' );
+    removeAllFilters( 'ap.ecommerce.pricing.priceDisplay' );
 } );
 
 /**
@@ -155,4 +156,18 @@ it( 'renders a lone card without lazy loading its gallery', function (): void {
     } finally {
         Model::preventLazyLoading( false );
     }
+} );
+
+it( 'prices the card for the signed-in customer, as the cart will', function (): void {
+    // A customer-group pricing satellite: half price for any known customer.
+    addFilter( 'ap.ecommerce.pricing.priceDisplay', static fn ( Money\Money $price, mixed $subject, ?ArtisanPackUI\Ecommerce\Models\Customer $customer ): Money\Money => null === $customer ? $price : $price->divide( 2 ) );
+
+    $product = makeProduct( 2000, [ 'name' => 'Ceramic mug' ] );
+
+    expect( renderCard( $product ) )->toContain( '$20.00' )->not->toContain( '$10.00' );
+
+    shopper();
+    app()->forgetScopedInstances();
+
+    expect( renderCard( $product ) )->toContain( '$10.00' )->not->toContain( '$20.00' );
 } );

@@ -91,7 +91,8 @@ class ProductPriceBlock extends ProductBlock
      */
     protected function productHtml( Product $product, array $attrs ): ?string
     {
-        $price = app( PriceDisplayResolver::class )->for( $product, app( StorefrontCart::class )->currency() );
+        $carts = app( StorefrontCart::class );
+        $price = app( PriceDisplayResolver::class )->for( $product, $carts->currency(), null, $carts->customer() );
 
         return Blade::renderComponent( ( new Price( $price ) )->withAttributes( [ 'class' => 'text-xl' ] ) );
     }

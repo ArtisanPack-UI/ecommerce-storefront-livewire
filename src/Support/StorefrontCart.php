@@ -15,6 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 
 use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\RateLimiting\RateLimitSubject;
 use ArtisanPackUI\Ecommerce\Services\CurrentCart;
 use ArtisanPackUI\Ecommerce\Services\StoreCurrencies;
@@ -73,6 +74,16 @@ class StorefrontCart
      * @var bool
      */
     protected bool $resolved = false;
+
+    /**
+     * The signed-in shopper's customer record, keyed by the user's
+     * identifier, once looked up.
+     *
+     * @since 1.0.0
+     *
+     * @var array{0: mixed, 1: Customer|null}|null
+     */
+    protected ?array $customer = null;
 
     /**
      * @since 1.0.0
@@ -180,6 +191,28 @@ class StorefrontCart
         $cart = $this->current();
 
         return null === $cart ? 0 : (int) $cart->items()->sum( 'quantity' );
+    }
+
+    /**
+     * The signed-in shopper's engine customer, or null for a guest or a
+     * user with no customer record. Looked up once per request (and again
+     * if the signed-in user changes), for prices that depend on who is
+     * buying (`PriceDisplayResolver::for()`'s `$customer`).
+     *
+     * @since 1.0.0
+     *
+     * @return Customer|null
+     */
+    public function customer(): ?Customer
+    {
+        $user = $this->user();
+        $id   = $user?->getAuthIdentifier();
+
+        if ( null === $this->customer || $this->customer[0] !== $id ) {
+            $this->customer = [ $id, null === $user ? null : Customer::forUser( $user ) ];
+        }
+
+        return $this->customer[1];
     }
 
     /**

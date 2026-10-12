@@ -20,6 +20,7 @@ use ArtisanPackUI\Ecommerce\Pricing\DisplayPrice;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\Ecommerce\ProductTypes\SimpleProductType;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
@@ -100,7 +101,7 @@ class ProductCard extends Component
     {
         $product  = $this->product;
         $currency = $this->currency ?? app( CurrencyResolver::class )->resolve( request() );
-        $price    = $this->price ?? app( PriceDisplayResolver::class )->for( $product, $currency );
+        $price    = $this->price ?? app( PriceDisplayResolver::class )->for( $product, $currency, null, app( StorefrontCart::class )->customer() );
         $stock    = $this->stock ?? EngineStockStatus::for( $product );
         $url      = Route::has( 'artisanpack.ecommerce.storefront.product' )
             ? route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] )
