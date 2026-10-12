@@ -22,12 +22,16 @@ return [
     | own layout to adopt its header and footer; it must yield `title` and
     | `content` and include `ecommerce-storefront::partials.global`.
     |
+    | `rtl_locales` lists the languages written right to left: the standalone
+    | layout sets `<html dir="rtl">` for them (see Support\TextDirection).
+    |
     */
     'storefront' => [
         'routes_enabled' => true,
         'route_prefix'   => 'shop',
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
+        'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
     ],
 
     /*

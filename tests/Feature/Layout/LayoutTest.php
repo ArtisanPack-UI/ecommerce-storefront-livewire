@@ -123,3 +123,20 @@ it( 'ignores a search term that isn\'t a string', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q[]=lamp' )->assertOk()->assertSee( '&quot;q&quot;:&quot;&quot;', false );
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q=lamp' )->assertSee( '&quot;q&quot;:&quot;lamp&quot;', false );
 } );
+
+it( 'sets the text direction from the locale', function (): void {
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="ltr"', false );
+
+    app()->setLocale( 'ar' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( '<html lang="ar" dir="rtl">', false );
+
+    app()->setLocale( 'he_IL' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="rtl"', false );
+
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.storefront.rtl_locales', [ 'en' ] );
+    app()->setLocale( 'en' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="rtl"', false );
+} );

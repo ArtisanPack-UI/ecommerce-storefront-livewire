@@ -140,8 +140,8 @@
             x-ref="lightbox"
             class="modal"
             aria-label="{{ __( ':name images', [ 'name' => $name ] ) }}"
-            x-on:keydown.arrow-right.prevent="show( active + 1 )"
-            x-on:keydown.arrow-left.prevent="show( active - 1 )"
+            x-on:keydown.arrow-right.prevent="show( active + ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
+            x-on:keydown.arrow-left.prevent="show( active - ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
             data-gallery-lightbox
         >
             <div class="modal-box flex max-w-5xl flex-col gap-3">
@@ -159,8 +159,8 @@
 
                 @if ( count( $items ) > 1 )
                     <div class="flex justify-between gap-2">
-                        <x-artisanpack-button icon="o-chevron-left" :label="__( 'Previous' )" class="btn-sm" x-on:click="show( active - 1 )" />
-                        <x-artisanpack-button icon-right="o-chevron-right" :label="__( 'Next' )" class="btn-sm" x-on:click="show( active + 1 )" />
+                        <x-artisanpack-button icon="o-chevron-left" :label="__( 'Previous' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active - 1 )" />
+                        <x-artisanpack-button icon-right="o-chevron-right" :label="__( 'Next' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active + 1 )" />
                     </div>
                 @endif
             </div>
