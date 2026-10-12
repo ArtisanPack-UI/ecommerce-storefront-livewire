@@ -77,6 +77,23 @@ it( 'places the order, and sends a guest to the signed confirmation', function (
         ->and( session()->has( CheckoutPlacement::SESSION_KEY ) )->toBeFalse();
 } );
 
+it( 'ignores its own cart update once the order is placed, so the shopper still reaches the confirmation', function (): void {
+    $component = checkoutAtReview( $this->gateway );
+
+    $component->call( 'placeOrder', placeOrderToken( $component ) )
+        ->assertHasNoErrors()
+        ->assertDispatched( 'ecommerce-cart-updated' )
+        ->assertSet( 'orderPlaced', true );
+
+    expect( placedRedirect( $component ) )->toStartWith( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => Order::query()->sole()->id ] ) );
+
+    // The cart is now empty. Without the guard, this listener redirected
+    // to it, which on Livewire 3 could beat the confirmation redirect.
+    $component->dispatch( 'ecommerce-cart-updated' )
+        ->assertNoRedirect()
+        ->assertSet( 'unavailable', null );
+} );
+
 it( 'places one order when "Place order" is sent twice with the same token', function (): void {
     $component = checkoutAtReview( $this->gateway );
     $token     = placeOrderToken( $component );

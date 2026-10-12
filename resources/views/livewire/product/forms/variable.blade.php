@@ -15,7 +15,7 @@
             :legend="$group['label']"
             :options="$group['options']"
             :id-prefix="$ecommerceFormId . '-attribute-' . $group['id']"
-            wire:model.live="selected.{{ $group['id'] }}"
+            x-on:change="$wire.choose( {{ (int) $group['id'] }}, $event.target.value )"
             wire:key="variation-group-{{ $group['id'] }}"
             data-variation-group="{{ $group['id'] }}"
         />
