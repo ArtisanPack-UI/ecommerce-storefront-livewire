@@ -10,13 +10,13 @@
 @php( $ecommerceRates = $rates ?? [] )
 <form wire:submit="saveShipping" novalidate class="flex flex-col gap-4" data-checkout-shipping-form>
     @if ( null !== $shippingNotice )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="$shippingNotice" data-checkout-shipping-notice />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="$shippingNotice" data-checkout-shipping-notice />
     @endif
 
     @if ( null !== $rates && [] === $ecommerceRates )
         <x-artisanpack-alert
             icon="o-truck"
-            class="alert-warning alert-soft"
+            class="alert-warning alert-soft text-base-content!"
             :title="__( 'We can\'t ship to this address' )"
             :description="__( 'Check the address, or use a different one.' )"
             data-checkout-no-rates

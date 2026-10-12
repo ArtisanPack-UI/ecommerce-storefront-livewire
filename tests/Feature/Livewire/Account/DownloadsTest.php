@@ -96,6 +96,7 @@ it( 'lists licence keys with a copy button and the activation count', function (
     [ , $customer ] = shopper();
 
     $licence  = ownedLicence( $customer, [ 'key' => 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2', 'activations_count' => 2, 'activations_limit' => 5 ] );
+    ownedLicence( $customer, [ 'activations_count' => 0, 'activations_limit' => 1 ] );
     $revoked  = ownedLicence( $customer, [ 'is_revoked' => true, 'revoked_at' => now() ] );
     $expired  = ownedLicence( $customer, [ 'expires_at' => now()->subDay() ] );
     $stranger = ownedLicence( Customer::factory()->create() );
@@ -105,6 +106,7 @@ it( 'lists licence keys with a copy button and the activation count', function (
         ->assertDontSeeHtml( 'data-account-licence="' . $stranger->id . '"' )
         ->assertSee( 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2' )
         ->assertSee( '2 of 5 activations used' )
+        ->assertSee( '0 of 1 activation used' )
         ->assertSeeHtml( 'data-account-licence-copy' )
         ->assertSeeHtml( 'data-account-licence-reason="revoked"' )
         ->assertSeeHtml( 'data-account-licence-reason="expired"' );

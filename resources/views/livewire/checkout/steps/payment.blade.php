@@ -17,7 +17,7 @@
     @elseif ( $needsAccount )
         <x-artisanpack-alert
             icon="o-lock-closed"
-            class="alert-info alert-soft"
+            class="alert-info alert-soft text-base-content!"
             :title="__( 'Sign in or create an account to pay' )"
             :description="__( 'This store needs an account to place an order. You\'ll come back here afterwards.' )"
             data-checkout-payment-account-needed
@@ -33,7 +33,7 @@
             </x-slot:actions>
         </x-artisanpack-alert>
     @elseif ( [] === $gateways )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'No payment methods are available' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-no-gateways />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'No payment methods are available' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-no-gateways />
     @else
         <div data-field="gateway">
             @if ( count( $gateways ) > 1 )
@@ -48,7 +48,7 @@
                 <p class="font-semibold" data-checkout-gateway-single>{{ __( 'Pay with :gateway', [ 'gateway' => reset( $gateways ) ] ) }}</p>
 
                 @error( 'gateway' )
-                    <p class="text-sm text-error">{{ $message }}</p>
+                    <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]">{{ $message }}</p>
                 @enderror
             @endif
         </div>

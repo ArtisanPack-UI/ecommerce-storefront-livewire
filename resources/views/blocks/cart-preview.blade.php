@@ -35,7 +35,7 @@
             @endforeach
         </ul>
 
-        <aside class="flex flex-col gap-4" aria-label="{{ __( 'Order summary' ) }}">
+        <section class="flex flex-col gap-4" aria-label="{{ __( 'Order summary' ) }}">
             <p class="text-xl font-bold">{{ __( 'Order summary' ) }}</p>
 
             @if ( $showCoupon )
@@ -48,7 +48,7 @@
             </dl>
 
             <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled />
-        </aside>
+        </section>
     </div>
 
     @if ( $showCrossSells )

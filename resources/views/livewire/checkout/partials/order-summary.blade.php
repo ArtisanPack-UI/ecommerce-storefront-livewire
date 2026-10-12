@@ -8,7 +8,7 @@
 
     @since      1.0.0
 --}}
-<aside class="flex flex-col gap-4 rounded-box border border-base-content/10 p-5 lg:sticky lg:top-24" aria-labelledby="ec-checkout-summary-heading" x-data="{ summaryOpen: false }" data-checkout-summary>
+<section class="flex flex-col gap-4 rounded-box border border-base-content/10 p-5 lg:sticky lg:top-24" aria-labelledby="ec-checkout-summary-heading" x-data="{ summaryOpen: false }" data-checkout-summary>
     <button
         type="button"
         class="flex w-full items-center justify-between gap-4 lg:hidden"
@@ -67,4 +67,4 @@
             ] )
         @endif
     </div>
-</aside>
+</section>

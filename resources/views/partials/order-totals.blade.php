@@ -16,7 +16,7 @@
     </div>
 
     @foreach ( $totals['discounts'] as $discount )
-        <div class="flex justify-between gap-4 text-success" data-cart-discount>
+        <div class="flex justify-between gap-4" data-cart-discount>
             <dt>{{ $discount['label'] }}</dt>
             <dd>
                 @if ( $discount['amount'] > 0 )

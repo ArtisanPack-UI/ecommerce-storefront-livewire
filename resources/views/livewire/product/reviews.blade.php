@@ -121,7 +121,7 @@
 
             @if ( null !== $ratingFilter )
                 <div class="flex flex-wrap items-center gap-2 text-sm" data-review-filter="{{ $ratingFilter }}">
-                    <span>{{ __( 'Showing :count-star reviews', [ 'count' => $ratingFilter ] ) }}</span>
+                    <span>{{ trans_choice( 'Showing reviews rated :count star|Showing reviews rated :count stars', $ratingFilter, [ 'count' => $ratingFilter ] ) }}</span>
                     <x-artisanpack-button :label="__( 'Show all reviews' )" class="btn-ghost btn-xs" wire:click="filterRating" />
                 </div>
             @endif

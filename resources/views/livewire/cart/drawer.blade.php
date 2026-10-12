@@ -1,12 +1,37 @@
 {{--
     The cart drawer. See Cart\Drawer.
 
+    The library drawer's focus trap lands on its hidden `drawer-toggle`
+    checkbox, which has no name (livewire-ui-components#117). That checkbox
+    is taken out of the tab order and the accessibility tree, and focus
+    moves to the drawer's title once it opens, so screen readers announce
+    "Your cart (n items)". On close, focus goes back to the last control
+    focused outside the drawer (the "Add to cart" button that opened it).
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div data-ecommerce-cart-drawer x-data x-on:close="$dispatch( 'ecommerce-cart-closed' )">
+<div
+    data-ecommerce-cart-drawer
+    x-data="{
+        returnTo: null,
+        focusTitle( tries = 20 ) {
+            const title = document.getElementById( 'ecommerce-cart-drawer-title' );
+
+            title?.focus();
+
+            {{-- The panel can't take focus until it has slid in. --}}
+            if ( title && document.activeElement !== title && tries > 0 ) {
+                setTimeout( () => this.focusTitle( tries - 1 ), 25 );
+            }
+        },
+    }"
+    x-on:open="$el.querySelector( '.drawer-toggle' )?.setAttribute( 'tabindex', '-1' ); $el.querySelector( '.drawer-toggle' )?.setAttribute( 'aria-hidden', 'true' ); focusTitle()"
+    x-on:focusin.window="if ( ! $el.contains( $event.target ) ) { returnTo = $event.target }"
+    x-on:close="$dispatch( 'ecommerce-cart-closed' ); if ( returnTo?.isConnected ) { $nextTick( () => returnTo.focus() ) }"
+>
     <x-artisanpack-drawer
         id="ecommerce-cart-drawer"
         right
@@ -20,7 +45,7 @@
     >
         <div id="ecommerce-cart-drawer-panel" class="flex min-h-full flex-col gap-4">
             <div class="flex items-center justify-between gap-4">
-                <h2 id="ecommerce-cart-drawer-title" class="text-xl font-bold">
+                <h2 id="ecommerce-cart-drawer-title" tabindex="-1" class="text-xl font-bold focus:outline-none">
                     {{ __( 'Your cart' ) }}
                     <span class="text-base font-normal text-base-content/70">({{ trans_choice( ':count item|:count items', $count, [ 'count' => $count ] ) }})</span>
                 </h2>
@@ -79,7 +104,7 @@
                                 @endforeach
 
                                 @if ( null !== $line['unsellable'] )
-                                    <p class="text-warning" data-cart-line-unsellable>{{ $line['unsellable'] }}</p>
+                                    <p class="font-semibold" data-cart-line-unsellable>{{ $line['unsellable'] }}</p>
                                 @endif
 
                                 @if ( $line['free'] )
@@ -125,7 +150,7 @@
                     @endif
 
                     @if ( $hasUnsellable )
-                        <p class="text-sm text-warning">{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p class="text-sm font-semibold">{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
                         <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-drawer-checkout />
                     @endif

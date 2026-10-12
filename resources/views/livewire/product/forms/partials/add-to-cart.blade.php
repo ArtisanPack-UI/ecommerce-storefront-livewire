@@ -41,7 +41,7 @@
     </div>
 
     @if ( ! $ecommerceShowQuantity && $errors->has( 'quantity' ) )
-        <p class="text-sm text-error" data-form-error>{{ $errors->first( 'quantity' ) }}</p>
+        <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $errors->first( 'quantity' ) }}</p>
     @endif
 
     @if ( ! $canAdd && ! empty( $blockedReason ) )

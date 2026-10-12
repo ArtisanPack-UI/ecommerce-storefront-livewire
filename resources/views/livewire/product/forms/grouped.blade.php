@@ -35,7 +35,7 @@
         </ul>
 
         @error( 'quantities' )
-            <p class="text-sm text-error" data-form-error>{{ $message }}</p>
+            <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
         @enderror
 
         @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [

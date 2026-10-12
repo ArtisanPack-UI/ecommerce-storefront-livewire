@@ -18,7 +18,7 @@
     </div>
 
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'Your orders couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-orders-failed />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your orders couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-orders-failed />
     @elseif ( null === $orders || 0 === $orders->total() )
         @if ( '' !== $status )
             <x-artisanpack-ec-empty-state icon="o-funnel" :title="__( 'No orders match this filter' )" data-account-orders-empty="filtered">

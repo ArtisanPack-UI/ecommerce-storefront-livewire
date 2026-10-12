@@ -23,6 +23,6 @@
             />
         </div>
     @else
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
     @endif
 </div>

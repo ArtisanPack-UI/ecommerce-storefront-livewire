@@ -87,7 +87,7 @@
                                 </div>
 
                                 @if ( null !== $line['unsellable'] )
-                                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft py-2" :title="$line['unsellable']" data-cart-line-unsellable>
+                                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable>
                                         <x-slot:actions>
                                             <x-artisanpack-button
                                                 :label="__( 'Remove' )"
@@ -128,7 +128,7 @@
                 </ul>
             </section>
 
-            <aside class="flex flex-col gap-6" aria-labelledby="ec-cart-summary-heading" data-cart-summary>
+            <section class="flex flex-col gap-6" aria-labelledby="ec-cart-summary-heading" data-cart-summary>
                 <h2 id="ec-cart-summary-heading" class="text-xl font-bold">{{ __( 'Order summary' ) }}</h2>
 
                 @if ( $showCoupon )
@@ -215,7 +215,7 @@
                         @endif
 
                         @error( 'selectedRate' )
-                            <p class="text-sm text-error" data-cart-estimate-error>{{ $message }}</p>
+                            <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-cart-estimate-error>{{ $message }}</p>
                         @enderror
                     </form>
                 @endif
@@ -227,7 +227,7 @@
                 <div class="flex flex-col gap-2">
                     @if ( $hasUnsellable )
                         <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout />
-                        <p id="ec-cart-checkout-blocked" class="text-sm text-warning" data-cart-checkout-blocked>{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
                         <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-checkout />
                     @endif
@@ -236,7 +236,7 @@
                         <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-ghost w-full" />
                     @endif
                 </div>
-            </aside>
+            </section>
         </div>
     @endif
 

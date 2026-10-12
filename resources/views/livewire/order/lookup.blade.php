@@ -11,7 +11,7 @@
 
     <div role="alert" aria-live="assertive">
         @if ( null !== $failure )
-            <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error alert-soft" :title="$failure" data-order-lookup-failure />
+            <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error alert-soft text-base-content!" :title="$failure" data-order-lookup-failure />
         @endif
     </div>
 

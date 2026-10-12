@@ -55,7 +55,7 @@
 
         <{{ $ecommerceHeading }} class="text-base font-semibold leading-snug">
             @if ( null !== $card['url'] )
-                <a href="{{ $card['url'] }}" class="link-hover after:absolute after:inset-0 after:content-[''] focus-visible:outline-none" data-product-link>{{ $card['name'] }}</a>
+                <a href="{{ $card['url'] }}" class="link-hover after:absolute after:inset-0 after:content-['']" data-product-link>{{ $card['name'] }}</a>
             @else
                 {{ $card['name'] }}
             @endif

@@ -58,7 +58,7 @@
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
             <div class="flex flex-col gap-6">
                 @if ( [] !== $adjustments )
-                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" data-checkout-adjustments>
+                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" data-checkout-adjustments>
                         <span class="block font-bold">{{ __( 'We\'ve updated your cart' ) }}</span>
                         <ul class="list-disc ps-5">
                             @foreach ( $adjustments as $adjustment )
