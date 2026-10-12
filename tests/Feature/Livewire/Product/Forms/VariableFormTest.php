@@ -186,3 +186,35 @@ it( 'follows a variant set from browser history or the client', function (): voi
         ->assertSet( 'variant', null )
         ->assertSet( 'selected', [] );
 } );
+
+it( 'ignores a malformed variant in the query string', function ( mixed $variant ): void {
+    Livewire::withQueryParams( [ 'variant' => $variant ] )
+        ->test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->assertOk()
+        ->assertSet( 'variant', null )
+        ->assertSet( 'selected', [] )
+        ->assertSee( 'Choose an option for Colour.' );
+} )->with( [
+    'text'     => 'abc',
+    'array'    => [ [ '1' ] ],
+    'negative' => '-1',
+    'decimal'  => '1.5',
+    'empty'    => '',
+] );
+
+it( 'opens on a variant id sent as a numeric string', function (): void {
+    $redM = $this->made['variants']['red/m'];
+
+    Livewire::withQueryParams( [ 'variant' => (string) $redM->id ] )
+        ->test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->assertSet( 'variant', $redM->id );
+} );
+
+it( 'clears a malformed variant set from the client', function (): void {
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( 'variant', $this->made['variants']['blue/m']->id )
+        ->set( 'variant', 'abc' )
+        ->assertSet( 'variant', null )
+        ->assertSet( 'selected', [] )
+        ->assertSee( 'Choose an option for Colour.' );
+} );
