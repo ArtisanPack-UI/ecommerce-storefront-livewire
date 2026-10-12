@@ -90,7 +90,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
 
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
-| `ap.ecommerceStorefrontLivewire.seo.meta` | filter | Rendering a page's head tags | `array $meta` (`title`, `description`, `canonical`, `robots`, `image`, `type`), `?string $page`, `?Model $subject` (product, category, or tag) | The tags. Unsafe URLs are dropped; descriptions are cut to 160 characters. |
+| `ap.ecommerceStorefrontLivewire.seo.meta` | filter | Rendering a page's head tags | `array $meta` (`title`, `description`, `canonical`, `robots`, `image`, `type`), `?string $page`, `?Model $subject` (product, category, or tag) | The tags. Keys you leave out keep their value; set one to `null` to remove it. Unsafe URLs are dropped; descriptions are cut to 160 characters. |
 | `ap.ecommerceStorefrontLivewire.seo.schema` | filter | Rendering a page's JSON-LD (or handing it to `artisanpack-ui/seo`) | `array $schemas`, `?string $page`, `?Model $subject` | JSON-LD entries; anything that isn't an array is dropped. |
 
 `$page` is `product`, `category`, `tag`, `catalog`, `search`, `cart`, `checkout`, `confirmation`, `lookup`, `order-view`, or `account`.

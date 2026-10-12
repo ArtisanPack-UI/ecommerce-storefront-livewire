@@ -111,8 +111,9 @@ final class StorefrontCache
 
     /**
      * The cached value of `$key`, computed by `$callback` when missing (or
-     * every time with the cache off). A cache failure falls back to
-     * computing the value.
+     * every time with the cache off). A cache failure is reported and falls
+     * back to computing the value; an exception from `$callback` itself is
+     * thrown to the caller, once.
      *
      * @since 1.0.0
      *
@@ -131,11 +132,28 @@ final class StorefrontCache
             return $callback();
         }
 
+        $failed  = false;
+        $compute = static function () use ( $callback, &$failed ): mixed {
+            try {
+                return $callback();
+            } catch ( Throwable $exception ) {
+                $failed = true;
+
+                throw $exception;
+            }
+        };
+
         try {
             return self::tagged()
-                ? Cache::tags( [ self::TAG ] )->remember( self::TAG . ':' . $key, $ttl, $callback )
-                : Cache::remember( self::TAG . ':v' . self::version() . ':' . $key, $ttl, $callback );
+                ? Cache::tags( [ self::TAG ] )->remember( self::TAG . ':' . $key, $ttl, $compute )
+                : Cache::remember( self::TAG . ':v' . self::version() . ':' . $key, $ttl, $compute );
         } catch ( Throwable $exception ) {
+            // The value's own failure is the caller's; only a cache failure
+            // falls back to computing the value uncached.
+            if ( $failed ) {
+                throw $exception;
+            }
+
             report( $exception );
 
             return $callback();

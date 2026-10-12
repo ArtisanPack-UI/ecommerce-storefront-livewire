@@ -12,7 +12,7 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', __( 'Checkout' ) )
+@section( 'title', $ecommerceSeo->title( __( 'Checkout' ) ) )
 
 @section( 'content' )
     @if ( null !== ( $ecommerceTemplate ?? null ) )

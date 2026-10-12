@@ -12,7 +12,7 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', '' === $term ? __( 'Search' ) : __( 'Search results for ":term"', [ 'term' => $term ] ) )
+@section( 'title', $ecommerceSeo->title( '' === $term ? __( 'Search' ) : __( 'Search results for ":term"', [ 'term' => $term ] ) ) )
 
 @section( 'content' )
     @if ( null !== ( $ecommerceTemplate ?? null ) )

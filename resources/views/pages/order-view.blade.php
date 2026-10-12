@@ -13,7 +13,7 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', __( 'Your order' ) )
+@section( 'title', $ecommerceSeo->title( __( 'Your order' ) ) )
 
 @section( 'content' )
     <div class="flex flex-col gap-6">

@@ -212,6 +212,21 @@ it( 'lets a filter change any page\'s tags', function (): void {
         ->assertDontSee( 'javascript:alert', false );
 } );
 
+it( 'keeps the tags a filter leaves out, and drops the ones it sets to null', function (): void {
+    checkoutCart();
+
+    addFilter( 'ap.ecommerceStorefrontLivewire.seo.meta', static fn ( array $meta ): array => [ 'title' => 'Your basket' ] );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.cart' ) )
+        ->assertSee( '<title>Your basket', false )
+        ->assertSee( '<meta name="robots" content="noindex, nofollow">', false );
+
+    removeAllFilters( 'ap.ecommerceStorefrontLivewire.seo.meta' );
+    addFilter( 'ap.ecommerceStorefrontLivewire.seo.meta', static fn ( array $meta ): array => [ 'canonical' => null ] );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertDontSee( 'rel="canonical"', false );
+} );
+
 it( 'lets a filter change the structured data', function (): void {
     makeProduct( 1900, [ 'slug' => 'mug' ] );
 

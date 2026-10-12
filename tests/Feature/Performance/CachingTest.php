@@ -149,3 +149,19 @@ it( 'computes the value when the cache store fails', function (): void {
 
     StorefrontCache::flush();
 } );
+
+it( 'throws a failure of the value itself once, without reporting it as a cache failure', function (): void {
+    $calls = 0;
+    $this->spy( Illuminate\Contracts\Debug\ExceptionHandler::class );
+
+    expect( static function () use ( &$calls ): void {
+        StorefrontCache::remember( 'failing', static function () use ( &$calls ): never {
+            $calls++;
+
+            throw new RuntimeException( 'The query failed.' );
+        } );
+    } )->toThrow( RuntimeException::class, 'The query failed.' )
+        ->and( $calls )->toBe( 1 );
+
+    app( Illuminate\Contracts\Debug\ExceptionHandler::class )->shouldNotHaveReceived( 'report' );
+} );

@@ -334,7 +334,8 @@ class StorefrontSeo
         }
 
         $filtered = applyFilters( 'ap.ecommerceStorefrontLivewire.seo.meta', $this->meta, $this->page, $this->subject );
-        $filtered = is_array( $filtered ) ? $filtered : $this->meta;
+        // Keys a filter leaves out keep their value; set one to null to drop it.
+        $filtered = is_array( $filtered ) ? [ ...$this->meta, ...$filtered ] : $this->meta;
         $string   = static fn ( mixed $value ): ?string => is_string( $value ) && '' !== trim( $value ) ? trim( $value ) : null;
 
         $canonical = $string( $filtered['canonical'] ?? null );

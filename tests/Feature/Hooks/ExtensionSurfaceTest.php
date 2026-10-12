@@ -256,9 +256,12 @@ it( 'layout.viteEntries: changes the assets the layout loads', function (): void
 
     addFilter( 'ap.ecommerceStorefrontLivewire.layout.viteEntries', static fn (): array => [ 'resources/css/shop.css' ] );
 
-    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'http://localhost:5173/resources/css/shop.css', false );
-
-    @unlink( $hot );
+    try {
+        $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'http://localhost:5173/resources/css/shop.css', false );
+    } finally {
+        @unlink( $hot );
+        Vite::useHotFile( public_path( 'hot' ) );
+    }
 } );
 
 it( 'seo.meta and seo.schema: change a page\'s tags and structured data', function (): void {

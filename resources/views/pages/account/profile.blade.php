@@ -12,7 +12,7 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', __( 'Profile' ) )
+@section( 'title', $ecommerceSeo->title( __( 'Profile' ) ) )
 
 @section( 'content' )
     <x-artisanpack-ec-account-shell :title="__( 'Profile' )">
