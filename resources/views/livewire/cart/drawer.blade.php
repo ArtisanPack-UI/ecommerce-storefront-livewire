@@ -109,14 +109,14 @@
                                 @endforeach
 
                                 @if ( null !== $line['unsellable'] )
-                                    <p class="font-semibold" data-cart-line-unsellable>{{ $line['unsellable'] }}</p>
+                                    <p class="font-semibold" data-cart-line-unsellable @if ( $line['short'] ) data-cart-line-short @endif>{{ $line['unsellable'] }}</p>
                                 @endif
 
                                 @if ( $line['free'] )
                                     <x-artisanpack-badge :value="__( 'Free gift' )" class="badge-success badge-sm" />
                                 @else
                                     <div class="flex flex-wrap items-end gap-2">
-                                        @if ( null === $line['unsellable'] )
+                                        @if ( null === $line['unsellable'] || $line['short'] )
                                             <x-artisanpack-ec-quantity
                                                 :id="'ec-drawer-quantity-' . $line['id']"
                                                 :item-name="$line['name']"
@@ -155,7 +155,7 @@
                     @endif
 
                     @if ( $hasUnsellable )
-                        <p class="text-sm font-semibold">{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p class="text-sm font-semibold">{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
                         <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-drawer-checkout />
                     @endif

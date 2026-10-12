@@ -86,7 +86,7 @@
                                     </p>
                                 </div>
 
-                                @if ( null !== $line['unsellable'] )
+                                @if ( null !== $line['unsellable'] && ! $line['short'] )
                                     <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable>
                                         <x-slot:actions>
                                             <x-artisanpack-button
@@ -100,6 +100,11 @@
                                         </x-slot:actions>
                                     </x-artisanpack-alert>
                                 @elseif ( ! $line['free'] )
+                                    @if ( $line['short'] )
+                                        {{-- More than the stock left: the shopper can lower the quantity. --}}
+                                        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable data-cart-line-short />
+                                    @endif
+
                                     <div class="flex flex-wrap items-end gap-3">
                                         <x-artisanpack-ec-quantity
                                             :id="'ec-cart-quantity-' . $line['id']"
@@ -227,7 +232,7 @@
                 <div class="flex flex-col gap-2">
                     @if ( $hasUnsellable )
                         <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout />
-                        <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
                         <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-checkout />
                     @endif

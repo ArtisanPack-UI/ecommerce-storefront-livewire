@@ -1652,7 +1652,8 @@ class Index extends Component
             return $this->leave( __( 'Your cart is empty' ), __( 'Add something to your cart to check out.' ) );
         }
 
-        $unsellable = array_filter( $this->lines( $cart ), static fn ( array $line ): bool => null !== $line['unsellable'] );
+        // A line short of stock isn't a blocker here: starting checkout reduces it.
+        $unsellable = array_filter( $this->lines( $cart ), static fn ( array $line ): bool => null !== $line['unsellable'] && ! $line['short'] );
 
         if ( [] !== $unsellable ) {
             return $this->leave(

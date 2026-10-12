@@ -394,6 +394,7 @@ class Index extends Component
             'totals'           => null === $cart || [] === $lines ? null : $this->totals( $cart ),
             'coupon'           => null === $cart ? null : $this->appliedCoupon( $cart ),
             'hasUnsellable'    => [] !== array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] ),
+            'onlyShort'        => [] === array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] && ! $line['short'] ),
             'requiresShipping' => null !== $cart && [] !== $lines && $this->requiresShipping( $cart ),
             'countries'        => Countries::options(),
             'regions'          => AddressFormats::regions( $this->estimateCountry ),

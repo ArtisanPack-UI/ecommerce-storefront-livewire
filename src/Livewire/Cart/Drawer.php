@@ -118,6 +118,7 @@ class Drawer extends Component
             'lines'         => $lines,
             'count'         => app( StorefrontCart::class )->count(),
             'hasUnsellable' => [] !== array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] ),
+            'onlyShort'     => [] === array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] && ! $line['short'] ),
             'cartUrl'       => Route::has( 'artisanpack.ecommerce.storefront.cart' ) ? route( 'artisanpack.ecommerce.storefront.cart' ) : null,
             'checkoutUrl'   => Route::has( 'artisanpack.ecommerce.storefront.checkout' ) ? route( 'artisanpack.ecommerce.storefront.checkout' ) : null,
             'catalogUrl'    => Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ? route( 'artisanpack.ecommerce.storefront.catalog' ) : null,

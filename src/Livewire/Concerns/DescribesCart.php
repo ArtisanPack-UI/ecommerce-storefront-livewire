@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
 
+use ArtisanPackUI\Ecommerce\Inventory\StockLevels;
 use ArtisanPackUI\Ecommerce\Inventory\StockStatus;
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Models\CartItem;
@@ -41,14 +42,15 @@ trait DescribesCart
      *
      * Keys: `id`, `name`, `url`, `image`, `options` (strings), `quantity`,
      * `unit` and `total` (minor units), `currency`, `free` (a promotion's
-     * free item, which can't be changed), and `unsellable` (why the line
-     * can't be bought, or null).
+     * free item, which can't be changed), `unsellable` (why the line
+     * can't be bought, or null), and `short` (the only reason is a quantity
+     * above the stock left, which starting checkout reduces).
      *
      * @since 1.0.0
      *
      * @param  Cart  $cart  The cart.
      *
-     * @return array<int, array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, options: array<int, string>, quantity: int, unit: int, total: int, currency: string, free: bool, unsellable: string|null}>
+     * @return array<int, array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, options: array<int, string>, quantity: int, unit: int, total: int, currency: string, free: bool, unsellable: string|null, short: bool}>
      */
     protected function lines( Cart $cart ): array
     {
@@ -57,9 +59,10 @@ trait DescribesCart
         $hasUrl  = Route::has( 'artisanpack.ecommerce.storefront.product' );
         $code    = (string) $cart->currency;
 
-        return $items->map( function ( CartItem $item ) use ( $visible, $hasUrl, $code ): array {
-            $product = $item->product;
-            $name    = null === $product ? __( 'Unavailable product' ) : (string) $product->name;
+        return $items->map( function ( CartItem $item ) use ( $cart, $visible, $hasUrl, $code ): array {
+            $product      = $item->product;
+            $name         = null === $product ? __( 'Unavailable product' ) : (string) $product->name;
+            $availability = $this->lineAvailability( $item, $visible, $cart );
 
             return [
                 'id'         => (int) $item->id,
@@ -72,42 +75,82 @@ trait DescribesCart
                 'total'      => (int) $item->line_subtotal_amount,
                 'currency'   => (string) ( $item->unit_price_currency ?? $code ),
                 'free'       => $item->isFreeItem(),
-                'unsellable' => $this->unsellableReason( $item, $visible ),
+                'unsellable' => $availability['reason'],
+                'short'      => $availability['short'],
             ];
         } )->all();
     }
 
     /**
-     * Why a line can't be bought, or null when it can.
+     * Why a line can't be bought, or null when it can: the product or its
+     * option is gone, or there isn't enough stock for the line's quantity
+     * (counting what the cart itself holds).
      *
      * @since 1.0.0
      *
      * @param  CartItem         $item     The line.
      * @param  array<int, int>  $visible  Ids of the cart's products shoppers can see.
+     * @param  Cart|null        $cart     The cart, whose own reservations count as available.
      *
      * @return string|null
      */
-    protected function unsellableReason( CartItem $item, array $visible ): ?string
+    protected function unsellableReason( CartItem $item, array $visible, ?Cart $cart = null ): ?string
+    {
+        return $this->lineAvailability( $item, $visible, $cart )['reason'];
+    }
+
+    /**
+     * Whether a line can be bought: `reason` is why not (or null), and
+     * `short` is true when the only problem is a quantity above the stock
+     * left, which starting checkout reduces.
+     *
+     * @since 1.0.0
+     *
+     * @param  CartItem         $item     The line.
+     * @param  array<int, int>  $visible  Ids of the cart's products shoppers can see.
+     * @param  Cart|null        $cart     The cart, whose own reservations count as available.
+     *
+     * @return array{reason: string|null, short: bool}
+     */
+    protected function lineAvailability( CartItem $item, array $visible, ?Cart $cart = null ): array
     {
         $product = $item->product;
 
         if ( null === $product || ! in_array( (int) $product->id, $visible, true ) ) {
-            return __( 'This product is no longer available.' );
+            return [ 'reason' => __( 'This product is no longer available.' ), 'short' => false ];
         }
 
         if ( $product->typeIsMissing() ) {
-            return __( 'This product can no longer be bought.' );
+            return [ 'reason' => __( 'This product can no longer be bought.' ), 'short' => false ];
         }
 
         if ( null !== $item->product_variant_id && null === $item->variant ) {
-            return __( 'This option is no longer available.' );
+            return [ 'reason' => __( 'This option is no longer available.' ), 'short' => false ];
         }
 
-        if ( ! $item->isFreeItem() && ! StockStatus::for( $item->variant?->setRelation( 'product', $product ) ?? $product )->purchasable() ) {
-            return __( 'This item is out of stock.' );
+        if ( $item->isFreeItem() ) {
+            return [ 'reason' => null, 'short' => false ];
         }
 
-        return null;
+        $variant   = $item->variant?->setRelation( 'product', $product );
+        $available = app( StockLevels::class )->sellable( $product, $variant, $cart, preferLoaded: true );
+
+        if ( null === $available ) {
+            return [ 'reason' => StockStatus::for( $variant ?? $product )->purchasable() ? null : __( 'This item is out of stock.' ), 'short' => false ];
+        }
+
+        if ( (int) $item->quantity <= $available ) {
+            return [ 'reason' => null, 'short' => false ];
+        }
+
+        if ( 0 === $available ) {
+            return [ 'reason' => __( 'This item is out of stock.' ), 'short' => false ];
+        }
+
+        return [
+            'reason' => trans_choice( 'Only :count is left in stock.|Only :count are left in stock.', $available, [ 'count' => $available ] ),
+            'short'  => true,
+        ];
     }
 
     /**
