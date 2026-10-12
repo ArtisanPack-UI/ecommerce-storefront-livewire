@@ -204,3 +204,15 @@ it( 'names the zoom button from the image and announces an image change', functi
         ->assertSeeIn( '[data-gallery-announcement]', 'Image 2 of 2: Mug from the side' )
         ->assertAttribute( '[data-gallery-zoom]', 'aria-label', 'Zoom image: Mug from the side' );
 } );
+
+it( 'shows where focus is in the rating input and the chosen rating in words', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Rated mug', 'slug' => 'rated-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->click( '[data-review-open]' )
+        ->keys( '#ec-review-form-' . $product->id . '-heading', 'Tab' )
+        ->assertScript( 'document.activeElement?.closest( "[data-rating-input]" ) !== null' )
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( ".rating" ) ).outlineStyle !== "none"' )
+        ->keys( '#ec-review-form-' . $product->id . '-rating-1', 'ArrowRight' )
+        ->assertSeeIn( '[data-rating-input-value]', '2 out of 5' );
+} );
