@@ -1,8 +1,8 @@
 # Package Spec: `artisanpack-ui/ecommerce-storefront-livewire`
 
-**Status:** Approved v0.2 — decisions in §2 confirmed 2026-10-05
+**Status:** Implemented in 1.0.0. Kept as the design record; the docs in `docs/` are the source of truth for behaviour. Release-readiness changes (checkout step order review → payment, claim email verification) supersede §7.4 and §7.5 where they differ.
 **Owner:** Jacob Martella
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-12
 **Tracker:** [ArtisanPack-UI/ecommerce#53](https://github.com/ArtisanPack-UI/ecommerce/issues/53)
 **Parent plan:** `12-ecommerce-package-plan.md` — §3.2, §7, §8, §10.1, §11.2, §11.9, §15.4, §16.5, §16.6, §18 Phase 7
 **Engine spec:** [`13-ecommerce-engine-spec.md`](https://github.com/ArtisanPack-UI/ecommerce/blob/main/docs/plans/13-ecommerce-engine-spec.md) (referred to below as "engine §N")
@@ -83,10 +83,10 @@ Out of scope: the admin (`15-…`), the kanban UI (`16-…`), the React/Vue stor
 ```json
 {
     "php": "^8.3",
-    "ext-bcmath": "*",
+    "ext-intl": "*",
     "illuminate/support": "^12.0|^13.0",
     "livewire/livewire": "^3.6|^4.0",
-    "artisanpack-ui/ecommerce": "^1.0",
+    "artisanpack-ui/ecommerce": "^1.1",
     "artisanpack-ui/livewire-ui-components": "^2.1",
     "artisanpack-ui/core": "^1.0",
     "artisanpack-ui/hooks": "^1.2",
