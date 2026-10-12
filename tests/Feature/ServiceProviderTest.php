@@ -33,8 +33,9 @@ it( 'merges the config under the artisanpack key', function (): void {
         'layout'         => 'ecommerce-storefront::layouts.app',
     ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.account' ) )->toBe( [
-            'route_prefix' => 'account',
-            'middleware'   => [ 'web', 'auth' ],
+            'route_prefix'                  => 'account',
+            'middleware'                    => [ 'web', 'auth' ],
+            'claim_requires_verified_email' => true,
         ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.auth.login_route' ) )->toBe( 'login' )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.catalog' ) )->toBe( [
