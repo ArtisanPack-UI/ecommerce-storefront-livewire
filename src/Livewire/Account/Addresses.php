@@ -373,6 +373,7 @@ class Addresses extends Component
                         'id'               => (int) $address->id,
                         'label'            => '' !== trim( (string) $address->label ) ? trim( (string) $address->label ) : null,
                         'address'          => $address->toArray(),
+                        'summary'          => implode( ', ', array_filter( [ trim( (string) $address->address1 ), trim( (string) $address->city ) ], static fn ( string $part ): bool => '' !== $part ) ),
                         'default_shipping' => (bool) $address->is_default_shipping,
                         'default_billing'  => (bool) $address->is_default_billing,
                     ] )

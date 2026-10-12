@@ -57,15 +57,17 @@
                     <x-artisanpack-ec-address :address="$row['address']" />
 
                     <div class="mt-auto flex flex-wrap gap-2">
-                        <x-artisanpack-button :label="__( 'Edit' )" icon="o-pencil" class="btn-sm" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}" />
-                        <x-artisanpack-button :label="__( 'Delete' )" icon="o-trash" class="btn-sm btn-ghost" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}" />
+                        {{-- Each button names its address for screen readers, after the visible word (WCAG 2.5.3). --}}
+                        @php( $ecommerceAddressName = implode( ', ', array_filter( [ $row['label'], $row['summary'] ] ) ) )
+                        <x-artisanpack-button icon="o-pencil" class="btn-sm" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}">{{ __( 'Edit' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                        <x-artisanpack-button icon="o-trash" class="btn-sm btn-ghost" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}">{{ __( 'Delete' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
 
                         @unless ( $row['default_shipping'] )
-                            <x-artisanpack-button :label="__( 'Use for shipping' )" class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping" />
+                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping">{{ __( 'Use for shipping' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
 
                         @unless ( $row['default_billing'] )
-                            <x-artisanpack-button :label="__( 'Use for billing' )" class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing" />
+                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing">{{ __( 'Use for billing' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
                     </div>
                 </li>
