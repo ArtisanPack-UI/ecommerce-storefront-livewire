@@ -73,7 +73,7 @@
                 @if ( ! $ecommerceSinglePage && [] !== $steps )
                     {{-- The steps component renders each label with x-html, so labels are escaped here. --}}
                     <div aria-hidden="true" data-checkout-progress>
-                        <x-artisanpack-steps wire:model="progress" steps-color="step-primary" stepper-classes="w-full">
+                        <x-artisanpack-steps wire:model="progress" steps-color="step-primary" stepper-classes="w-full [&_.step]:min-w-0 max-sm:text-xs">
                             @foreach ( $steps as $checkoutStep )
                                 <x-artisanpack-step :step="$checkoutStep['number']" :text="str_replace( '\\', '', e( $checkoutStep['label'] ) )" />
                             @endforeach

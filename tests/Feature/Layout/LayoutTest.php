@@ -26,7 +26,10 @@ it( 'renders pages inside the standalone layout by default', function (): void {
         ->assertSee( 'data-header-action="cart"', false )
         ->assertSee( 'Find an order' )
         ->assertSee( 'window.toast', false )
-        ->assertSee( 'data-ecommerce-cart-merge-prompt', false );
+        ->assertSee( 'data-ecommerce-cart-merge-prompt', false )
+        ->assertSee( 'data-header-search-link', false )
+        ->assertSee( '<main', false )
+        ->assertDontSee( 'drawer lg:drawer-open', false );
 } );
 
 it( 'links a guest to the host\'s sign-in route and a signed-in shopper to their account', function (): void {

@@ -14,14 +14,14 @@
     @if ( \Illuminate\Support\Facades\Route::has( 'artisanpack.ecommerce.account.dashboard' ) )
         <a href="{{ route( 'artisanpack.ecommerce.account.dashboard' ) }}" class="btn btn-ghost btn-sm" data-header-action="account">
             <x-artisanpack-icon name="o-user" class="h-5 w-5" aria-hidden="true" />
-            <span>{{ __( 'Account' ) }}</span>
+            <span class="sr-only sm:not-sr-only">{{ __( 'Account' ) }}</span>
         </a>
     @endif
 @else
     @if ( '' !== $ecommerceLoginRoute && \Illuminate\Support\Facades\Route::has( $ecommerceLoginRoute ) )
         <a href="{{ route( $ecommerceLoginRoute ) }}" class="btn btn-ghost btn-sm" data-header-action="account">
             <x-artisanpack-icon name="o-user" class="h-5 w-5" aria-hidden="true" />
-            <span>{{ __( 'Sign in' ) }}</span>
+            <span class="sr-only sm:not-sr-only">{{ __( 'Sign in' ) }}</span>
         </a>
     @endif
 @endauth
