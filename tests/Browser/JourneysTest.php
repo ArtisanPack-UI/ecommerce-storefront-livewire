@@ -214,3 +214,22 @@ it( 'opens an order from the account order history', function (): void {
         ->assertSee( '$45.00' )
         ->assertNoJavaScriptErrors();
 } );
+
+it( 'unchecks a swatch the server clears when an earlier choice rules it out', function (): void {
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2500, 'stock' => 4 ],
+        'red/xl' => [ 'price' => 2500, 'stock' => 4 ],
+        'blue/m' => [ 'price' => 2900, 'stock' => 4 ],
+    ], [ 'slug' => 'clearing-shirt' ], 'CLEAR' );
+
+    $xl   = 'document.querySelector( \'input[data-swatch-value="' . $made['values']['xl']->id . '"]\' )';
+    $blue = 'document.querySelector( \'input[data-swatch-value="' . $made['values']['blue']->id . '"]\' )';
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'clearing-shirt' ] ) )
+        ->keys( Locators::label( 'XL' ), 'Space' )
+        ->assertScript( $xl . '.checked' )
+        ->assertScript( $blue . '.disabled', false )
+        ->keys( Locators::label( 'Blue' ), 'Space' )
+        ->assertSeeIn( '[data-selection-notice]', 'cleared' )
+        ->assertScript( $xl . '.checked', false );
+} );

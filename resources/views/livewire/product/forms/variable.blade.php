@@ -2,6 +2,11 @@
     Variable product purchase form (the variation picker). See
     Product\Forms\VariableForm.
 
+    A choice can clear another group's (a colour without that size). The
+    morph updates each radio's `checked` attribute, not the checked state
+    the shopper's click set, so every radio is re-synced from its
+    attribute once `choose()` returns.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
@@ -15,7 +20,7 @@
             :legend="$group['label']"
             :options="$group['options']"
             :id-prefix="$ecommerceFormId . '-attribute-' . $group['id']"
-            x-on:change="$wire.choose( {{ (int) $group['id'] }}, $event.target.value )"
+            x-on:change="$wire.choose( {{ (int) $group['id'] }}, $event.target.value ).then( () => $el.closest( '[data-purchase-form]' )?.querySelectorAll( 'input[data-swatch-value]' ).forEach( ( input ) => input.checked = input.hasAttribute( 'checked' ) ) )"
             wire:key="variation-group-{{ $group['id'] }}"
             :aria-describedby="$errors->has( 'variant' ) ? $ecommerceFormId . '-variant-error' : null"
             data-variation-group="{{ $group['id'] }}"
