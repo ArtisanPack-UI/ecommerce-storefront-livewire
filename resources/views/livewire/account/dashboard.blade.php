@@ -12,13 +12,13 @@
     </p>
 
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'Some of your account details couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-dashboard-failed />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Some of your account details couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-dashboard-failed />
     @endif
 
     @if ( $claimable > 0 && null !== $claimUrl )
         <x-artisanpack-alert
             icon="o-inbox-arrow-down"
-            class="alert-info alert-soft"
+            class="alert-info alert-soft text-base-content!"
             :title="trans_choice( 'We found :count order placed as a guest with your email|We found :count orders placed as a guest with your email', $claimable, [ 'count' => $claimable ] )"
             :description="__( 'Add them to your account to see them in your order history.' )"
             data-account-claim-prompt

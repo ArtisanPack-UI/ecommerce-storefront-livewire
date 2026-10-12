@@ -78,6 +78,18 @@ it( 'matches a variant, puts it in the URL, tells the page, and adds it', functi
     expect( Cart::query()->sole()->items()->sole()->product_variant_id )->toBe( $blueL->id );
 } );
 
+it( 'resolves the variant when Livewire replaces the whole selection at once', function (): void {
+    // Livewire 4 can send `selected` whole (no key) instead of
+    // `selected.{id}`, for example while the selection is still empty.
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( 'selected', [ $this->colour => (string) $this->values['blue']->id, $this->size => (string) $this->values['l']->id ] )
+        ->assertHasNoErrors()
+        ->assertSet( 'variant', $this->made['variants']['blue/l']->id )
+        ->set( 'selected', [ $this->colour => 'not-a-value', 999 => '1' ] )
+        ->assertSet( 'selected', [] )
+        ->assertSet( 'variant', null );
+} );
+
 it( 'clears a later choice an earlier one rules out, and announces it', function (): void {
     Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->size}", (string) $this->values['xl']->id )

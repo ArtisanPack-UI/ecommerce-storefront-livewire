@@ -97,13 +97,31 @@ trait ManagesCartLines
      *
      * @since 1.0.0
      *
-     * @param  mixed       $value  The new quantity.
-     * @param  int|string  $key    The line id.
+     * Livewire passes no key when it sends the whole `quantities` array at
+     * once; each line in it is then applied in turn.
+     *
+     * @param  mixed            $value  The new quantity, or every line's quantity.
+     * @param  int|string|null  $key    The line id; null for every line.
      *
      * @return void
      */
-    public function updatedQuantities( mixed $value, int|string $key ): void
+    public function updatedQuantities( mixed $value, int|string|null $key = null ): void
     {
+        if ( null === $key ) {
+            $announcement = '';
+
+            foreach ( is_array( $value ) ? $value : [] as $lineId => $quantity ) {
+                $this->updatedQuantities( $quantity, $lineId );
+
+                // An unchanged line clears the announcement, so keep the last real one.
+                $announcement = '' === $this->announcement ? $announcement : $this->announcement;
+            }
+
+            $this->announcement = $announcement;
+
+            return;
+        }
+
         $itemId = (int) $key;
         $field  = 'quantities.' . $itemId;
 

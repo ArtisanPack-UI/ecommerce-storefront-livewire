@@ -106,7 +106,7 @@
         @endif
     </div>
 
-    <aside class="flex flex-col gap-4 rounded-box border border-base-content/10 p-5" aria-labelledby="ec-order-summary-heading" data-order-summary>
+    <section class="flex flex-col gap-4 rounded-box border border-base-content/10 p-5" aria-labelledby="ec-order-summary-heading" data-order-summary>
         <h2 id="ec-order-summary-heading" class="text-xl font-bold">{{ __( 'Order summary' ) }}</h2>
 
         @include( 'ecommerce-storefront::partials.order-totals', [ 'totals' => $totals ] )
@@ -117,5 +117,5 @@
                 <span><span class="sr-only">{{ __( 'Minus' ) }}</span><span aria-hidden="true">&minus;</span><x-artisanpack-ec-money :amount="$totals['refunded']" :currency="$totals['currency']" /></span>
             </p>
         @endif
-    </aside>
+    </section>
 </div>

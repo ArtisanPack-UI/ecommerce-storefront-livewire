@@ -32,6 +32,6 @@
     </div>
 
     @if ( $ecommerceHasError )
-        <p id="{{ $id }}-error" class="text-sm text-error" data-rating-input-error>{{ $error }}</p>
+        <p id="{{ $id }}-error" class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-rating-input-error>{{ $error }}</p>
     @endif
 </fieldset>

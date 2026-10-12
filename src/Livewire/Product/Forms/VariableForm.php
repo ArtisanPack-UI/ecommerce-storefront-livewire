@@ -141,15 +141,28 @@ class VariableForm extends PurchaseForm
      *
      * @since 1.0.0
      *
-     * @param  mixed       $value  The chosen value id.
-     * @param  int|string  $key    The attribute id.
+     * Livewire passes no key when it replaces the whole selection (it can
+     * send `selected` at once instead of `selected.{id}`, for example while
+     * the selection is still empty); the selection is then cleaned and
+     * resolved as it stands.
+     *
+     * @param  mixed            $value  The chosen value id, or the whole selection.
+     * @param  int|string|null  $key    The attribute id; null for the whole selection.
      *
      * @return void
      */
-    public function updatedSelected( mixed $value, int|string $key ): void
+    public function updatedSelected( mixed $value, int|string|null $key = null ): void
     {
         $this->selectionNotice = '';
         $this->resetErrorBag( 'variant' );
+
+        if ( null === $key ) {
+            $this->selected = is_array( $value ) ? $value : [];
+            $this->selected = $this->cleanSelection();
+            $this->resolveVariant();
+
+            return;
+        }
 
         $attributeId = (int) $key;
         $group       = $this->groups()->firstWhere( 'id', $attributeId );

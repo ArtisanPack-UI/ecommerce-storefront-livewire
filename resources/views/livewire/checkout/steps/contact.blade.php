@@ -15,7 +15,7 @@
     @endif
 
     @if ( $needsAccount )
-        <x-artisanpack-alert icon="o-information-circle" class="alert-info alert-soft" :title="__( 'You\'ll need an account to pay' )" :description="__( 'Fill in your details now, then sign in or create an account before paying.' )" data-checkout-account-needed>
+        <x-artisanpack-alert icon="o-information-circle" class="alert-info alert-soft text-base-content!" :title="__( 'You\'ll need an account to pay' )" :description="__( 'Fill in your details now, then sign in or create an account before paying.' )" data-checkout-account-needed>
             <x-slot:actions>
                 @if ( null !== $loginUrl )
                     <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" class="btn-sm" />

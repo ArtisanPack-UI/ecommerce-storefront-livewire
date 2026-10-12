@@ -3,7 +3,7 @@
 declare( strict_types=1 );
 
 /*
-| Every extension seam (spec §8.4, docs/hooks.md) with one test proving a
+| Every extension seam (spec §8.4, docs/extending/hooks-reference.md) with one test proving a
 | callback changes what the storefront does. Deeper behaviour of each seam is
 | covered next to the component that owns it.
 */
@@ -78,7 +78,7 @@ afterEach( function (): void {
 } );
 
 it( 'documents every hook it fires', function (): void {
-    $docs = (string) file_get_contents( dirname( __DIR__, 3 ) . '/docs/hooks.md' );
+    $docs = (string) file_get_contents( dirname( __DIR__, 3 ) . '/docs/extending/hooks-reference.md' );
 
     expect( storefrontHookNames() )->not->toBeEmpty();
 

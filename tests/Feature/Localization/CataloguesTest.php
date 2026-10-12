@@ -89,3 +89,21 @@ it( 'agrees with the engine and the admin on every key they share', function ( s
         }
     }
 } )->with( [ 'es', 'fr', 'de' ] );
+
+it( 'translates every key, apart from the ones that read the same in the locale', function ( string $locale, array $same ): void {
+    // Strings left in English are usually ones nobody translated. The ones
+    // listed here are pure placeholder formats, cognates, or loanwords.
+    $untranslated = array_keys( array_filter(
+        storefrontCatalogue( $locale ),
+        static fn ( string $value, string $key ): bool => $value === $key,
+        ARRAY_FILTER_USE_BOTH,
+    ) );
+
+    sort( $same );
+
+    expect( $untranslated )->toBe( $same );
+} )->with( [
+    'es' => [ 'es', [ ':code (:symbol)', ':group: :value', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', 'SKU: :sku', 'Subtotal', 'Total', 'incl. :label' ] ],
+    'fr' => [ 'fr', [ ':code (:symbol)', ':count activation|:count activations', ':count suggestion|:count suggestions', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', ':title – Page :page', 'Date', 'Description', 'Licence', 'Notifications', 'Options', 'Total', 'Version :version', 'archive', 'commerce' ] ],
+    'de' => [ 'de', [ ':code (:symbol)', ':group: :value', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', 'Dashboard', 'Download', 'Downloads', 'Layout', 'Minus', 'Name', 'Region', 'SKU: :sku', 'Shop', 'Status', 'Upsells', 'Version :version', 'cross-sells', 'shop', 'upsells' ] ],
+] );

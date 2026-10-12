@@ -88,7 +88,7 @@ it( 'filters to one rating from the histogram and back', function (): void {
         ->assertSet( 'ratingFilter', 1 )
         ->assertSee( 'One Star Critic' )
         ->assertDontSee( 'Five Star Fan' )
-        ->assertSee( 'Showing 1-star reviews' )
+        ->assertSee( 'Showing reviews rated 1 star' )
         ->assertSee( '1 review shown' )
         ->assertSeeHtml( 'aria-pressed="true"' )
         ->call( 'filterRating', 1 )
@@ -99,7 +99,8 @@ it( 'filters to one rating from the histogram and back', function (): void {
         ->call( 'filterRating', 'abc' )
         ->assertSet( 'ratingFilter', null )
         ->call( 'filterRating', '2' )
-        ->assertSet( 'ratingFilter', 2 );
+        ->assertSet( 'ratingFilter', 2 )
+        ->assertSee( 'Showing reviews rated 2 stars' );
 } );
 
 it( 'ignores a bad rating from the query string', function ( mixed $rating ): void {

@@ -11,7 +11,7 @@
 --}}
 <div class="flex flex-col gap-8" data-account-downloads>
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
+        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
     @endif
 
     @if ( ! $failed && ( null === $downloads || 0 === $downloads->total() ) && ( null === $licences || 0 === $licences->total() ) )
@@ -39,11 +39,11 @@
                             </span>
 
                             @if ( 'expired' === $row['state'] )
-                                <p class="text-sm text-error" data-account-download-reason="expired">
+                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-download-reason="expired">
                                     {{ null === $row['expires'] ? __( 'This download has expired.' ) : __( 'This download expired on :date.', [ 'date' => $row['expires'] ] ) }}
                                 </p>
                             @elseif ( 'exhausted' === $row['state'] )
-                                <p class="text-sm text-error" data-account-download-reason="exhausted">{{ __( 'You\'ve used all the downloads for this file.' ) }}</p>
+                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-download-reason="exhausted">{{ __( 'You\'ve used all the downloads for this file.' ) }}</p>
                             @else
                                 <p class="text-sm text-base-content/70">
                                     {{ null === $row['remaining'] ? __( 'Unlimited downloads' ) : trans_choice( ':count download left|:count downloads left', $row['remaining'], [ 'count' => $row['remaining'] ] ) }}
@@ -89,7 +89,7 @@
                                 @if ( null === $row['limit'] )
                                     {{ trans_choice( ':count activation|:count activations', $row['activations'], [ 'count' => $row['activations'] ] ) }}
                                 @else
-                                    {{ __( ':count of :limit activations used', [ 'count' => $row['activations'], 'limit' => $row['limit'] ] ) }}
+                                    {{ trans_choice( ':count of :limit activation used|:count of :limit activations used', $row['limit'], [ 'count' => $row['activations'], 'limit' => $row['limit'] ] ) }}
                                 @endif
 
                                 @if ( 'active' === $row['state'] && null !== $row['expires'] )
@@ -98,9 +98,9 @@
                             </p>
 
                             @if ( 'revoked' === $row['state'] )
-                                <p class="text-sm text-error" data-account-licence-reason="revoked">{{ __( 'This licence key has been revoked.' ) }}</p>
+                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-licence-reason="revoked">{{ __( 'This licence key has been revoked.' ) }}</p>
                             @elseif ( 'expired' === $row['state'] )
-                                <p class="text-sm text-error" data-account-licence-reason="expired">
+                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-licence-reason="expired">
                                     {{ null === $row['expires'] ? __( 'This licence key has expired.' ) : __( 'This licence key expired on :date.', [ 'date' => $row['expires'] ] ) }}
                                 </p>
                             @endif
@@ -108,7 +108,7 @@
 
                         <div class="flex items-center gap-2">
                             <x-artisanpack-button :label="__( 'Copy' )" icon="o-clipboard-document" class="btn-sm" @click="copy()" :aria-label="__( 'Copy the licence key for :product', [ 'product' => $row['product'] ] )" data-account-licence-copy />
-                            <span class="text-sm text-success" role="status" aria-live="polite" x-text="copied ? @js( __( 'Copied' ) ) : ''"></span>
+                            <span class="text-sm font-semibold" role="status" aria-live="polite" x-text="copied ? @js( __( 'Copied' ) ) : ''"></span>
                         </div>
                     </li>
                 @endforeach

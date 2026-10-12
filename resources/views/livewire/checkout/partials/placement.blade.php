@@ -23,7 +23,7 @@
             </h2>
 
             @if ( null !== $paymentProblem )
-                <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="$paymentProblem" data-checkout-payment-problem />
+                <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="$paymentProblem" data-checkout-payment-problem />
             @endif
 
             <div data-field="gateway">
@@ -37,18 +37,18 @@
                         ], key( 'checkout-placement-driver-' . $payment['reference'] ) )
                     </div>
                 @else
-                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft" :title="__( 'This payment can\'t be finished here' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-placement-unavailable />
+                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment can\'t be finished here' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-placement-unavailable />
                 @endif
 
                 @error( 'gateway' )
-                    <p class="mt-2 text-sm text-error">{{ $message }}</p>
+                    <p class="mt-2 text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]">{{ $message }}</p>
                 @enderror
             </div>
         </section>
     </div>
 
     @if ( null !== $placedOrderModel )
-        <aside class="flex flex-col gap-2 rounded-box border border-base-content/10 p-5" aria-labelledby="ec-checkout-placement-summary" data-checkout-summary>
+        <section class="flex flex-col gap-2 rounded-box border border-base-content/10 p-5" aria-labelledby="ec-checkout-placement-summary" data-checkout-summary>
             <h2 id="ec-checkout-placement-summary" class="text-xl font-bold">{{ __( 'Order summary' ) }}</h2>
 
             <p class="text-sm text-base-content/70">
@@ -59,6 +59,6 @@
                 <span>{{ __( 'Total' ) }}</span>
                 <x-artisanpack-ec-money :amount="(int) $placedOrderModel->total_amount" :currency="(string) $placedOrderModel->currency" data-cart-total />
             </p>
-        </aside>
+        </section>
     @endif
 </div>

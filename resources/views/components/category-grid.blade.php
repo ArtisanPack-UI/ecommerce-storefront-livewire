@@ -41,7 +41,7 @@
                         <div class="flex flex-col gap-1">
                             <h3 class="font-semibold">
                                 @if ( null !== $tile['url'] )
-                                    <a href="{{ $tile['url'] }}" class="link-hover after:absolute after:inset-0 after:content-[''] focus-visible:outline-none">{{ $tile['name'] }}</a>
+                                    <a href="{{ $tile['url'] }}" class="link-hover after:absolute after:inset-0 after:content-['']">{{ $tile['name'] }}</a>
                                 @else
                                     {{ $tile['name'] }}
                                 @endif

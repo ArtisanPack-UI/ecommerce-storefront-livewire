@@ -19,11 +19,11 @@
     <div @class( [ 'flex flex-col gap-6', 'lg:grid lg:grid-cols-[16rem_1fr] lg:items-start lg:gap-8' => $ecommerceHasFilters ] )>
         @if ( $ecommerceHasFilters )
             {{-- Desktop: the filters in a sidebar. --}}
-            <aside class="hidden lg:block" aria-labelledby="ecommerce-catalog-filters-heading" data-filters-sidebar>
+            <section class="hidden lg:block" aria-labelledby="ecommerce-catalog-filters-heading" data-filters-sidebar>
                 <h2 id="ecommerce-catalog-filters-heading" class="mb-4 text-lg font-semibold">{{ __( 'Filters' ) }}</h2>
 
                 @include( 'ecommerce-storefront::livewire.catalog.partials.filters', [ 'idPrefix' => 'ecommerce-filters-sidebar' ] )
-            </aside>
+            </section>
         @endif
 
         <div class="flex min-w-0 flex-col gap-6">
