@@ -217,8 +217,7 @@ it( 'checkout.beforePlaceOrder: runs before the order and can stop it', function
         throw new CartOperationException( 'We can\'t ship to that address this week.' );
     }, 10, 2 );
 
-    $component = checkoutAtReview( $gateway );
-    $component->call( 'placeOrder', placeOrderToken( $component ) );
+    payAtCheckout( checkoutAtPaymentStep( $gateway ), $gateway );
 
     expect( $seen )->toHaveCount( 1 )
         ->and( Order::query()->count() )->toBe( 0 );
@@ -315,7 +314,7 @@ it( 'PaymentDriverRegistry: renders a gateway\'s payment UI', function (): void 
         ->set( 'shipping', checkoutAddress() )
         ->call( 'saveAddress' );
 
-    $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' );
+    $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' )->call( 'saveReview' );
 
     expect( app( PaymentDriverRegistry::class )->component( 'fake-driver' ) )->toBe( 'fake-payment-driver' );
 

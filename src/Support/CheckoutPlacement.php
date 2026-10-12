@@ -15,8 +15,11 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Models\Order;
+use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
+use ArtisanPackUI\Ecommerce\ValueObjects\FraudDecision;
 use Illuminate\Support\Facades\Route;
+use Throwable;
 
 /**
  * Remembers, in the shopper's session, an order checkout placed whose
@@ -116,6 +119,41 @@ final class CheckoutPlacement
     public static function isPaid( Order $order ): bool
     {
         return in_array( (string) $order->payment_status, [ 'paid', 'partially_refunded', 'refunded' ], true );
+    }
+
+    /**
+     * Whether fraud screening holds the order for the store's review: the
+     * engine recorded a `challenge` verdict and the payment session is
+     * confirmed, so there is nothing left for the shopper to do. (A
+     * `challenge` whose session still needs the shopper — 3-D Secure — is
+     * not held.)
+     *
+     * @since 1.0.0
+     *
+     * @param  Order  $order  The order.
+     *
+     * @return bool
+     */
+    public static function isHeld( Order $order ): bool
+    {
+        $meta      = (array) ( $order->meta ?? [] );
+        $verdict   = is_array( $meta['fraud_decision'] ?? null ) ? ( $meta['fraud_decision']['verdict'] ?? null ) : null;
+        $reference = (string) ( $order->payment_reference ?? '' );
+        $gateway   = FraudDecision::VERDICT_CHALLENGE !== $verdict || '' === $reference || null === $order->payment_gateway_key
+            ? null
+            : app( PaymentGatewayRegistry::class )->find( (string) $order->payment_gateway_key );
+
+        if ( null === $gateway ) {
+            return false;
+        }
+
+        try {
+            return $gateway->retrievePaymentSession( $reference )->isConfirmed();
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return false;
+        }
     }
 
     /**

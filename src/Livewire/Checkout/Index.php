@@ -38,6 +38,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStoref
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\WithActionToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ActionTokens;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\AddressFormats;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
@@ -46,6 +47,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\Countries;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\AddressForm;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -53,6 +55,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -73,11 +76,12 @@ use Throwable;
  * abandoned-cart follow-up, and marketing consent, unchecked), address
  * (shipping, or billing only for carts that don't ship; saved addresses
  * for signed-in shoppers), shipping (rates re-quoted when the lines or
- * address change), any step a satellite adds, payment (gateway choice and
- * the gateway's payment driver, {@see PaymentDriverRegistry}), and
- * review. The shopper reaches a step once the engine's checkout state
- * says the steps before it are done; completed steps can be reopened.
- * The current step is in the query string, so browser back works.
+ * address change), any step a satellite adds, review, and payment (gateway
+ * choice and the gateway's payment driver, {@see PaymentDriverRegistry}).
+ * The shopper reaches a step once the engine's checkout state says the
+ * steps before it are done; completed steps can be reopened until the
+ * payment is confirmed. The current step is in the query string, so
+ * browser back works.
  *
  * **Layout** ({@see CheckoutLayout}, the store owner's choice): multi-step
  * shows a progress bar (`x-artisanpack-steps`), the completed steps'
@@ -85,23 +89,42 @@ use Throwable;
  * ones after an unfinished step disabled and saying why. Both use the same
  * step partials, and the order summary collapses on small screens.
  *
- * **Placing the order** (S22). The review step shows what the shopper is
- * buying, takes an optional note (sanitized), the terms checkbox when a
- * terms page is set, and — for guests, when the store offers it — a
- * password to create an account. "Place order" carries a one-time action
- * token ({@see WithActionToken}) and runs under the
- * `ecommerce.checkout.finalize` limit; it fires
+ * **Review** comes before payment. It shows what the shopper is buying,
+ * takes an optional note (sanitized), the terms checkbox when a terms page
+ * is set, and — for guests, when the store offers it — a password to
+ * create an account. "Continue to payment" checks them and keeps them in
+ * the session for this cart (the password encrypted, and never sent back
+ * to the browser), so the order is placed with what the shopper reviewed
+ * even after the provider's redirect.
+ *
+ * **Placing the order** (S22) happens when the payment is confirmed: the
+ * driver reports `payment-confirmed` (or the provider's redirect comes
+ * back to the return route), the gateway confirms it, and the order is
+ * placed. A free order is placed with "Place order" on the payment step.
+ * Placing carries a one-time action token ({@see WithActionToken}), minted
+ * when the payment step renders and passed to the driver, and runs under
+ * the `ecommerce.checkout.finalize` limit; it fires
  * `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` and calls the
- * engine's `finalize()`, so a double click places one order. Then:
+ * engine's `finalize()`, so a repeated confirmation places one order.
+ * Then:
  *
  * - captured — the account is created when asked
  *   (`auth.create_account_action`, {@see CreatesCustomerAccounts}) and the
  *   shopper goes to the confirmation page (signed for guests);
+ * - held for review by fraud screening (the payment is confirmed, and the
+ *   store has to approve it) — the shopper goes to the confirmation page,
+ *   told the order is being reviewed;
  * - challenged or failed — the order exists but isn't paid: the payment
  *   driver is shown again for the order's payment ({@see CheckoutPlacement}
  *   keeps it across reloads and the provider's redirect), and confirming it
  *   finishes the order;
  * - blocked by fraud screening — a generic message.
+ *
+ * When the provider's webhook placed the order first (the engine's
+ * reconciler finalizes a cart whose payment succeeded), the checkout finds
+ * that order and carries on from it, rather than saying the cart is empty.
+ * Once the payment is confirmed, the shopper can't go back to an earlier
+ * step or set up another payment, so they can't be charged twice.
  *
  * Every engine refusal — including an `ap.ecommerce.checkout.canTransitionTo`
  * listener blocking a step — is shown with its message.
@@ -150,6 +173,17 @@ class Index extends Component
     public const MARKETING_CONSENT_META_KEY = 'storefront_marketing_consent';
 
     /**
+     * Where the review step keeps what the shopper reviewed, for one cart:
+     * `cart`, `at` (when), `note`, `terms`, `account`, and `password`
+     * (encrypted, or null).
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const REVIEW_SESSION_KEY = 'ecommerce-storefront.checkout.review';
+
+    /**
      * The step on screen. Empty until mount picks the furthest step the
      * shopper can reach (or the one in the query string).
      *
@@ -159,6 +193,17 @@ class Index extends Component
      */
     #[Url( as: 'step', history: true, except: '' )]
     public string $step = '';
+
+    /**
+     * The cart this checkout started with, so an order placed from it
+     * elsewhere (the provider's webhook) can be found.
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
+     */
+    #[Locked]
+    public ?int $cartId = null;
 
     /**
      * The shopper's email.
@@ -404,7 +449,9 @@ class Index extends Component
     public bool $createAccount = false;
 
     /**
-     * The password for the account a guest asked for.
+     * The password for the account a guest asked for. Cleared once the
+     * review step is saved: the checkout keeps the validated password
+     * server-side.
      *
      * @since 1.0.0
      *
@@ -496,8 +543,10 @@ class Index extends Component
      * Checks the cart can check out, starts checkout, and opens the
      * furthest step the shopper can reach (or the one in the query
      * string, when they can reach it). When the shopper has nothing in an
-     * open cart, an order placed earlier whose payment isn't finished is
-     * picked up instead.
+     * open cart, an order placed earlier whose payment isn't finished — or
+     * one the provider's webhook placed from this checkout's cart — is
+     * picked up instead. A payment the return route found confirmed places
+     * the order straight away.
      *
      * @since 1.0.0
      *
@@ -509,7 +558,7 @@ class Index extends Component
 
         $cart = $this->cart();
 
-        if ( ( null === $cart || [] === $this->paidLines( $cart ) ) && $this->resumePlacement() ) {
+        if ( ( null === $cart || [] === $this->paidLines( $cart ) ) && ( $this->resumePlacement() || $this->settleConvertedCart() ) ) {
             return;
         }
 
@@ -531,10 +580,21 @@ class Index extends Component
 
         $cart = $this->cart();
 
+        $this->cartId = (int) $cart->id;
+
         $this->fillFromCart( $cart );
-        $this->acceptReturnedPayment( $cart );
+
+        $returned = $this->acceptReturnedPayment( $cart );
 
         $this->step = $this->canVisit( $this->step, $cart ) ? $this->step : $this->furthestStep( $cart );
+
+        if ( $returned && $this->canVisit( 'payment', $cart ) ) {
+            $this->step = 'payment';
+
+            $this->placeConfirmedOrder( $cart, $this->actionToken( 'place-order', $cart ) );
+
+            return;
+        }
 
         $this->enterStep( $cart );
     }
@@ -544,39 +604,58 @@ class Index extends Component
      * the cart can still check out, holds the stock again, re-quotes
      * shipping, and steps back when a step is no longer done.
      *
+     * Its own `ecommerce-cart-updated` (sent with `source` set to this
+     * class) is ignored, and so is any change once the payment is
+     * confirmed: the shopper is told to contact the store instead, rather
+     * than being asked to pay again.
+     *
      * @since 1.0.0
+     *
+     * @param  string|null  $source  The component that changed the cart.
      *
      * @return void
      */
     #[On( 'ecommerce-cart-updated' )]
-    public function cartUpdated(): void
+    public function cartUpdated( ?string $source = null ): void
     {
-        if ( $this->orderPlaced || $this->signInRequired || null !== $this->unavailable || null !== $this->placement ) {
+        if ( static::class === $source || $this->orderPlaced || $this->signInRequired || null !== $this->unavailable || null !== $this->placement ) {
             return;
         }
 
-        $cart = $this->cart()?->refresh();
-
-        if ( ! $this->guard( $cart ) || ! $this->begin( $cart, false ) ) {
+        if ( $this->refusedAfterPayment() ) {
             return;
         }
 
-        $cart = $this->cart();
-
-        if ( null !== $this->rates ) {
-            $this->quoteRates( $cart );
+        if ( null === $this->cart() && $this->settleConvertedCart() ) {
+            return;
         }
 
-        if ( ! $this->canVisit( $this->step, $cart ) ) {
-            $this->moveTo( $this->furthestStep( $cart ), $cart );
-        } elseif ( 'payment' === $this->step ) {
-            // A session made for the old total can't pay for the new one.
-            $this->preparePayment( $cart );
-        }
+        $this->rateLimited( 'ecommerce.cart.mutate', function (): void {
+            $cart = $this->cart()?->refresh();
+
+            if ( ! $this->guard( $cart ) || ! $this->begin( $cart, false ) ) {
+                return;
+            }
+
+            $cart = $this->cart();
+
+            if ( null !== $this->rates ) {
+                $this->quoteRates( $cart );
+            }
+
+            if ( ! $this->canVisit( $this->step, $cart ) ) {
+                $this->moveTo( $this->furthestStep( $cart ), $cart );
+            } elseif ( 'payment' === $this->step ) {
+                // A session made for the old total can't pay for the new one.
+                $this->preparePayment( $cart );
+            }
+        } );
     }
 
     /**
-     * Opens a step the shopper can reach.
+     * Opens a step the shopper can reach. Once the payment is confirmed,
+     * only review and payment can be opened: the steps before them change
+     * what the payment is for.
      *
      * @since 1.0.0
      *
@@ -586,6 +665,10 @@ class Index extends Component
      */
     public function goTo( string $step ): void
     {
+        if ( ! in_array( $step, [ 'review', 'payment' ], true ) && $this->refusedAfterPayment() ) {
+            return;
+        }
+
         $cart = $this->signInRequired || null !== $this->placement ? null : $this->openCart();
 
         if ( null === $cart || ! $this->canVisit( $step, $cart ) ) {
@@ -607,6 +690,10 @@ class Index extends Component
     public function saveContact(): void
     {
         $this->resetErrorBag();
+
+        if ( $this->refusedAfterPayment() ) {
+            return;
+        }
 
         $cart = $this->openCart();
 
@@ -713,6 +800,10 @@ class Index extends Component
     {
         $this->resetErrorBag();
 
+        if ( $this->refusedAfterPayment() ) {
+            return;
+        }
+
         $cart = $this->openCart();
 
         if ( null === $cart ) {
@@ -769,6 +860,10 @@ class Index extends Component
     {
         $this->resetErrorBag( 'shippingRate' );
 
+        if ( $this->refusedAfterPayment() ) {
+            return;
+        }
+
         $cart = $this->openCart();
 
         if ( null === $cart || ! in_array( $this->shippingRate, array_column( $this->rates ?? [], 'id' ), true ) ) {
@@ -802,6 +897,10 @@ class Index extends Component
     {
         $this->resetErrorBag();
 
+        if ( $this->refusedAfterPayment() ) {
+            return;
+        }
+
         $cart = $this->openCart();
 
         if ( null === $cart ) {
@@ -828,7 +927,8 @@ class Index extends Component
     }
 
     /**
-     * Sets up the payment with the gateway the shopper picked.
+     * Sets up the payment with the gateway the shopper picked. Refused
+     * once the payment is confirmed.
      *
      * @since 1.0.0
      *
@@ -838,6 +938,12 @@ class Index extends Component
     {
         $this->resetErrorBag( 'gateway' );
 
+        if ( $this->refusedAfterPayment() ) {
+            $this->gateway = (string) ( $this->payment['gateway'] ?? $this->gateway );
+
+            return;
+        }
+
         $cart = $this->openCart();
 
         if ( null !== $cart ) {
@@ -846,39 +952,26 @@ class Index extends Component
     }
 
     /**
-     * Moves past the payment step for an order with nothing to pay.
-     *
-     * @since 1.0.0
-     *
-     * @return void
-     */
-    public function continueWithoutPayment(): void
-    {
-        $cart = $this->openCart();
-
-        if ( null !== $cart && (int) $cart->total_amount <= 0 ) {
-            $this->completeStep( 'payment' );
-        }
-    }
-
-    /**
-     * Moves on once the payment driver reports the payment confirmed, it
-     * matches the cart's session, and the gateway agrees.
+     * Places the order once the payment driver reports the payment
+     * confirmed, it matches the cart's session, and the gateway agrees.
      *
      * @since 1.0.0
      *
      * @param  string  $reference  The confirmed session.
+     * @param  string  $token      The action token the payment step gave the driver.
      *
      * @return void
      */
     #[On( 'payment-confirmed' )]
-    public function paymentConfirmed( string $reference = '' ): void
+    public function paymentConfirmed( string $reference = '', string $token = '' ): void
     {
         if ( null !== $this->placement ) {
             $this->placementPaymentConfirmed( $reference );
 
             return;
         }
+
+        $this->resetErrorBag();
 
         $cart = $this->openCart();
 
@@ -894,22 +987,32 @@ class Index extends Component
             return;
         }
 
-        // The event comes from the browser: only the gateway can say the
-        // payment really is confirmed.
-        if ( ! $this->confirmedByGateway( $cart, $current ) ) {
-            $this->confirmedPayment = null;
-            $this->addError( 'gateway', __( 'Your payment couldn\'t be confirmed. Try again.' ) );
+        if ( ! $this->paymentIsConfirmed( $cart ) ) {
+            // The event comes from the browser: only the gateway can say the
+            // payment really is confirmed.
+            $confirmed = $this->rateLimited( 'ecommerce.cart.mutate', fn (): bool => $this->confirmedByGateway( $cart, $current ) );
 
-            return;
+            if ( null === $confirmed ) {
+                return;
+            }
+
+            if ( ! $confirmed ) {
+                $this->confirmedPayment = null;
+                $this->addError( 'gateway', __( 'Your payment couldn\'t be confirmed. Try again.' ) );
+
+                return;
+            }
+
+            $this->confirmedPayment = [ 'reference' => $reference, 'total' => (int) $cart->total_amount ];
         }
 
-        $this->confirmedPayment = [ 'reference' => $reference, 'total' => (int) $cart->total_amount ];
-        $this->completeStep( 'payment' );
+        $this->placeConfirmedOrder( $cart, $token );
     }
 
     /**
      * Keeps the shopper on the payment step when the driver reports a
-     * failed payment. The driver shows the message.
+     * failed payment. The driver shows the message. A payment the gateway
+     * already confirmed stays confirmed.
      *
      * @since 1.0.0
      *
@@ -918,11 +1021,17 @@ class Index extends Component
     #[On( 'payment-failed' )]
     public function paymentFailed(): void
     {
-        $this->confirmedPayment = null;
+        $cart = null === $this->confirmedPayment ? null : $this->cart();
+
+        if ( null === $cart || ! $this->paymentIsConfirmed( $cart ) ) {
+            $this->confirmedPayment = null;
+        }
     }
 
     /**
-     * Moves on once a satellite's step reports it is done.
+     * Moves on once a satellite's step reports it is done. A step the
+     * shopper can't reach yet is ignored, and a step with a `complete`
+     * callable is only done when that callable says so.
      *
      * @since 1.0.0
      *
@@ -936,7 +1045,7 @@ class Index extends Component
         $cart  = $this->cart();
         $steps = null === $cart ? [] : $this->steps( $cart );
 
-        if ( null === $cart || null === ( $steps[ $step ]['component'] ?? null ) ) {
+        if ( null === $cart || null === ( $steps[ $step ]['component'] ?? null ) || ! $this->canVisit( $step, $cart ) ) {
             return;
         }
 
@@ -965,10 +1074,63 @@ class Index extends Component
     }
 
     /**
-     * Places the order (spec §7.4): checks the review form, then finalizes
-     * the cart through the engine under the action token and the
-     * `ecommerce.checkout.finalize` limit, and acts on how the payment
-     * went.
+     * Saves the review step: checks the note, the terms, and the account
+     * the shopper asked for, keeps them in the session for this cart (the
+     * password encrypted), clears the password from the component, and
+     * moves on to payment.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function saveReview(): void
+    {
+        $this->resetErrorBag();
+
+        $cart = $this->openCart();
+
+        if ( null === $cart ) {
+            return;
+        }
+
+        if ( ! $this->canVisit( 'review', $cart ) ) {
+            $this->moveTo( $this->furthestStep( $cart ), $cart );
+            $this->addError( 'review', __( 'Finish the steps above before placing your order.' ) );
+            $this->errorSummary++;
+
+            return;
+        }
+
+        $account  = $this->createAccount && $this->offersAccount( $cart );
+        $password = $account ? $this->password : '';
+
+        if ( $account && '' === $password ) {
+            $password = (string) ( $this->reviewed( $cart )['password'] ?? '' );
+        }
+
+        $errors = $this->reviewErrors( $cart, $password );
+
+        if ( [] !== $errors ) {
+            foreach ( $errors as $field => $message ) {
+                $this->addError( $field, $message );
+            }
+
+            $this->errorSummary++;
+
+            return;
+        }
+
+        $this->rememberReview( $cart, trim( sanitizeText( trim( $this->orderNote ) ) ), $account ? $password : null );
+
+        $this->password = '';
+
+        $this->completeStep( 'review' );
+    }
+
+    /**
+     * Places an order that needs no payment, or whose payment is already
+     * confirmed (a confirmation that couldn't place the order, or a reload
+     * after paying).
      *
      * @since 1.0.0
      *
@@ -986,57 +1148,14 @@ class Index extends Component
             return;
         }
 
-        if ( 'review' !== $this->step || ! $this->canVisit( 'review', $cart ) ) {
-            $this->moveTo( $this->furthestStep( $cart ), $cart );
-            $this->addError( 'review', __( 'Finish the steps above before placing your order.' ) );
+        if ( (int) $cart->total_amount > 0 && ! $this->paymentIsConfirmed( $cart ) ) {
+            $this->addError( 'payment', __( 'Confirm your payment to place your order.' ) );
             $this->errorSummary++;
 
             return;
         }
 
-        $errors = $this->reviewErrors( $cart );
-
-        if ( [] !== $errors ) {
-            foreach ( $errors as $field => $message ) {
-                $this->addError( $field, $message );
-            }
-
-            $this->errorSummary++;
-
-            return;
-        }
-
-        $note      = trim( sanitizeText( $this->orderNote ) );
-        $reference = (int) $cart->total_amount > 0 ? (string) ( $cart->payment_reference ?? '' ) : null;
-        $context   = array_filter( [
-            'customer_note' => '' === $note ? null : $note,
-            'ip_address'    => request()->ip(),
-            'user_agent'    => request()->userAgent(),
-        ], static fn ( mixed $value ): bool => null !== $value && '' !== $value );
-
-        try {
-            $outcome = $this->rateLimited(
-                'ecommerce.checkout.finalize',
-                fn (): ?array => $this->withActionToken( $token, 'place-order', fn (): array => $this->finalizeCart( $cart, $reference, $context ), $cart ),
-            );
-        } catch ( CartOperationException $exception ) {
-            $this->placementRefused( $cart, $exception );
-
-            return;
-        } catch ( Throwable $exception ) {
-            report( $exception );
-
-            if ( ! $this->placedButUnpaid( $cart, __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ) ) ) {
-                $this->addError( 'review', __( 'We couldn\'t place your order. Try again in a moment.' ) );
-                $this->errorSummary++;
-            }
-
-            return;
-        }
-
-        if ( is_array( $outcome ) ) {
-            $this->settleOutcome( $outcome );
-        }
+        $this->placeConfirmedOrder( $cart, $token );
     }
 
     /**
@@ -1061,7 +1180,8 @@ class Index extends Component
             'cart'             => $cart,
             'steps'            => $listed,
             'placedOrderModel' => null === $this->placement ? null : Order::query()->with( 'items' )->find( $this->placement['order'] ),
-            'placeOrderToken'  => $ready && 'review' === $this->step ? $this->actionToken( 'place-order', $cart ) : null,
+            'placeOrderToken'  => $ready && 'payment' === $this->step ? $this->actionToken( 'place-order', $cart ) : null,
+            'paymentConfirmed' => $ready && 'payment' === $this->step && $this->paymentIsConfirmed( $cart ),
             'termsUrl'         => $ready && 'review' === $this->step ? CheckoutLayout::termsUrl() : null,
             'offersAccount'    => $ready && 'review' === $this->step && $this->offersAccount( $cart ),
             'noteMaxLength'    => self::NOTE_MAX_LENGTH,
@@ -1091,11 +1211,12 @@ class Index extends Component
      *
      * @since 1.0.0
      *
-     * @param  Cart  $cart  The cart.
+     * @param  Cart    $cart      The cart.
+     * @param  string  $password  The password for the account the shopper asked for.
      *
      * @return array<string, string>
      */
-    protected function reviewErrors( Cart $cart ): array
+    protected function reviewErrors( Cart $cart, string $password ): array
     {
         $errors = [];
 
@@ -1110,7 +1231,7 @@ class Index extends Component
         $action = $this->createAccount && $this->offersAccount( $cart ) ? $this->accountAction() : null;
 
         if ( null !== $action ) {
-            $validator = Validator::make( [ 'password' => $this->password ], [ 'password' => $action->passwordRules() ], [
+            $validator = Validator::make( [ 'password' => $password ], [ 'password' => $action->passwordRules() ], [
                 'password.required' => __( 'Choose a password for your account.' ),
             ] );
 
@@ -1125,9 +1246,65 @@ class Index extends Component
     }
 
     /**
+     * Places the order (spec §7.4): checks every step before payment is
+     * done, then finalizes the cart through the engine under the action
+     * token and the `ecommerce.checkout.finalize` limit, with the note the
+     * shopper reviewed, and acts on how the payment went.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart    $cart   The cart.
+     * @param  string  $token  The action token minted for the payment step.
+     *
+     * @return void
+     */
+    protected function placeConfirmedOrder( Cart $cart, string $token ): void
+    {
+        if ( 'payment' !== $this->step || ! $this->canVisit( 'payment', $cart ) ) {
+            $this->moveTo( $this->furthestStep( $cart ), $cart );
+            $this->addError( 'review', __( 'Finish the steps above before placing your order.' ) );
+            $this->errorSummary++;
+
+            return;
+        }
+
+        $note      = (string) ( $this->reviewed( $cart )['note'] ?? '' );
+        $reference = (int) $cart->total_amount > 0 ? (string) ( $cart->payment_reference ?? '' ) : null;
+        $context   = array_filter( [
+            'customer_note' => '' === $note ? null : $note,
+            'ip_address'    => request()->ip(),
+            'user_agent'    => request()->userAgent(),
+        ], static fn ( mixed $value ): bool => null !== $value && '' !== $value );
+
+        try {
+            $outcome = $this->rateLimited(
+                'ecommerce.checkout.finalize',
+                fn (): ?array => $this->withActionToken( $token, 'place-order', fn (): array => $this->finalizeCart( $cart, $reference, $context ), $cart ),
+            );
+        } catch ( CartOperationException $exception ) {
+            $this->placementRefused( $cart, $exception );
+
+            return;
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            if ( ! $this->placedButUnpaid( $cart, __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ) ) ) {
+                $this->addError( 'payment', __( 'We couldn\'t place your order. Try again in a moment.' ) );
+                $this->errorSummary++;
+            }
+
+            return;
+        }
+
+        if ( is_array( $outcome ) ) {
+            $this->settleOutcome( $outcome );
+        }
+    }
+
+    /**
      * Places the order through the engine, after
      * `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder`. Runs once
-     * per action token.
+     * per action token. Every step a satellite added is checked again first.
      *
      * @since 1.0.0
      *
@@ -1135,10 +1312,20 @@ class Index extends Component
      * @param  string|null           $reference  The payment session the shopper confirmed (null when nothing is due).
      * @param  array<string, mixed>  $context    Placement context (note, IP, user agent).
      *
-     * @return array{cart: int, order: int, status: string, message: string|null}
+     * @throws CheckoutException When a satellite's step isn't done.
+     *
+     * @return array{cart: int, order: int, status: string, message: string|null, held: bool}
      */
     protected function finalizeCart( Cart $cart, ?string $reference, array $context ): array
     {
+        $steps = $this->steps( $cart );
+
+        foreach ( $steps as $key => $step ) {
+            if ( null !== $step['component'] && ! $this->stepIsComplete( $key, $steps, $cart ) ) {
+                throw new CheckoutException( 'checkout_state', 'step-incomplete', __( 'Finish the steps above before placing your order.' ) );
+            }
+        }
+
         doAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', $cart, $context );
 
         return $this->describeResult( $cart, $this->checkout()->finalize( $cart, $reference, $context ) );
@@ -1152,7 +1339,11 @@ class Index extends Component
      * @param  Cart            $cart    The cart.
      * @param  CheckoutResult  $result  The engine's result.
      *
-     * @return array{cart: int, order: int, status: string, message: string|null}
+     * `held` is a fraud-review hold: the engine reports `challenged` with no
+     * step-up for the shopper, because the payment is confirmed and the
+     * store has to approve it.
+     *
+     * @return array{cart: int, order: int, status: string, message: string|null, held: bool}
      */
     protected function describeResult( Cart $cart, CheckoutResult $result ): array
     {
@@ -1163,17 +1354,19 @@ class Index extends Component
             'order'   => (int) $result->order->id,
             'status'  => $result->status(),
             'message' => is_string( $message ) && '' !== trim( $message ) ? trim( strip_tags( $message ) ) : null,
+            'held'    => true === $result->payment?->fraud?->isChallenge() && null === $result->stepUpToken(),
         ];
     }
 
     /**
-     * Acts on how placing the order went: captured goes to the
-     * confirmation; challenged or failed shows the payment again for the
-     * placed order; blocked shows a generic message.
+     * Acts on how placing the order went: captured (and paid) goes to the
+     * confirmation; held for fraud review goes to the confirmation, saying
+     * so; challenged or failed shows the payment again for the placed
+     * order; blocked shows a generic message.
      *
      * @since 1.0.0
      *
-     * @param  array{cart: int, order: int, status: string, message: string|null}  $outcome  From {@see self::describeResult()}.
+     * @param  array{cart: int, order: int, status: string, message: string|null, held?: bool}  $outcome  From {@see self::describeResult()}.
      *
      * @return void
      */
@@ -1183,8 +1376,24 @@ class Index extends Component
         $order = Order::query()->find( $outcome['order'] );
 
         if ( null === $cart || null === $order ) {
-            $this->addError( 'review', __( 'We couldn\'t place your order. Try again in a moment.' ) );
+            $this->addError( 'payment', __( 'We couldn\'t place your order. Try again in a moment.' ) );
             $this->errorSummary++;
+
+            return;
+        }
+
+        if ( PaymentFinalization::STATUS_CAPTURED === $outcome['status'] && ! CheckoutPlacement::isPaid( $order ) ) {
+            // The engine reports an order with no payment session pinned as
+            // captured: it can't be paid from here, and it isn't paid.
+            report( new RuntimeException( 'Checkout placed order ' . $order->id . ' without a payment it can take.' ) );
+
+            $this->awaitPayment( $cart, $order, __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ) );
+
+            return;
+        }
+
+        if ( PaymentFinalization::STATUS_CHALLENGED === $outcome['status'] && true === ( $outcome['held'] ?? false ) ) {
+            $this->orderPlaced( $order, true );
 
             return;
         }
@@ -1198,27 +1407,35 @@ class Index extends Component
     }
 
     /**
-     * The order is paid: creates the account the shopper asked for and
+     * The order is paid (or held for the store's fraud review, with its
+     * payment confirmed): creates the account the shopper asked for and
      * goes to the confirmation page (or, without one, says the order is
-     * placed).
+     * placed). A held order's shopper is told it is being reviewed.
      *
      * @since 1.0.0
      *
      * @param  Order  $order  The order.
+     * @param  bool   $held   Whether fraud screening holds it for review.
      *
      * @return void
      */
-    protected function orderPlaced( Order $order ): void
+    protected function orderPlaced( Order $order, bool $held = false ): void
     {
         CheckoutPlacement::forget();
 
-        $this->orderPlaced    = true;
-        $this->placement      = null;
-        $this->payment        = null;
-        $this->paymentProblem = null;
+        $this->orderPlaced      = true;
+        $this->placement        = null;
+        $this->payment          = null;
+        $this->paymentProblem   = null;
+        $this->confirmedPayment = null;
 
         $this->createAccountFor( $order );
+        $this->forgetReview();
         $this->cartChanged();
+
+        if ( $held ) {
+            $this->flashToastSuccess( __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ) );
+        }
 
         $url = CheckoutPlacement::confirmationUrl( $order->refresh() );
 
@@ -1243,6 +1460,8 @@ class Index extends Component
     protected function orderBlocked(): void
     {
         CheckoutPlacement::forget();
+
+        $this->forgetReview();
 
         $this->placement   = null;
         $this->payment     = null;
@@ -1281,9 +1500,9 @@ class Index extends Component
 
     /**
      * Picks up an order placed earlier in this session whose payment
-     * isn't finished: a paid one goes to its confirmation; a payment the
-     * return route found confirmed finishes it; otherwise its payment is
-     * shown again.
+     * isn't finished: a paid one, or one held for the store's fraud review,
+     * goes to its confirmation; a payment the return route found confirmed
+     * finishes it; otherwise its payment is shown again.
      *
      * @since 1.0.0
      *
@@ -1299,8 +1518,8 @@ class Index extends Component
 
         [ 'cart' => $cart, 'order' => $order ] = $placement;
 
-        if ( CheckoutPlacement::isPaid( $order ) ) {
-            $this->orderPlaced( $order );
+        if ( CheckoutPlacement::isPaid( $order ) || CheckoutPlacement::isHeld( $order ) ) {
+            $this->orderPlaced( $order, ! CheckoutPlacement::isPaid( $order ) );
 
             return true;
         }
@@ -1371,7 +1590,8 @@ class Index extends Component
 
     /**
      * Finalizes the placed order again (the engine resumes its payment)
-     * and acts on the outcome.
+     * and acts on the outcome. When that is throttled, the order's payment
+     * is shown again, so the shopper isn't left on a dead end.
      *
      * @since 1.0.0
      *
@@ -1400,6 +1620,14 @@ class Index extends Component
 
         if ( is_array( $outcome ) ) {
             $this->settleOutcome( $outcome );
+
+            return;
+        }
+
+        $order = $this->wasThrottled() ? $this->checkout()->placedOrder( $cart ) : null;
+
+        if ( null !== $order ) {
+            $this->preparePlacementPayment( $cart, $order );
         }
     }
 
@@ -1423,6 +1651,10 @@ class Index extends Component
         $this->payment = null;
 
         if ( null === $gateway || '' === $reference ) {
+            // The engine unpinned the order's session (it was cancelled), or
+            // its gateway is gone: it can't be paid from the storefront.
+            report( new RuntimeException( 'Order ' . $order->id . ' has no payment session the storefront can show.' ) );
+
             return;
         }
 
@@ -1521,17 +1753,67 @@ class Index extends Component
             return false;
         }
 
-        if ( CheckoutPlacement::isPaid( $order ) ) {
-            $this->orderPlaced( $order );
-        } else {
-            $this->awaitPayment( $cart->refresh(), $order, $message );
-        }
+        $this->placedOrderFound( $cart->refresh(), $order, $message );
 
         return true;
     }
 
     /**
-     * Creates the account a guest asked for, once their order is paid. A
+     * Carries on from an order the cart already became: a paid one, or one
+     * held for the store's fraud review, goes to its confirmation; one that
+     * was cancelled gets the generic message; otherwise its payment is
+     * shown again with `$message`.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart    $cart     The converted cart.
+     * @param  Order   $order    The order.
+     * @param  string  $message  Why the payment is shown again.
+     *
+     * @return void
+     */
+    protected function placedOrderFound( Cart $cart, Order $order, string $message ): void
+    {
+        if ( CheckoutPlacement::isPaid( $order ) ) {
+            $this->orderPlaced( $order );
+        } elseif ( CheckoutPlacement::isHeld( $order ) ) {
+            $this->orderPlaced( $order, true );
+        } elseif ( in_array( (string) $order->system_status, [ 'cancelled', 'failed', 'refunded' ], true ) ) {
+            $this->orderBlocked();
+        } else {
+            $this->awaitPayment( $cart, $order, $message );
+        }
+    }
+
+    /**
+     * When this checkout's cart has become an order since the page loaded
+     * (the provider's webhook placed it), carries on from that order
+     * instead of saying the cart is empty. The cart is the one checkout
+     * started with, or the one the shopper reviewed in this session.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True when the cart had become an order.
+     */
+    protected function settleConvertedCart(): bool
+    {
+        $cartId = $this->cartId ?? ( $this->storedReview()['cart'] ?? null );
+        $cart   = is_int( $cartId ) ? Cart::query()->find( $cartId ) : null;
+        $order  = null === $cart ? null : $this->checkout()->placedOrder( $cart );
+
+        if ( null === $cart || null === $order ) {
+            return false;
+        }
+
+        $this->placedOrderFound( $cart, $order, __( 'Your order :number is placed, but its payment isn\'t finished. Pay below to complete it.', [ 'number' => (string) $order->order_number ] ) );
+
+        return true;
+    }
+
+    /**
+     * Creates the account a guest asked for, once their order is paid. The
+     * request and the password are the ones the review step validated and
+     * kept for the order's cart; nothing the browser sends later counts. A
      * failure doesn't hold up the order; the shopper is told.
      *
      * @since 1.0.0
@@ -1542,11 +1824,13 @@ class Index extends Component
      */
     protected function createAccountFor( Order $order ): void
     {
-        $password = $this->password;
-
         $this->password = '';
 
-        if ( ! $this->createAccount || '' === $password || auth()->check() || ! $this->checkout()->offersAccountCreation() ) {
+        $cartId   = Cart::query()->where( 'completed_order_id', $order->id )->value( 'id' );
+        $review   = $this->storedReview();
+        $password = null !== $cartId && (int) $cartId === (int) ( $review['cart'] ?? 0 ) && true === ( $review['account'] ?? false ) ? (string) ( $review['password'] ?? '' ) : '';
+
+        if ( '' === $password || auth()->check() || ! $this->checkout()->offersAccountCreation() ) {
             return;
         }
 
@@ -1616,9 +1900,10 @@ class Index extends Component
     }
 
     /**
-     * The shopper's open cart for an action. When it has gone (it expired,
-     * or became an order in another tab), the shopper is sent back to the
-     * cart.
+     * The shopper's open cart for an action. When it became an order (the
+     * provider's webhook placed it), the checkout carries on from that
+     * order; when it has gone otherwise (it expired), the shopper is sent
+     * back to the cart.
      *
      * @since 1.0.0
      *
@@ -1628,7 +1913,7 @@ class Index extends Component
     {
         $cart = $this->cart();
 
-        if ( null === $cart ) {
+        if ( null === $cart && ! $this->settleConvertedCart() ) {
             $this->leave( __( 'Your cart is empty' ), __( 'Add something to your cart to check out.' ) );
         }
 
@@ -1804,6 +2089,14 @@ class Index extends Component
 
         $this->shippingRate = (string) ( $this->chosenRate( $cart )['id'] ?? '' );
         $this->gateway      = (string) ( $cart->payment_gateway_key ?? '' );
+
+        $review = $this->reviewed( $cart );
+
+        if ( null !== $review ) {
+            $this->orderNote     = (string) ( $review['note'] ?? '' );
+            $this->acceptTerms   = true === ( $review['terms'] ?? false );
+            $this->createAccount = true === ( $review['account'] ?? false );
+        }
     }
 
     /**
@@ -1814,21 +2107,25 @@ class Index extends Component
      *
      * @param  Cart  $cart  The cart.
      *
-     * @return void
+     * @return bool True when it was picked up.
      */
-    protected function acceptReturnedPayment( Cart $cart ): void
+    protected function acceptReturnedPayment( Cart $cart ): bool
     {
         $returned = app()->bound( 'session' ) ? session()->pull( self::CONFIRMED_PAYMENT_SESSION_KEY ) : null;
 
         if ( ! is_array( $returned ) || ! is_string( $returned['reference'] ?? null ) ) {
-            return;
+            return false;
         }
 
         $current = (string) ( $cart->payment_reference ?? '' );
 
-        if ( '' !== $current && hash_equals( $current, $returned['reference'] ) && (int) ( $returned['total'] ?? -1 ) === (int) $cart->total_amount ) {
-            $this->confirmedPayment = [ 'reference' => $current, 'total' => (int) $cart->total_amount ];
+        if ( '' === $current || ! hash_equals( $current, $returned['reference'] ) || (int) ( $returned['total'] ?? -1 ) !== (int) $cart->total_amount ) {
+            return false;
         }
+
+        $this->confirmedPayment = [ 'reference' => $current, 'total' => (int) $cart->total_amount ];
+
+        return true;
     }
 
     /**
@@ -1846,13 +2143,16 @@ class Index extends Component
     }
 
     /**
-     * Whether a step is done, judged from the cart and the engine's
-     * checkout state.
+     * Whether a step is done, judged from the cart, the engine's checkout
+     * state, and the review the shopper saved. Payment is never "done":
+     * confirming it places the order. A satellite step with a `complete`
+     * callable is whatever that callable says; one without is done once it
+     * reported done.
      *
      * @since 1.0.0
      *
      * @param  string                                                                     $key    Step key.
-     * @param  array<string, array{key: string, label: string, component: string|null}>  $steps  The steps.
+     * @param  array<string, array{key: string, label: string, component: string|null, complete?: callable(Cart): bool}>  $steps  The steps.
      * @param  Cart                                                                       $cart   The cart.
      *
      * @return bool
@@ -1867,9 +2167,9 @@ class Index extends Component
             'address'  => ( $ships ? is_array( $cart->shipping_address ) : ( is_array( $cart->billing_address ) || is_array( $cart->shipping_address ) ) )
                 && CheckoutState::rank( $state ) >= CheckoutState::rank( $ships ? CheckoutState::SHIPPING_SELECTION : CheckoutState::PAYMENT_SELECTION ),
             'shipping' => null !== $this->chosenRate( $cart ) && CheckoutState::rank( $state ) >= CheckoutState::rank( CheckoutState::PAYMENT_SELECTION ),
-            'payment'  => (int) $cart->total_amount <= 0 || $this->paymentIsConfirmed( $cart ),
-            'review'   => false,
-            default    => in_array( $key, $this->completedSteps, true ),
+            'review'   => null !== $this->reviewed( $cart ),
+            'payment'  => false,
+            default    => isset( $steps[ $key ]['complete'] ) ? (bool) ( $steps[ $key ]['complete'] )( $cart ) : in_array( $key, $this->completedSteps, true ),
         };
     }
 
@@ -1940,7 +2240,7 @@ class Index extends Component
             }
         }
 
-        return 'review';
+        return 'payment';
     }
 
     /**
@@ -2089,6 +2389,10 @@ class Index extends Component
      */
     protected function preparePayment( Cart $cart ): void
     {
+        if ( $this->paymentIsConfirmed( $cart ) ) {
+            return;
+        }
+
         if ( (int) $cart->total_amount <= 0 || ( $this->isGuest( $cart ) && CheckoutService::GUESTS_REQUIRE_ACCOUNT === $this->checkout()->guestCheckout() ) ) {
             $this->payment = null;
 
@@ -2113,7 +2417,10 @@ class Index extends Component
     /**
      * Chooses the gateway and creates (or reuses) its payment session,
      * then works out the driver that renders it. A gateway whose payment
-     * UI can't be shown is hidden.
+     * UI can't be shown is hidden. A reused session the shopper already
+     * paid (they reloaded before the order was placed) counts as
+     * confirmed, so "Place order" finishes it. Refused once a payment is
+     * confirmed: a new session would charge the shopper again.
      *
      * @since 1.0.0
      *
@@ -2123,6 +2430,10 @@ class Index extends Component
      */
     protected function startPayment( Cart $cart ): void
     {
+        if ( $this->refusedAfterPayment() ) {
+            return;
+        }
+
         $key      = $this->gateway;
         $gateways = $this->checkout()->availableGateways( $cart );
         $gateway  = in_array( $key, $this->hiddenGateways, true ) ? null : ( $gateways[ $key ] ?? null );
@@ -2169,8 +2480,8 @@ class Index extends Component
             return;
         }
 
-        if ( null !== $this->confirmedPayment && $this->confirmedPayment['reference'] !== $session->reference ) {
-            $this->confirmedPayment = null;
+        if ( PaymentSessions::confirmedFor( $session, $cart ) ) {
+            $this->confirmedPayment = [ 'reference' => $session->reference, 'total' => (int) $cart->total_amount ];
         }
 
         $this->payment = [
@@ -2452,7 +2763,7 @@ class Index extends Component
      *
      * @since 1.0.0
      *
-     * @param  array<string, array{key: string, label: string, component: string|null}>  $steps  The steps.
+     * @param  array<string, array{key: string, label: string, component: string|null, complete?: callable(Cart): bool}>  $steps  The steps.
      * @param  Cart|null                                                                  $cart   The cart.
      *
      * @return array<int, array{key: string, label: string, component: string|null, number: int, complete: bool, current: bool, reachable: bool}>
@@ -2468,7 +2779,10 @@ class Index extends Component
         $described = [];
 
         foreach ( array_values( $steps ) as $index => $step ) {
-            $described[] = $step + [
+            $described[] = [
+                'key'       => $step['key'],
+                'label'     => $step['label'],
+                'component' => $step['component'],
                 'number'    => $index + 1,
                 'complete'  => $this->stepIsComplete( $step['key'], $steps, $cart ),
                 'current'   => $step['key'] === $this->step,
@@ -2510,6 +2824,7 @@ class Index extends Component
             'email'        => __( 'Email' ),
             'shippingRate' => __( 'Shipping option' ),
             'gateway'      => __( 'Payment method' ),
+            'payment'      => __( 'Payment' ),
             'orderNote'    => __( 'Order note' ),
             'acceptTerms'  => __( 'Terms and conditions' ),
             'password'     => __( 'Password' ),
@@ -2584,6 +2899,119 @@ class Index extends Component
     protected function paidLines( Cart $cart ): array
     {
         return $cart->items()->get()->reject( static fn ( CartItem $item ): bool => $item->isFreeItem() )->values()->all();
+    }
+
+    /**
+     * Once the payment is confirmed, refuses anything that would change the
+     * order or set up another payment, and tells the shopper why.
+     *
+     * @since 1.0.0
+     *
+     * @return bool True when the action must not go ahead.
+     */
+    protected function refusedAfterPayment(): bool
+    {
+        if ( null === $this->confirmedPayment ) {
+            return false;
+        }
+
+        $this->resetErrorBag( 'payment' );
+        $this->addError( 'payment', __( 'Your payment is confirmed. Contact us to change this order.' ) );
+        $this->errorSummary++;
+
+        return true;
+    }
+
+    /**
+     * Keeps what the shopper reviewed for `$cart`, in the session: the
+     * note, that the terms were accepted, and the account password
+     * (encrypted).
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart         $cart      The cart.
+     * @param  string       $note      The sanitized note.
+     * @param  string|null  $password  The validated password, when the shopper asked for an account.
+     *
+     * @return void
+     */
+    protected function rememberReview( Cart $cart, string $note, ?string $password ): void
+    {
+        if ( ! app()->bound( 'session' ) ) {
+            return;
+        }
+
+        session()->put( self::REVIEW_SESSION_KEY, [
+            'cart'     => (int) $cart->id,
+            'at'       => now()->getTimestamp(),
+            'note'     => $note,
+            'terms'    => null !== CheckoutLayout::termsUrl() && $this->acceptTerms,
+            'account'  => null !== $password,
+            'password' => null === $password ? null : encrypt( $password ),
+        ] );
+    }
+
+    /**
+     * What the shopper reviewed for `$cart`, with the password decrypted;
+     * null when they haven't reviewed this cart.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart  $cart  The cart.
+     *
+     * @return array{cart: int, at: int, note: string, terms: bool, account: bool, password: string|null}|null
+     */
+    protected function reviewed( Cart $cart ): ?array
+    {
+        $review = $this->storedReview();
+
+        return null !== $review && $review['cart'] === (int) $cart->id ? $review : null;
+    }
+
+    /**
+     * The review kept in the session, with the password decrypted; null
+     * when there is none, or it is older than an action token lives.
+     *
+     * @since 1.0.0
+     *
+     * @return array{cart: int, at: int, note: string, terms: bool, account: bool, password: string|null}|null
+     */
+    protected function storedReview(): ?array
+    {
+        $review = app()->bound( 'session' ) ? session()->get( self::REVIEW_SESSION_KEY ) : null;
+
+        if ( ! is_array( $review ) || ! is_int( $review['cart'] ?? null ) || ! is_int( $review['at'] ?? null ) || now()->getTimestamp() - $review['at'] > ActionTokens::TTL_SECONDS ) {
+            return null;
+        }
+
+        try {
+            $password = is_string( $review['password'] ?? null ) ? decrypt( $review['password'] ) : null;
+        } catch ( DecryptException ) {
+            $password = null;
+        }
+
+        return [
+            'cart'     => $review['cart'],
+            'at'       => $review['at'],
+            'note'     => is_string( $review['note'] ?? null ) ? $review['note'] : '',
+            'terms'    => true === ( $review['terms'] ?? false ),
+            'account'  => true === ( $review['account'] ?? false ) && is_string( $password ),
+            'password' => is_string( $password ) ? $password : null,
+        ];
+    }
+
+    /**
+     * Forgets the review kept in the session.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function forgetReview(): void
+    {
+        if ( app()->bound( 'session' ) ) {
+            session()->forget( self::REVIEW_SESSION_KEY );
+        }
     }
 
     /**

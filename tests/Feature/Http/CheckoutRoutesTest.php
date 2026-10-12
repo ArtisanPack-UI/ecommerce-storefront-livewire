@@ -3,6 +3,7 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Services\CheckoutService;
 use ArtisanPackUI\Ecommerce\ValueObjects\Address;
 use ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession;
@@ -62,20 +63,55 @@ it( 'sends a return with no payment to resume back to the checkout', function ()
     expect( $response->headers->get( 'Cache-Control' ) )->toContain( 'no-store' );
 } );
 
-it( 'resumes checkout at review when the provider confirmed the payment', function (): void {
+it( 'places the order when the provider confirmed the payment of a reviewed checkout', function (): void {
+    [ 'cart' => $cart, 'gateway' => $gateway ] = cartAwaitingPayment();
+    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
+
+    session()->put( Index::REVIEW_SESSION_KEY, [ 'cart' => $cart->id, 'at' => now()->getTimestamp(), 'note' => 'From the bank', 'terms' => false, 'account' => false, 'password' => null ] );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1', 'redirect_status' => 'succeeded' ] ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
+        ->assertSessionHas( Index::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => 'fake_ps_1', 'total' => 2500 ] );
+
+    $component = Livewire::withQueryParams( [ 'step' => 'payment' ] )->test( Index::class );
+    $order     = Order::query()->sole();
+
+    $component->assertRedirect( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => $order->id ] ) );
+
+    expect( $order )->payment_status->toBe( 'paid' )->customer_note->toBe( 'From the bank' )
+        ->and( session()->has( Index::CONFIRMED_PAYMENT_SESSION_KEY ) )->toBeFalse();
+} );
+
+it( 'keeps a confirmed payment for a checkout that still needs reviewing', function (): void {
     [ 'gateway' => $gateway ] = cartAwaitingPayment();
     $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
 
-    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1', 'redirect_status' => 'succeeded' ] ) )
-        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'review' ] ) )
-        ->assertSessionHas( Index::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => 'fake_ps_1', 'total' => 2500 ] );
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1' ] ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
 
-    Livewire::withQueryParams( [ 'step' => 'review' ] )->test( Index::class )
+    Livewire::withQueryParams( [ 'step' => 'payment' ] )->test( Index::class )
         ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
         ->assertSet( 'step', 'review' )
-        ->assertSeeHtml( 'data-checkout-review' );
+        ->call( 'saveReview' )
+        ->assertSet( 'step', 'payment' )
+        ->assertSeeHtml( 'data-checkout-payment-confirmed' );
 
-    expect( session()->has( Index::CONFIRMED_PAYMENT_SESSION_KEY ) )->toBeFalse();
+    expect( Order::query()->count() )->toBe( 0 );
+} );
+
+it( 'limits how often the return route asks the provider', function (): void {
+    [ 'gateway' => $gateway ] = cartAwaitingPayment();
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_ip', 1 );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return' ) );
+    $before = $gateway->retrievals;
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return' ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+
+    expect( $gateway->retrievals )->toBe( $before )
+        ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] )->toBe( 'Too many attempts. Try again in a moment.' );
 } );
 
 it( 'sends the shopper back to payment when the payment didn\'t go through', function ( string $status, string $description ): void {
@@ -133,7 +169,7 @@ it( 'ignores a returned payment the cart has since replaced', function (): void 
 
     session()->put( Index::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => 'fake_ps_0', 'total' => (int) $cart->total_amount ] );
 
-    Livewire::withQueryParams( [ 'step' => 'review' ] )->test( Index::class )
+    Livewire::withQueryParams( [ 'step' => 'payment' ] )->test( Index::class )
         ->assertSet( 'confirmedPayment', null )
-        ->assertSet( 'step', 'payment' );
+        ->assertSet( 'step', 'review' );
 } );

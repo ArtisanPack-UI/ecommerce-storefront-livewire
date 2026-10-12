@@ -144,12 +144,12 @@ it( 'passes on a decline from Stripe as plain text', function (): void {
 it( 'holds no card data, only the session it was given', function (): void {
     $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
 
-    expect( array_keys( $component->instance()->all() ) )->toEqualCanonicalizing( [ 'config', 'gateway', 'gatewayLabel', 'reference', 'pageUrl' ] );
+    expect( array_keys( $component->instance()->all() ) )->toEqualCanonicalizing( [ 'config', 'gateway', 'gatewayLabel', 'reference', 'token', 'pageUrl' ] );
 } );
 
 it( 'keeps its props out of the browser\'s reach', function ( string $property ): void {
     Livewire::test( StripePaymentElement::class, stripeDriverProps() )->set( $property, 'pi_evil' );
-} )->with( [ 'reference', 'config.client_secret', 'gateway', 'pageUrl' ] )->throws( CannotUpdateLockedPropertyException::class );
+} )->with( [ 'reference', 'config.client_secret', 'gateway', 'pageUrl', 'token' ] )->throws( CannotUpdateLockedPropertyException::class );
 
 it( 'returns to the page it was mounted on when the return route is off, even after an update', function (): void {
     stripeLikeGateway();

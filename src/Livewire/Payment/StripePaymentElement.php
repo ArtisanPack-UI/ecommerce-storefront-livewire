@@ -32,7 +32,8 @@ use Livewire\Livewire;
  * `/shop/checkout/return`. A Stripe error is shown under the form in an
  * assertive live region and reported as `payment-failed`. On success the
  * script calls {@see self::confirm()} with the PaymentIntent id, which is
- * checked with Stripe before the checkout is told.
+ * checked with Stripe before the checkout is told — and the checkout then
+ * places the order.
  *
  * Card data goes from the Payment Element's iframe straight to Stripe; it
  * never reaches Livewire state, a Livewire request, or the server.

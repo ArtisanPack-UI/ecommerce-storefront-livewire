@@ -1,15 +1,16 @@
 {{--
-    Checkout step: review. What the shopper is buying and where it goes,
-    an optional note, the terms checkbox (when a terms page is set), the
-    optional account for guests, and "Place order". The button carries a
-    one-time action token, so a double click places one order.
+    Checkout step: review, before payment. What the shopper is buying and
+    where it goes, an optional note, the terms checkbox (when a terms page
+    is set), the optional account for guests, and "Continue to payment".
+    Confirming the payment on the next step places the order with what was
+    reviewed here.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<form wire:submit="placeOrder( '{{ $placeOrderToken }}' )" novalidate class="flex flex-col gap-6" data-checkout-review-form>
+<form wire:submit="saveReview" novalidate class="flex flex-col gap-6" data-checkout-review-form>
     <dl class="grid gap-4 text-sm sm:grid-cols-2" data-checkout-review>
         <div>
             <dt class="font-semibold">{{ __( 'Contact' ) }}</dt>
@@ -40,11 +41,6 @@
                 <dd>{{ $chosenRate['label'] ?? '' }}</dd>
             </div>
         @endif
-
-        <div>
-            <dt class="font-semibold">{{ __( 'Payment' ) }}</dt>
-            <dd>{{ $paymentRequired ? ( $gatewayLabel ?? '' ) : __( 'No payment needed' ) }}</dd>
-        </div>
     </dl>
 
     <section class="flex flex-col gap-3" aria-labelledby="ec-checkout-review-items" data-checkout-review-lines>
@@ -109,13 +105,13 @@
     <div class="flex flex-col gap-2">
         <x-artisanpack-button
             type="submit"
-            :label="__( 'Place order' )"
+            :label="__( 'Continue to payment' )"
             color="primary"
             class="btn-lg w-full sm:w-auto"
-            spinner="placeOrder"
+            spinner="saveReview"
             wire:loading.attr="disabled"
-            wire:target="placeOrder"
-            data-checkout-place-order
+            wire:target="saveReview"
+            data-checkout-review-submit
         />
 
         @if ( null !== $totals && $paymentRequired )

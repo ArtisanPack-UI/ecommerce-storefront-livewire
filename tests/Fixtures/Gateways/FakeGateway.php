@@ -59,6 +59,11 @@ class FakeGateway implements PaymentGateway
      */
     public int $captures = 0;
 
+    /**
+     * How many times a session was loaded.
+     */
+    public int $retrievals = 0;
+
     private int $sequence = 0;
 
     public function __construct(
@@ -131,6 +136,8 @@ class FakeGateway implements PaymentGateway
 
     public function retrievePaymentSession( string $reference ): PaymentSession
     {
+        $this->retrievals++;
+
         if ( $this->failRetrieval ) {
             throw new RuntimeException( 'The provider is down.' );
         }
