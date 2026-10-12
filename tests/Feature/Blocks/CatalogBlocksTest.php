@@ -217,7 +217,8 @@ it( 'shows the recently-viewed satellite\'s products, visible ones only, without
 
     $html = renderBlock( new RecentlyViewedBlock(), [ 'limit' => 2 ] );
 
-    expect( namesInOrder( $html, [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Mug' ] )
+    // The hidden draft is dropped before the list is cut to the limit.
+    expect( namesInOrder( $html, [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Mug', 'Teapot' ] )
         ->and( $html )->toContain( 'Recently viewed' );
 } );
 
