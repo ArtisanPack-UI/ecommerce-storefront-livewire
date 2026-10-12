@@ -13,8 +13,10 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 
+use ArrayObject;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
+use Closure;
 use Throwable;
 
 /**
@@ -25,6 +27,10 @@ use Throwable;
  * gets a `srcset` built from the library's image sizes. Without it, images
  * are the `meta.featured_image_url` or gallery `image_url` values, which are
  * only used when they are http(s) URLs.
+ *
+ * Listings call {@see self::preload()} (or {@see self::preloadCards()})
+ * first, so a page of cards looks its media up in one query rather than
+ * one per card.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -55,6 +61,26 @@ final class ProductImages
     public const DETAIL_SIZES = [ 'medium', 'large' ];
 
     /**
+     * The media library's model, looked up by name so the library stays
+     * optional.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    private const MEDIA_MODEL = 'ArtisanPackUI\\MediaLibrary\\Models\\Media';
+
+    /**
+     * The container key of the request's preloaded media (bound `scoped`,
+     * so it is dropped between requests and queued jobs).
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    private const PRELOADED = 'artisanpack.ecommerce-storefront.preloaded-media';
+
+    /**
      * Override for tests: true/false forces the answer, null detects.
      *
      * @since 1.0.0
@@ -62,6 +88,16 @@ final class ProductImages
      * @var bool|null
      */
     private static ?bool $fake = null;
+
+    /**
+     * Override for tests: looks media items up by id (ids => items keyed
+     * by id); null uses the library.
+     *
+     * @since 1.0.0
+     *
+     * @var (Closure(array<int, int>): iterable<int, object|null>)|null
+     */
+    private static ?Closure $fakeLookup = null;
 
     /**
      * Whether the media library is installed.
@@ -76,17 +112,103 @@ final class ProductImages
     }
 
     /**
-     * Forces {@see self::libraryInstalled()} (null restores detection).
+     * Forces {@see self::libraryInstalled()} (null restores detection),
+     * and optionally how media items are looked up: `$lookup` gets the ids
+     * and returns the items keyed by id.
      *
      * @since 1.0.0
      *
-     * @param  bool|null  $installed  Forced answer.
+     * @param  bool|null                                                   $installed  Forced answer.
+     * @param  (Closure(array<int, int>): iterable<int, object|null>)|null  $lookup     Forced lookup.
      *
      * @return void
      */
-    public static function fake( ?bool $installed ): void
+    public static function fake( ?bool $installed, ?Closure $lookup = null ): void
     {
-        self::$fake = $installed;
+        self::$fake       = $installed;
+        self::$fakeLookup = $lookup;
+    }
+
+    /**
+     * Looks up media items in one query and keeps them for the rest of the
+     * request, so the images built from them afterwards run no query each.
+     * Ids already loaded are skipped; does nothing without the library.
+     *
+     * The items are kept per request (a `scoped` container binding), so
+     * nothing leaks between requests, queued jobs, or tests.
+     *
+     * ```php
+     * ProductImages::preload( $categories->pluck( 'image_media_id' ) );
+     * ```
+     *
+     * @since 1.0.0
+     *
+     * @param  iterable<int, mixed>  $mediaIds  Media ids; empty and invalid ids are skipped.
+     *
+     * @return void
+     */
+    public static function preload( iterable $mediaIds ): void
+    {
+        if ( ! self::libraryInstalled() ) {
+            return;
+        }
+
+        $loaded = self::preloaded();
+        $ids    = [];
+
+        foreach ( $mediaIds as $mediaId ) {
+            $id = is_int( $mediaId ) || is_string( $mediaId ) ? filter_var( $mediaId, FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
+
+            if ( false !== $id && ! $loaded->offsetExists( $id ) ) {
+                $ids[ $id ] = $id;
+            }
+        }
+
+        if ( [] === $ids ) {
+            return;
+        }
+
+        try {
+            $found = self::lookup( array_values( $ids ) );
+        } catch ( Throwable $exception ) {
+            // Images are an aid: each one is looked up on its own instead.
+            report( $exception );
+
+            return;
+        }
+
+        foreach ( $ids as $id ) {
+            $loaded[ $id ] = $found[ $id ] ?? null;
+        }
+    }
+
+    /**
+     * Preloads the media every card of `$products` may show: the featured
+     * image and, when the gallery is loaded, the first gallery image.
+     *
+     * @since 1.0.0
+     *
+     * @param  iterable<int, mixed>  $products  Products (anything else is skipped).
+     *
+     * @return void
+     */
+    public static function preloadCards( iterable $products ): void
+    {
+        $ids = [];
+
+        foreach ( $products as $product ) {
+            if ( ! $product instanceof Product ) {
+                continue;
+            }
+
+            $ids[] = $product->featured_image_media_id;
+
+            if ( $product->relationLoaded( 'images' ) ) {
+                $ids[] = $product->images->first()?->media_id;
+            }
+        }
+
+        self::preload( $ids );
     }
 
     /**
@@ -161,48 +283,7 @@ final class ProductImages
      */
     public static function gallery( Product $product ): array
     {
-        $name   = (string) $product->name;
-        $images = [];
-        $seen   = [];
-
-        $add = static function ( ?array $image, ?int $mediaId, string $key ) use ( &$images, &$seen ): void {
-            if ( null === $image || isset( $seen[ $image['url'] ] ) ) {
-                return;
-            }
-
-            $seen[ $image['url'] ] = true;
-            $images[]              = $image + [ 'key' => $key, 'media_id' => $mediaId ];
-        };
-
-        $featuredId = null === $product->featured_image_media_id ? null : (int) $product->featured_image_media_id;
-        $featured   = self::fromMedia( $featuredId, $name, self::DETAIL_SIZES );
-
-        if ( null === $featured && null !== ( $url = self::safeUrl( $product->meta['featured_image_url'] ?? null ) ) ) {
-            $featured = [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $name ];
-        }
-
-        $add( $featured, $featuredId, 'featured' );
-
-        $gallery = $product->relationLoaded( 'images' ) ? $product->images : $product->images()->get();
-
-        foreach ( $gallery as $image ) {
-            if ( ! $image instanceof ProductImage ) {
-                continue;
-            }
-
-            $alt     = '' !== trim( (string) $image->alt_text ) ? (string) $image->alt_text : $name;
-            $mediaId = null === $image->media_id ? null : (int) $image->media_id;
-            $url     = self::safeUrl( $image->image_url );
-
-            $add(
-                self::fromMedia( $mediaId, $alt, self::DETAIL_SIZES )
-                    ?? ( null === $url ? null : [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $alt ] ),
-                $mediaId,
-                'image-' . $image->id,
-            );
-        }
-
-        return $images;
+        return self::buildGallery( $product, $product->relationLoaded( 'images' ) ? $product->images : $product->images()->get() );
     }
 
     /**
@@ -217,10 +298,14 @@ final class ProductImages
      */
     public static function withVariants( Product $product ): array
     {
-        $images = self::gallery( $product );
-        $urls   = array_column( $images, 'url' );
-
         $variantMedia = $product->variants()->whereNotNull( 'image_media_id' )->orderBy( 'position' )->orderBy( 'id' )->pluck( 'image_media_id' );
+
+        $gallery      = $product->relationLoaded( 'images' ) ? $product->images : $product->images()->get();
+
+        self::preload( [ $product->featured_image_media_id, ...$gallery->pluck( 'media_id' ), ...$variantMedia ] );
+
+        $images = self::buildGallery( $product, $gallery );
+        $urls   = array_column( $images, 'url' );
 
         foreach ( $variantMedia as $mediaId ) {
             $image = self::media( (int) $mediaId, (string) $product->name );
@@ -275,6 +360,60 @@ final class ProductImages
     }
 
     /**
+     * Builds {@see self::gallery()} from the product's gallery images.
+     *
+     * @since 1.0.0
+     *
+     * @param  Product               $product  Product.
+     * @param  iterable<int, mixed>  $gallery  The product's gallery images, in position order.
+     *
+     * @return array<int, array{key: string, url: string, srcset: string|null, full: string, alt: string, media_id: int|null}>
+     */
+    private static function buildGallery( Product $product, iterable $gallery ): array
+    {
+        $name   = (string) $product->name;
+        $images = [];
+        $seen   = [];
+
+        $add = static function ( ?array $image, ?int $mediaId, string $key ) use ( &$images, &$seen ): void {
+            if ( null === $image || isset( $seen[ $image['url'] ] ) ) {
+                return;
+            }
+
+            $seen[ $image['url'] ] = true;
+            $images[]              = $image + [ 'key' => $key, 'media_id' => $mediaId ];
+        };
+
+        $featuredId = null === $product->featured_image_media_id ? null : (int) $product->featured_image_media_id;
+        $featured   = self::fromMedia( $featuredId, $name, self::DETAIL_SIZES );
+
+        if ( null === $featured && null !== ( $url = self::safeUrl( $product->meta['featured_image_url'] ?? null ) ) ) {
+            $featured = [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $name ];
+        }
+
+        $add( $featured, $featuredId, 'featured' );
+
+        foreach ( $gallery as $image ) {
+            if ( ! $image instanceof ProductImage ) {
+                continue;
+            }
+
+            $alt     = '' !== trim( (string) $image->alt_text ) ? (string) $image->alt_text : $name;
+            $mediaId = null === $image->media_id ? null : (int) $image->media_id;
+            $url     = self::safeUrl( $image->image_url );
+
+            $add(
+                self::fromMedia( $mediaId, $alt, self::DETAIL_SIZES )
+                    ?? ( null === $url ? null : [ 'url' => $url, 'srcset' => null, 'full' => $url, 'alt' => $alt ] ),
+                $mediaId,
+                'image-' . $image->id,
+            );
+        }
+
+        return $images;
+    }
+
+    /**
      * A media-library image with its `srcset`, or null.
      *
      * @since 1.0.0
@@ -292,7 +431,8 @@ final class ProductImages
         }
 
         try {
-            $media = apGetMedia( $mediaId );
+            $loaded = self::preloaded();
+            $media  = $loaded->offsetExists( $mediaId ) ? $loaded[ $mediaId ] : self::lookupOne( $mediaId );
 
             if ( null === $media || ! $media->isImage() ) {
                 return null;
@@ -337,6 +477,80 @@ final class ProductImages
             'width'  => $width,
             'height' => $height,
         ];
+    }
+
+    /**
+     * The request's preloaded media items, keyed by id (null for an id the
+     * library doesn't have).
+     *
+     * @since 1.0.0
+     *
+     * @return ArrayObject<int, object|null>
+     */
+    private static function preloaded(): ArrayObject
+    {
+        $app = app();
+
+        if ( ! $app->bound( self::PRELOADED ) ) {
+            $app->scoped( self::PRELOADED, static fn (): ArrayObject => new ArrayObject() );
+        }
+
+        return $app->make( self::PRELOADED );
+    }
+
+    /**
+     * Media items by id, in one query when the library's model is there.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, int>  $ids  Media ids.
+     *
+     * @return array<int, object|null>
+     */
+    private static function lookup( array $ids ): array
+    {
+        if ( null !== self::$fakeLookup ) {
+            $items = [];
+
+            foreach ( ( self::$fakeLookup )( $ids ) as $id => $item ) {
+                $items[ (int) $id ] = $item;
+            }
+
+            return $items;
+        }
+
+        $model = self::MEDIA_MODEL;
+
+        if ( class_exists( $model ) ) {
+            return $model::query()->whereKey( $ids )->get()->keyBy( static fn ( object $media ): int => (int) $media->getKey() )->all();
+        }
+
+        // Without the model only the helper is there: one call per id.
+        $items = [];
+
+        foreach ( $ids as $id ) {
+            $items[ $id ] = apGetMedia( $id );
+        }
+
+        return $items;
+    }
+
+    /**
+     * One media item by id, or null.
+     *
+     * @since 1.0.0
+     *
+     * @param  int  $mediaId  Media id.
+     *
+     * @return object|null
+     */
+    private static function lookupOne( int $mediaId ): ?object
+    {
+        if ( null !== self::$fakeLookup ) {
+            return self::lookup( [ $mediaId ] )[ $mediaId ] ?? null;
+        }
+
+        return apGetMedia( $mediaId );
     }
 
     /**

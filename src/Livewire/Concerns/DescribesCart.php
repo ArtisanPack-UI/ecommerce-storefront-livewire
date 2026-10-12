@@ -62,6 +62,9 @@ trait DescribesCart
 
         $holder  = $this->holdsStock( $cart ) ? $cart : null;
 
+        ProductImages::preload( $items->pluck( 'variant.image_media_id' ) );
+        ProductImages::preloadCards( $items->pluck( 'product' ) );
+
         return $items->map( function ( CartItem $item ) use ( $holder, $visible, $hasUrl, $code ): array {
             $product      = $item->product;
             $name         = null === $product ? __( 'Unavailable product' ) : (string) $product->name;
