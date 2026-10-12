@@ -40,11 +40,11 @@
         >
             <x-slot:actions>
                 @if ( null !== $loginUrl )
-                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" class="btn-sm" color="primary" />
+                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" no-wire-navigate class="btn-sm" color="primary" />
                 @endif
 
                 @if ( null !== $registerUrl )
-                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" class="btn-sm" />
+                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate class="btn-sm" />
                 @endif
             </x-slot:actions>
         </x-artisanpack-alert>

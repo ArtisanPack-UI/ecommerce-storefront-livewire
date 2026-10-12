@@ -38,11 +38,11 @@
         @if ( null !== $profileUrl || null !== $passwordUrl )
             <div class="flex flex-wrap gap-2">
                 @if ( null !== $profileUrl )
-                    <x-artisanpack-button :label="__( 'Change your email' )" :link="$profileUrl" icon="o-envelope" class="btn-sm" data-account-host-link="profile" />
+                    <x-artisanpack-button :label="__( 'Change your email' )" :link="$profileUrl" no-wire-navigate icon="o-envelope" class="btn-sm" data-account-host-link="profile" />
                 @endif
 
                 @if ( null !== $passwordUrl )
-                    <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" icon="o-key" class="btn-sm" data-account-host-link="password" />
+                    <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" no-wire-navigate icon="o-key" class="btn-sm" data-account-host-link="password" />
                 @endif
             </div>
         @endif

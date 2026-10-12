@@ -28,7 +28,7 @@
     @elseif ( null !== $unavailable )
         <x-artisanpack-ec-empty-state icon="o-shopping-cart" :title="$unavailable" data-checkout-unavailable>
             @if ( null !== $cartUrl )
-                <x-artisanpack-button :label="__( 'Go to your cart' )" :link="$cartUrl" color="primary" />
+                <x-artisanpack-button :label="__( 'Go to your cart' )" :link="$cartUrl" no-wire-navigate color="primary" />
             @endif
         </x-artisanpack-ec-empty-state>
     @elseif ( $signInRequired )
@@ -40,11 +40,11 @@
         >
             <div class="flex flex-wrap justify-center gap-2">
                 @if ( null !== $loginUrl )
-                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" color="primary" data-checkout-login />
+                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" no-wire-navigate color="primary" data-checkout-login />
                 @endif
 
                 @if ( null !== $registerUrl )
-                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" data-checkout-register />
+                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate data-checkout-register />
                 @endif
             </div>
         </x-artisanpack-ec-empty-state>

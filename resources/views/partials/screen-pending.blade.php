@@ -15,6 +15,6 @@
     data-screen-pending
 >
     @if ( \Illuminate\Support\Facades\Route::has( 'artisanpack.ecommerce.storefront.catalog' ) )
-        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="route( 'artisanpack.ecommerce.storefront.catalog' )" color="primary" />
+        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="route( 'artisanpack.ecommerce.storefront.catalog' )" no-wire-navigate color="primary" />
     @endif
 </x-artisanpack-ec-empty-state>

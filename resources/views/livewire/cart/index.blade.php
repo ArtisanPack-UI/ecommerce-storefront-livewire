@@ -28,7 +28,7 @@
             data-cart-empty
         >
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" color="primary" />
+                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
             @endif
         </x-artisanpack-ec-empty-state>
     @else
@@ -234,11 +234,11 @@
                         <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout />
                         <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-checkout />
+                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-checkout />
                     @endif
 
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-ghost w-full" />
+                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-ghost w-full" />
                     @endif
                 </div>
             </section>

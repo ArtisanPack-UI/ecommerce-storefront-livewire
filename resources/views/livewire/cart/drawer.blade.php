@@ -78,7 +78,7 @@
                     <x-artisanpack-icon name="o-shopping-cart" class="h-10 w-10 opacity-40" aria-hidden="true" />
                     <p>{{ __( 'Your cart is empty' ) }}</p>
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-sm" />
+                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-sm" />
                     @endif
                 </div>
             @else
@@ -151,13 +151,13 @@
                     <p class="text-sm text-base-content/70">{{ __( 'Shipping and tax are calculated at checkout.' ) }}</p>
 
                     @if ( null !== $cartUrl )
-                        <x-artisanpack-button :label="__( 'View cart' )" :link="$cartUrl" class="w-full" data-cart-drawer-view />
+                        <x-artisanpack-button :label="__( 'View cart' )" :link="$cartUrl" no-wire-navigate class="w-full" data-cart-drawer-view />
                     @endif
 
                     @if ( $hasUnsellable )
                         <p class="text-sm font-semibold">{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-drawer-checkout />
+                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-drawer-checkout />
                     @endif
                 </div>
             @endif

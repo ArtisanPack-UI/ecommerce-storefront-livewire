@@ -24,7 +24,7 @@
             data-account-claim-prompt
         >
             <x-slot:actions>
-                <x-artisanpack-button :label="__( 'Claim your orders' )" :link="$claimUrl" class="btn-sm" />
+                <x-artisanpack-button :label="__( 'Claim your orders' )" :link="$claimUrl" no-wire-navigate class="btn-sm" />
             </x-slot:actions>
         </x-artisanpack-alert>
     @endif
@@ -41,7 +41,7 @@
         @if ( [] === $orders )
             <x-artisanpack-ec-empty-state icon="o-shopping-bag" :title="__( 'No orders yet' )" :description="__( 'Orders you place will appear here.' )" data-account-no-orders>
                 @if ( null !== $catalogUrl )
-                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" color="primary" />
+                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
                 @endif
             </x-artisanpack-ec-empty-state>
         @else
@@ -98,19 +98,19 @@
 
     <div class="flex flex-wrap gap-2" data-account-links>
         @if ( null !== $addressesUrl )
-            <x-artisanpack-button :label="__( 'Manage addresses' )" :link="$addressesUrl" icon="o-map-pin" class="btn-sm" />
+            <x-artisanpack-button :label="__( 'Manage addresses' )" :link="$addressesUrl" no-wire-navigate icon="o-map-pin" class="btn-sm" />
         @endif
 
         @if ( null !== $downloadsUrl )
-            <x-artisanpack-button :label="__( 'Go to your downloads' )" :link="$downloadsUrl" icon="o-arrow-down-tray" class="btn-sm" />
+            <x-artisanpack-button :label="__( 'Go to your downloads' )" :link="$downloadsUrl" no-wire-navigate icon="o-arrow-down-tray" class="btn-sm" />
         @endif
 
         @if ( null !== $profileUrl )
-            <x-artisanpack-button :label="__( 'Edit your profile' )" :link="$profileUrl" icon="o-user-circle" class="btn-sm" data-account-host-link="profile" />
+            <x-artisanpack-button :label="__( 'Edit your profile' )" :link="$profileUrl" no-wire-navigate icon="o-user-circle" class="btn-sm" data-account-host-link="profile" />
         @endif
 
         @if ( null !== $passwordUrl )
-            <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" icon="o-key" class="btn-sm" data-account-host-link="password" />
+            <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" no-wire-navigate icon="o-key" class="btn-sm" data-account-host-link="password" />
         @endif
     </div>
 </div>

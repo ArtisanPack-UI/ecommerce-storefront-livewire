@@ -17,7 +17,7 @@
     @if ( ! $failed && ( null === $downloads || 0 === $downloads->total() ) && ( null === $licences || 0 === $licences->total() ) )
         <x-artisanpack-ec-empty-state icon="o-arrow-down-tray" :title="__( 'No downloads yet' )" :description="__( 'Files and licence keys from your orders will appear here.' )" data-account-no-downloads>
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" color="primary" />
+                <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
             @endif
         </x-artisanpack-ec-empty-state>
     @endif
