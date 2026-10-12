@@ -1,6 +1,7 @@
 {
     "(completed)": "(abgeschlossen)",
     "(opens in a new tab)": "(öffnet in neuem Tab)",
+    ", ": ", ",
     ":choices cleared: not available with :value.": ":choices zurückgesetzt: nicht verfügbar mit :value.",
     ":code (:symbol)": ":code (:symbol)",
     ":count activation|:count activations": ":count Aktivierung|:count Aktivierungen",
@@ -184,7 +185,7 @@
     "Delivered digitally — nothing is shipped.": "Digitale Lieferung – es wird nichts versendet.",
     "Delivery problem": "Zustellproblem",
     "Description": "Beschreibung",
-    "Did you mean:": "Meinten Sie:",
+    "Did you mean: :suggestions?": "Meinten Sie: :suggestions?",
     "Discount": "Rabatt",
     "Discount (:code)": "Rabatt (:code)",
     "Don't merge": "Nicht zusammenführen",

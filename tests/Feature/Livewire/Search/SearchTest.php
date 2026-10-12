@@ -204,6 +204,16 @@ it( 'shows "did you mean" suggestions and searches for one', function (): void {
         ->assertSee( 'Linen shirt' );
 } );
 
+it( 'punctuates "did you mean" for the shopper\'s language', function (): void {
+    useSearchProvider( new FakeSearchProvider( [ 'linen', 'lino' ] ) );
+    app()->setLocale( 'es' );
+
+    $html = Livewire::withQueryParams( [ 'q' => 'lnen' ] )->test( Index::class )->html();
+
+    expect( preg_replace( '/\s+/', ' ', strip_tags( (string) preg_replace( '/.*?(<p class="text-sm" data-search-suggestions>.*?<\/p>).*/s', '$1', $html ) ) ) )
+        ->toBe( ' ¿Quizás quisiste decir: linen, lino? ' );
+} );
+
 it( 'finds a typo through a typo-tolerant provider', function (): void {
     useSearchProvider( new FakeSearchProvider( aliases: [ 'lnen' => 'linen' ] ) );
 

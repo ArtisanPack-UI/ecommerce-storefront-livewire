@@ -103,7 +103,7 @@ it( 'translates every key, apart from the ones that read the same in the locale'
 
     expect( $untranslated )->toBe( $same );
 } )->with( [
-    'es' => [ 'es', [ ':code (:symbol)', ':group: :value', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', 'SKU: :sku', 'Subtotal', 'Total', 'incl. :label' ] ],
-    'fr' => [ 'fr', [ ':code (:symbol)', ':count activation|:count activations', ':count suggestion|:count suggestions', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', ':title – Page :page', 'Date', 'Description', 'Licence', 'Notifications', 'Options', 'Total', 'Version :version', 'archive', 'commerce' ] ],
-    'de' => [ 'de', [ ':code (:symbol)', ':group: :value', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', 'Dashboard', 'Download', 'Downloads', 'Layout', 'Minus', 'Name', 'Region', 'SKU: :sku', 'Shop', 'Status', 'Upsells', 'Version :version', 'cross-sells', 'shop', 'upsells' ] ],
+    'es' => [ 'es', [ ', ', ':code (:symbol)', ':group: :value', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', 'SKU: :sku', 'Subtotal', 'Total', 'incl. :label' ] ],
+    'fr' => [ 'fr', [ ', ', ':code (:symbol)', ':count activation|:count activations', ':count suggestion|:count suggestions', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', ':title – Page :page', 'Date', 'Description', 'Licence', 'Notifications', 'Options', 'Total', 'Version :version', 'archive', 'commerce' ] ],
+    'de' => [ 'de', [ ', ', ':code (:symbol)', ':group: :value', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', 'Dashboard', 'Download', 'Downloads', 'Layout', 'Minus', 'Name', 'Region', 'SKU: :sku', 'Shop', 'Status', 'Upsells', 'Version :version', 'cross-sells', 'shop', 'upsells' ] ],
 ] );

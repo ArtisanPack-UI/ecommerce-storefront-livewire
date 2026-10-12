@@ -37,17 +37,16 @@
     </form>
 
     @if ( [] !== $suggestions )
+        {{-- One translatable sentence around the suggestion buttons, so each language places its own punctuation (¿…?). --}}
+        @php( [ $ecommerceSuggestBefore, $ecommerceSuggestAfter ] = array_pad( explode( ':suggestions', __( 'Did you mean: :suggestions?' ), 2 ), 2, '' ) )
         <p class="text-sm" data-search-suggestions>
-            {{ __( 'Did you mean:' ) }}
-            @foreach ( $suggestions as $suggestion )
-                <button
+            {{ $ecommerceSuggestBefore }}@foreach ( $suggestions as $suggestion )<button
                     type="button"
                     class="link link-primary font-semibold"
                     wire:click="useSuggestion( {{ \Illuminate\Support\Js::from( $suggestion ) }} )"
                     wire:key="search-suggestion-{{ $loop->index }}"
                     data-search-suggestion
-                >{{ $suggestion }}</button>{{ $loop->last ? '?' : ',' }}
-            @endforeach
+                >{{ $suggestion }}</button>{{ $loop->last ? '' : __( ', ' ) }}@endforeach{{ $ecommerceSuggestAfter }}
         </p>
     @endif
 
