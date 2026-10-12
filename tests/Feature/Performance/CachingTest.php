@@ -5,9 +5,12 @@ declare( strict_types=1 );
 use ArtisanPackUI\Ecommerce\Catalog\CategoryTree;
 use ArtisanPackUI\Ecommerce\Models\InventoryItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Services\InventoryService;
+use ArtisanPackUI\Ecommerce\Services\ProductCategoryService;
+use ArtisanPackUI\Ecommerce\Services\ProductService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index as Catalog;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
@@ -74,18 +77,64 @@ it( 'clears the cache when the catalog changes', function ( Closure $change ): v
     'product deleted'   => [ static fn ( Product $product ) => $product->delete() ],
     'category saved'    => [ static fn () => ProductCategory::factory()->create() ],
     'tag deleted'       => [ static fn () => ProductTag::factory()->create()->delete() ],
-    'stock adjusted'    => [ static fn ( Product $product ) => app( InventoryService::class )->adjust( stockRow( $product ), 3, 'restock' ) ],
     'went out of stock' => [ static fn ( Product $product ) => doAction( 'ap.ecommerce.inventory.outOfStock', stockRow( $product ) ) ],
 ] );
 
-it( 'caches the walked category tree', function (): void {
+it( 'clears the cache after engine writes that change what listings show', function ( Closure $prepare, Closure $change ): void {
+    $product = makeProduct( 1000, [ 'name' => 'Kettle' ] );
+    $render  = static fn () => Livewire::test( Catalog::class )->html();
+    $context = $prepare( $product );
+
+    facetQueries( $render );
+    $change( $product, $context );
+
+    expect( facetQueries( $render ) )->toBeGreaterThan( 0 );
+} )->with( [
+    'price upserted'      => [
+        static fn (): null => null,
+        static fn ( Product $product ) => app( ProductService::class )->upsertPrice( $product, [ 'currency' => 'USD', 'price_amount' => 900 ] ),
+    ],
+    'attribute updated'   => [
+        static fn ( Product $product ): ProductAttribute => ProductAttribute::factory()->create( [ 'product_id' => $product->id, 'key' => 'colour', 'label' => 'Colour' ] ),
+        static fn ( Product $product, ProductAttribute $attribute ) => app( ProductService::class )->updateAttribute( $attribute, [ 'label' => 'Color' ] ),
+    ],
+    'variant updated'     => [
+        static fn (): mixed => makeVariableProduct( [ 'red/m' => [ 'price' => 1000 ] ], [ 'slug' => 'shirt' ] )['variants']['red/m'],
+        static fn ( Product $product, mixed $variant ) => app( ProductService::class )->updateVariant( $variant, [ 'name' => 'Crimson / M' ] ),
+    ],
+    'came back in stock'  => [
+        static function ( Product $product ): InventoryItem {
+            setStock( $product, 0 );
+
+            return InventoryItem::query()->where( 'stockable_id', $product->id )->firstOrFail();
+        },
+        static fn ( Product $product, InventoryItem $item ) => app( InventoryService::class )->adjust( $item, 3, 'restock' ),
+    ],
+] );
+
+it( 'keeps the cache through an ordinary sale or restock', function (): void {
+    $product = makeProduct( 1000, [ 'name' => 'Kettle' ] );
+    $item    = stockRow( $product );
+    $render  = static fn () => Livewire::test( Catalog::class )->html();
+
+    facetQueries( $render );
+    app( InventoryService::class )->adjust( $item, -1, 'sale' );
+    app( InventoryService::class )->adjust( $item->refresh(), 3, 'restock' );
+
+    expect( facetQueries( $render ) )->toBe( 0 );
+} );
+
+it( 'reads the engine\'s cached category tree once per request', function (): void {
     ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
     CategoryTree::flush();
 
     expect( app( CategoryPaths::class )->bySlug( 'kitchen' )['name'] )->toBe( 'Kitchen' );
 
+    // Behind both caches: this request and the engine's tree keep the old name.
     DB::table( 'ecommerce_product_categories' )->update( [ 'name' => 'Renamed behind the cache' ] );
-    CategoryTree::flush();
+
+    expect( app( CategoryPaths::class )->bySlug( 'kitchen' )['name'] )->toBe( 'Kitchen' );
+
     app()->forgetScopedInstances();
 
     expect( app( CategoryPaths::class )->bySlug( 'kitchen' )['name'] )->toBe( 'Kitchen' );
@@ -94,6 +143,19 @@ it( 'caches the walked category tree', function (): void {
     app()->forgetScopedInstances();
 
     expect( app( CategoryPaths::class )->bySlug( 'kitchen' )['name'] )->toBe( 'Cookware' );
+} );
+
+it( 'shows a category reorder on the next request', function (): void {
+    $first  = ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen', 'position' => 0 ] );
+    $second = ProductCategory::factory()->create( [ 'name' => 'Garden', 'slug' => 'garden', 'position' => 1 ] );
+    CategoryTree::flush();
+
+    expect( array_column( app( CategoryPaths::class )->children( null ), 'slug' ) )->toBe( [ 'kitchen', 'garden' ] );
+
+    app( ProductCategoryService::class )->reorder( null, [ $second->id, $first->id ] );
+    app()->forgetScopedInstances();
+
+    expect( array_column( app( CategoryPaths::class )->children( null ), 'slug' ) )->toBe( [ 'garden', 'kitchen' ] );
 } );
 
 it( 'tags its entries on stores that support tags', function (): void {

@@ -13,25 +13,45 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 
+use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
+use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
+use ArtisanPackUI\Ecommerce\Models\ProductPrice;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use Closure;
 use Illuminate\Cache\TaggableStore;
+use Illuminate\Contracts\Cache\LockProvider;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
- * Caches what every catalog page recomputes (spec §12, S41): the walked
- * category tree ({@see CategoryPaths}) and catalog facet counts.
+ * Caches what every catalog page recomputes (spec §12, S41): catalog facet
+ * counts, category grid counts, and attribute labels and swatches. (The
+ * category tree is cached by the engine's `CategoryTree`.)
  *
  * Entries are tagged `ecommerce-storefront` on stores that support tags;
  * on others every key carries a version number that a flush bumps. The
  * cache is flushed whenever the catalog changes — the engine's
- * `ap.ecommerce.product.saved`, `.deleted`, `.published`, and
- * `.unpublished` hooks, stock changes (`ap.ecommerce.inventory.adjusted`,
- * `.outOfStock`), and a category or tag being saved or deleted — and
- * entries expire after `performance.cache_ttl` seconds regardless.
- * `performance.cache_ttl` of 0 turns the cache off.
+ * `ap.ecommerce.product.saved`, `.deleted`, `.published`, `.unpublished`,
+ * and `ap.ecommerce.variant.saved` hooks; a product going out of stock
+ * (`ap.ecommerce.inventory.outOfStock`) or back in stock (an
+ * `ap.ecommerce.inventory.adjusted` from none to some, not every sale);
+ * and a category, tag, price, attribute, attribute value, or variant
+ * being saved or deleted — and entries expire after
+ * `performance.cache_ttl` seconds regardless. `performance.cache_ttl` of
+ * 0 turns the cache off.
+ *
+ * The engine fires no hook when a product's categories or tags are
+ * re-synced (`ProductService::setCategories()`/`setTags()`), so counts
+ * can lag behind those for up to `performance.cache_ttl` seconds.
+ *
+ * On stores with locks, one request computes a missing entry while the
+ * others wait for it, so a flush doesn't send every shopper to the
+ * database at once.
  *
  * Facet counts are keyed by the listing's scope and filters. A host whose
  * `ap.ecommerce.product.listQuery` filter shows shoppers different
@@ -74,9 +94,37 @@ final class StorefrontCache
         'ap.ecommerce.product.deleted',
         'ap.ecommerce.product.published',
         'ap.ecommerce.product.unpublished',
-        'ap.ecommerce.inventory.adjusted',
+        'ap.ecommerce.variant.saved',
         'ap.ecommerce.inventory.outOfStock',
     ];
+
+    /**
+     * The models whose saves and deletes make cached catalog data stale.
+     *
+     * Stock rows aren't here: every sale saves one. Stock changes flush
+     * only when a product runs out or comes back ({@see self::boot()}).
+     *
+     * @since 1.0.0
+     *
+     * @var array<int, class-string<Model>>
+     */
+    public const FLUSH_ON_MODELS = [
+        ProductCategory::class,
+        ProductTag::class,
+        ProductPrice::class,
+        ProductAttribute::class,
+        ProductAttributeValue::class,
+        ProductVariant::class,
+    ];
+
+    /**
+     * How long a request waits for another to compute an entry, in seconds.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    private const LOCK_WAIT = 5;
 
     /**
      * Flushes the cache whenever the catalog changes.
@@ -91,7 +139,14 @@ final class StorefrontCache
             addAction( $hook, static fn () => self::flush() );
         }
 
-        foreach ( [ ProductCategory::class, ProductTag::class ] as $model ) {
+        // Back in stock: on hand went from none to some.
+        addAction( 'ap.ecommerce.inventory.adjusted', static function ( mixed $item = null, mixed $delta = 0, mixed $onHand = 0 ): void {
+            if ( is_numeric( $delta ) && is_numeric( $onHand ) && (int) $onHand > 0 && (int) $onHand - (int) $delta <= 0 ) {
+                self::flush();
+            }
+        } );
+
+        foreach ( self::FLUSH_ON_MODELS as $model ) {
             $model::saved( static fn () => self::flush() );
             $model::deleted( static fn () => self::flush() );
         }
@@ -144,9 +199,11 @@ final class StorefrontCache
         };
 
         try {
-            return self::tagged()
-                ? Cache::tags( [ self::TAG ] )->remember( self::TAG . ':' . $key, $ttl, $compute )
-                : Cache::remember( self::TAG . ':v' . self::version() . ':' . $key, $ttl, $compute );
+            [ $cache, $fullKey ] = self::tagged()
+                ? [ Cache::tags( [ self::TAG ] ), self::TAG . ':' . $key ]
+                : [ Cache::store(), self::TAG . ':v' . self::version() . ':' . $key ];
+
+            return self::rememberLocked( $cache, $fullKey, $ttl, $compute );
         } catch ( Throwable $exception ) {
             // The value's own failure is the caller's; only a cache failure
             // falls back to computing the value uncached.
@@ -195,6 +252,37 @@ final class StorefrontCache
     public static function key( string $prefix, mixed $parts ): string
     {
         return $prefix . ':' . hash( 'xxh128', serialize( $parts ) );
+    }
+
+    /**
+     * `Repository::remember()`, but on a miss only one request computes
+     * the value (under a lock, when the store has locks) while the others
+     * wait and then read it. A request that waits too long computes it
+     * itself.
+     *
+     * @since 1.0.0
+     *
+     * @param  Repository        $cache    The cache (tagged or not).
+     * @param  string            $key      The full key.
+     * @param  int               $ttl      Seconds.
+     * @param  Closure(): mixed  $compute  Computes the value.
+     *
+     * @return mixed
+     */
+    private static function rememberLocked( Repository $cache, string $key, int $ttl, Closure $compute ): mixed
+    {
+        $store = Cache::getStore();
+        $value = $cache->get( $key );
+
+        if ( null !== $value || ! $store instanceof LockProvider ) {
+            return $value ?? $cache->remember( $key, $ttl, $compute );
+        }
+
+        try {
+            return $store->lock( $key . ':lock', self::LOCK_WAIT * 2 )->block( self::LOCK_WAIT, static fn (): mixed => $cache->remember( $key, $ttl, $compute ) );
+        } catch ( LockTimeoutException ) {
+            return $cache->remember( $key, $ttl, $compute );
+        }
     }
 
     /**
