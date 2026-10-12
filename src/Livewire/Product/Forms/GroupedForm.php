@@ -65,7 +65,7 @@ class GroupedForm extends PurchaseForm
      */
     public function addToCart(): void
     {
-        $this->announcement = '';
+        $this->startAdding();
         $children           = $this->children()->keyBy( 'id' );
 
         $this->validate(

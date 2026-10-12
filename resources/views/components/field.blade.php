@@ -31,7 +31,7 @@
         'checkbox-error'  => $ecommerceFieldInvalid && 'checkbox' === $control,
     ];
 @endphp
-<div class="w-full" data-ec-field="{{ $id }}">
+<div class="w-full" data-ec-field="{{ $id }}" @if ( null !== $ecommerceFieldKey ) data-field-key="{{ $ecommerceFieldKey }}" @endif>
     @switch ( $control )
         @case( 'select' )
             <x-artisanpack-select

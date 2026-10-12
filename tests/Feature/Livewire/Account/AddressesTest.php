@@ -133,7 +133,10 @@ it( 'validates the address before saving', function (): void {
         ->set( 'form', checkoutAddress( [ 'address1' => '', 'city' => '', 'postal_code' => 'nope', 'region_code' => '' ] ) + [ 'label' => str_repeat( 'x', 121 ) ] )
         ->call( 'save' )
         ->assertHasErrors( [ 'form.address1', 'form.city', 'form.postal_code', 'form.region_code', 'form.label' ] )
-        ->assertSet( 'editing', true );
+        ->assertSet( 'editing', true )
+        ->assertSeeHtml( 'wire:key="ec-account-address-errors-1"' )
+        ->assertSee( 'There are 5 problems to fix:' )
+        ->assertSeeHtml( 'data-field-key="form.city"' );
 
     expect( $customer->addresses()->count() )->toBe( 0 );
 } );

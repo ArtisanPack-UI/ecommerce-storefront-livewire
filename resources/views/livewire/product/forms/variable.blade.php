@@ -17,6 +17,7 @@
             :id-prefix="$ecommerceFormId . '-attribute-' . $group['id']"
             x-on:change="$wire.choose( {{ (int) $group['id'] }}, $event.target.value )"
             wire:key="variation-group-{{ $group['id'] }}"
+            :aria-describedby="$errors->has( 'variant' ) ? $ecommerceFormId . '-variant-error' : null"
             data-variation-group="{{ $group['id'] }}"
         />
     @endforeach
@@ -24,7 +25,7 @@
     <p @class( [ 'text-sm text-base-content/70', 'sr-only' => '' === $selectionNotice ] ) role="status" aria-live="polite" aria-atomic="true" data-selection-notice>{{ $selectionNotice }}</p>
 
     @error( 'variant' )
-        <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-variant-error>{{ $message }}</p>
+        <p id="{{ $ecommerceFormId }}-variant-error" class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-variant-error>{{ $message }}</p>
     @enderror
 
     @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [ 'formId' => $ecommerceFormId ] )

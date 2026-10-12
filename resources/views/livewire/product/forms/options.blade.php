@@ -90,7 +90,7 @@
     @endforeach
 
     @error( 'options' )
-        <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
+        <p id="{{ $ecommerceFormId }}-options-error" class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
     @enderror
 
     @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [

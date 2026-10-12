@@ -16,6 +16,8 @@
     </div>
 
     <form wire:submit="claim" class="flex flex-col gap-4" novalidate data-account-claim-form>
+        @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-claim' ] )
+
         <x-artisanpack-ec-field id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
         <x-artisanpack-ec-field id="postalCode" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
 

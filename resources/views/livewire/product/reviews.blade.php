@@ -89,11 +89,13 @@
                 <form id="{{ $ecommerceFormId }}" wire:submit="submit" class="flex flex-col gap-4 rounded-box border border-base-content/10 p-4" aria-labelledby="{{ $ecommerceFormId }}-heading" novalidate data-review-form>
                     <h3 id="{{ $ecommerceFormId }}-heading" class="text-lg font-semibold">{{ __( 'Write a review' ) }}</h3>
 
+                    @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => $ecommerceFormId, 'summaryExcept' => [ 'review' ] ] )
+
                     @error( 'review' )
                         <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error" :title="$message" role="alert" data-review-error />
                     @enderror
 
-                    <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required />
+                    <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required data-field-key="rating" />
 
                     <x-artisanpack-ec-field :id="$ecommerceFormId . '-title'" :label="__( 'Title' )" wire:model="title" maxlength="255" error-field="title" />
 

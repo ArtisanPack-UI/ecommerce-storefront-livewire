@@ -7,12 +7,23 @@
     own), and `$buttonLabel` (default: the form's `buttonText`, else "Add
     to cart").
 
+    The button is described by the blocked reason and by the form-level
+    `variant`, `quantities`, or `options` error (rendered by the form with
+    the id `{formId}-{key}-error`). Any error is also announced in an alert
+    keyed on the form's `errorSummary`, so each refused add is announced.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-@php( $ecommerceShowQuantity = $showQuantity ?? true )
+@php
+    $ecommerceShowQuantity = $showQuantity ?? true;
+    $ecommerceDescribedBy  = array_values( array_filter( [
+        ! $canAdd && ! empty( $blockedReason ) ? $formId . '-blocked' : null,
+        ...array_map( static fn ( string $key ): ?string => $errors->has( $key ) ? $formId . '-' . $key . '-error' : null, [ 'variant', 'quantities', 'options' ] ),
+    ] ) );
+@endphp
 <div class="flex flex-col gap-3">
     <div class="flex flex-wrap items-end gap-3">
         @if ( $ecommerceShowQuantity )
@@ -35,7 +46,7 @@
             wire:target="addToCart"
             spinner="addToCart"
             :disabled="! $canAdd"
-            :aria-describedby="! $canAdd && ! empty( $blockedReason ) ? $formId . '-blocked' : null"
+            :aria-describedby="[] === $ecommerceDescribedBy ? null : implode( ' ', $ecommerceDescribedBy )"
             data-add-to-cart
         />
     </div>
@@ -49,4 +60,8 @@
     @endif
 
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-cart-announcement>{{ $announcement }}</p>
+
+    @if ( $errors->any() )
+        <p class="sr-only" role="alert" wire:key="{{ $formId }}-add-error-{{ $errorSummary ?? 0 }}" data-cart-error-announcement>{{ __( 'Not added to your cart: :reason', [ 'reason' => $errors->first() ] ) }}</p>
+    @endif
 </div>

@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\EditsAddresses;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\AddressForm;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -58,6 +59,7 @@ class Addresses extends Component
     use EditsAddresses;
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
 
     /**
      * How many addresses the book lists.
@@ -206,6 +208,7 @@ class Addresses extends Component
      */
     public function save(): void
     {
+        $this->newErrorSummary();
         $this->resetErrorBag();
 
         $errors = $this->addressErrors( $this->form, 'form' );

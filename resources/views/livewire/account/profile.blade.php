@@ -11,6 +11,8 @@
         <h2 id="ec-account-profile-details" class="text-xl font-bold">{{ __( 'Your details' ) }}</h2>
 
         <form wire:submit="saveProfile" class="grid max-w-2xl gap-4 sm:grid-cols-2" novalidate data-account-profile-form>
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-profile', 'summaryClass' => 'sm:col-span-2' ] )
+
             <x-artisanpack-ec-field id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
             <x-artisanpack-ec-field id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
 

@@ -16,6 +16,8 @@
     </div>
 
     <form wire:submit="find" class="flex flex-col gap-4" novalidate data-order-lookup-form>
+        @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-order-lookup' ] )
+
         <x-artisanpack-ec-field id="email" type="email" :label="__( 'Email' )" autocomplete="email" required wire:model="email" />
         <x-artisanpack-ec-field id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
 

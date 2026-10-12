@@ -85,7 +85,7 @@ class OptionsForm extends PurchaseForm
      */
     public function addToCart(): void
     {
-        $this->announcement = '';
+        $this->startAdding();
 
         $fields     = $this->fields();
         $separately = array_values( array_filter( $fields, static fn ( array $field ): bool => (bool) ( $field['meta']['add_separately'] ?? false ) ) );

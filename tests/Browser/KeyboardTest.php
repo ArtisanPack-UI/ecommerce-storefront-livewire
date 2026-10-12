@@ -119,3 +119,26 @@ it( 'shows where focus is on a product card link', function (): void {
         ->assertScript( 'document.activeElement?.matches( ' . json_encode( $link . ':focus-visible' ) . ' )' )
         ->assertScript( 'getComputedStyle( document.activeElement ).outlineStyle !== "none"' );
 } );
+
+it( 'announces why an item could not be added', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Refused mug', 'slug' => 'refused-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->type( '[data-quantity] input', '0' )
+        ->keys( '[data-add-to-cart]', 'Enter' )
+        ->assertScript( 'document.querySelector( "[data-cart-error-announcement]" )?.getAttribute( "role" )', 'alert' )
+        ->assertSeeIn( '[data-cart-error-announcement]', 'Not added to your cart: Add at least 1.' )
+        ->assertScript( 'document.getElementById( document.querySelector( "[data-quantity] input" ).getAttribute( "aria-describedby" ) )?.textContent.trim()', 'Add at least 1.' );
+} );
+
+it( 'focuses the error summary after an empty review submit', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Reviewed mug', 'slug' => 'reviewed-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->click( '[data-review-open]' )
+        ->click( '[data-review-submit]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-error-summary" )' )
+        ->assertSeeIn( '[data-error-summary]', 'Choose a rating.' )
+        ->click( '[data-error-summary-link="rating"]' )
+        ->assertScript( focusIsIn( '[data-field-key="rating"]' ) );
+} );

@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerClaimService;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
@@ -59,6 +60,7 @@ class Claim extends Component
 {
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
 
     /**
      * The order number.
@@ -96,6 +98,7 @@ class Claim extends Component
      */
     public function claim(): void
     {
+        $this->newErrorSummary();
         $this->resetErrorBag();
         $this->failure = null;
 

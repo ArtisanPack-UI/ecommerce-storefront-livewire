@@ -23,6 +23,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\ReviewService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -63,6 +64,7 @@ class Reviews extends Component
 {
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
     use WithPagination;
 
     /**
@@ -267,6 +269,7 @@ class Reviews extends Component
      */
     public function submit(): void
     {
+        $this->newErrorSummary();
         $guest = null === auth()->user();
 
         if ( ! $this->allowForm || ! $this->eligibility()->allowed ) {

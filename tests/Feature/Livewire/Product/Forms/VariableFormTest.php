@@ -143,6 +143,21 @@ it( 'refuses to add without a variant and names the missing choice', function ()
         ->assertNotDispatched( 'ecommerce-cart-updated' );
 } );
 
+it( 'announces a refused add in an alert and links the error to the swatches', function (): void {
+    $form = 'ec-product-' . $this->made['product']->id;
+
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
+        ->call( 'addToCart' )
+        ->assertSee( 'Not added to your cart: Choose an option for Size.' )
+        ->assertSeeHtml( 'role="alert" wire:key="' . $form . '-add-error-1"' )
+        ->assertSeeHtml( '<p id="' . $form . '-variant-error"' )
+        ->assertSeeHtml( 'aria-describedby="' . $form . '-variant-error"' );
+
+    // A second refusal gets a new alert, so it is announced again.
+    $component->call( 'addToCart' )->assertSeeHtml( 'wire:key="' . $form . '-add-error-2"' );
+} );
+
 it( 'drops a value that belongs to another attribute or product', function (): void {
     Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['l']->id )

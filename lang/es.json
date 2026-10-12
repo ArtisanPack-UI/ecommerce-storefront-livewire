@@ -344,6 +344,7 @@
     "None of these products are in stock.": "Ninguno de estos productos está en stock.",
     "None saved yet.": "Aún no hay ninguna guardada.",
     "Not added to your cart": "No se ha añadido a tu carrito",
+    "Not added to your cart: :reason": "No se ha añadido a tu carrito: :reason",
     "Not available with your other choices": "No disponible con tus otras opciones",
     "Not shown with your review.": "No se muestra con tu reseña.",
     "Nothing in your order ships, so we only need your billing address.": "Nada de tu pedido se envía, así que solo necesitamos tu dirección de facturación.",

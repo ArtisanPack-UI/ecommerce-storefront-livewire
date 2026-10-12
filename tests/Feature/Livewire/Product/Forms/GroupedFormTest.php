@@ -47,7 +47,9 @@ it( 'asks for at least one quantity', function (): void {
     Livewire::test( GroupedForm::class, [ 'product' => $this->group ] )
         ->call( 'addToCart' )
         ->assertHasErrors( 'quantities' )
-        ->assertSee( 'Choose a quantity for at least one product.' );
+        ->assertSee( 'Choose a quantity for at least one product.' )
+        ->assertSee( 'Not added to your cart: Choose a quantity for at least one product.' )
+        ->assertSeeHtml( 'aria-describedby="ec-product-' . $this->group->id . '-quantities-error"' );
 } );
 
 it( 'rejects a bad quantity', function (): void {
