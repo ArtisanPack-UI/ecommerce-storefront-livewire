@@ -511,6 +511,7 @@ it( 'sends the shopper to the confirmation when the webhook placed the order fir
     $component = checkoutAtReview( $this->gateway, 'grace@example.test' )
         ->set( 'createAccount', true )
         ->set( 'password', 'correct-horse-battery' )
+        ->set( 'orderNote', 'Leave it with the neighbour.' )
         ->call( 'saveReview' );
 
     $this->gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
@@ -518,6 +519,8 @@ it( 'sends the shopper to the confirmation when the webhook placed the order fir
     expect( app( PaymentReconciler::class )->reconcile( 'fake', 'fake_ps_1', WebhookResult::OUTCOME_SUCCEEDED ) )->toBe( PaymentReconciler::FINALIZED );
 
     $order = Order::query()->sole();
+
+    expect( $order->customer_note )->toBeNull();
 
     app( StorefrontCart::class )->refresh();
 
@@ -528,6 +531,7 @@ it( 'sends the shopper to the confirmation when the webhook placed the order fir
         ->and( $order->refresh()->payment_status )->toBe( 'paid' )
         ->and( Order::query()->count() )->toBe( 1 )
         ->and( $this->placing )->toBe( 0 )
+        ->and( $order->customer_note )->toBe( 'Leave it with the neighbour.' )
         ->and( User::query()->where( 'email', 'grace@example.test' )->exists() )->toBeTrue();
 } );
 

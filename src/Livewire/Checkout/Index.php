@@ -1810,9 +1810,34 @@ class Index extends Component
             return false;
         }
 
+        $this->keepReviewedNote( $cart, $order );
+
         $this->placedOrderFound( $cart, $order, __( 'Your order :number is placed, but its payment isn\'t finished. Pay below to complete it.', [ 'number' => (string) $order->order_number ] ) );
 
         return true;
+    }
+
+    /**
+     * Copies the note the shopper reviewed onto an order the provider's
+     * webhook placed before this checkout could: the webhook places the
+     * cart without it.
+     *
+     * @since 1.0.0
+     *
+     * @param  Cart   $cart   The converted cart.
+     * @param  Order  $order  The order it became.
+     *
+     * @return void
+     */
+    protected function keepReviewedNote( Cart $cart, Order $order ): void
+    {
+        $note = (string) ( $this->reviewed( $cart )['note'] ?? '' );
+
+        if ( '' === $note || '' !== trim( (string) $order->customer_note ) ) {
+            return;
+        }
+
+        $order->forceFill( [ 'customer_note' => mb_substr( $note, 0, self::NOTE_MAX_LENGTH ) ] )->save();
     }
 
     /**
