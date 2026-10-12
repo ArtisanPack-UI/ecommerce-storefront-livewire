@@ -40,8 +40,9 @@ use Throwable;
  * becomes both defaults, a new default clears the old one, and its
  * `CustomerWriteException` messages show against the field they name.
  *
- * Saves count against `ecommerce.admin.mutate` per user, the same bucket
- * the engine's `me/addresses` endpoints use.
+ * Saves, deletes and default changes count against `RATE_LIMIT_POLICY`
+ * (the engine's shopper-write `ecommerce.cart.mutate`; it has no
+ * account-specific policy yet), never the staff `ecommerce.admin.mutate`.
  *
  * Every address is loaded from the shopper's own book and checked against
  * the engine's address policy on each request; anyone else's is a 404. A
@@ -75,6 +76,15 @@ class Addresses extends Component
      * @var int
      */
     public const LABEL_MAX = 120;
+
+    /**
+     * The engine rate-limit policy address writes count against.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const RATE_LIMIT_POLICY = 'ecommerce.cart.mutate';
 
     /**
      * The address being added or edited: the address form's fields plus
@@ -213,11 +223,7 @@ class Addresses extends Component
         }
 
         $address = null === $this->editingId ? null : $this->ownedAddress( $this->editingId );
-        $saved   = $this->rateLimited(
-            'ecommerce.admin.mutate',
-            fn (): bool => $this->persist( $address ),
-            RateLimitSubject::customer( auth()->user(), request()->ip() ?? '127.0.0.1' ),
-        );
+        $saved   = $this->rateLimited( self::RATE_LIMIT_POLICY, fn (): bool => $this->persist( $address ), $this->rateLimitSubject() );
 
         if ( true !== $saved ) {
             return;
@@ -266,17 +272,23 @@ class Addresses extends Component
         $this->confirmingDelete = false;
         $this->deletingId       = null;
 
-        try {
-            app( CustomerAddressService::class )->delete( $address, (int) auth()->id() );
-        } catch ( Throwable $exception ) {
-            report( $exception );
+        $deleted = $this->rateLimited( self::RATE_LIMIT_POLICY, function () use ( $address ): bool {
+            try {
+                app( CustomerAddressService::class )->delete( $address, (int) auth()->id() );
+            } catch ( Throwable $exception ) {
+                report( $exception );
 
-            $this->toastError( __( 'We couldn\'t delete the address' ), __( 'Try again in a moment.' ) );
+                $this->toastError( __( 'We couldn\'t delete the address' ), __( 'Try again in a moment.' ) );
 
-            return;
+                return false;
+            }
+
+            return true;
+        }, $this->rateLimitSubject() );
+
+        if ( true === $deleted ) {
+            $this->toastSuccess( __( 'Address deleted' ) );
         }
-
-        $this->toastSuccess( __( 'Address deleted' ) );
     }
 
     /**
@@ -298,21 +310,27 @@ class Addresses extends Component
 
         $address = $this->ownedAddress( $id );
 
-        try {
-            app( CustomerAddressService::class )->update( $address, [ 'is_default_' . $type => true ], (int) auth()->id() );
-        } catch ( CustomerWriteException $exception ) {
-            $this->toastError( __( 'We couldn\'t change your default address' ), $exception->getMessage() );
+        $updated = $this->rateLimited( self::RATE_LIMIT_POLICY, function () use ( $address, $type ): bool {
+            try {
+                app( CustomerAddressService::class )->update( $address, [ 'is_default_' . $type => true ], (int) auth()->id() );
+            } catch ( CustomerWriteException $exception ) {
+                $this->toastError( __( 'We couldn\'t change your default address' ), $exception->getMessage() );
 
-            return;
-        } catch ( Throwable $exception ) {
-            report( $exception );
+                return false;
+            } catch ( Throwable $exception ) {
+                report( $exception );
 
-            $this->toastError( __( 'We couldn\'t change your default address' ), __( 'Try again in a moment.' ) );
+                $this->toastError( __( 'We couldn\'t change your default address' ), __( 'Try again in a moment.' ) );
 
-            return;
+                return false;
+            }
+
+            return true;
+        }, $this->rateLimitSubject() );
+
+        if ( true === $updated ) {
+            $this->toastSuccess( 'shipping' === $type ? __( 'Default shipping address updated' ) : __( 'Default billing address updated' ) );
         }
-
-        $this->toastSuccess( 'shipping' === $type ? __( 'Default shipping address updated' ) : __( 'Default billing address updated' ) );
     }
 
     /**
@@ -422,6 +440,22 @@ class Addresses extends Component
         }
 
         return $create ? app( CustomerService::class )->customerForUser( $user, true ) : Customer::forUser( $user );
+    }
+
+    /**
+     * Who an address write counts against: the signed-in shopper and their
+     * IP.
+     *
+     * @since 1.0.0
+     *
+     * @return RateLimitSubject
+     */
+    protected function rateLimitSubject(): RateLimitSubject
+    {
+        $ip   = request()->ip() ?? '127.0.0.1';
+        $user = auth()->user();
+
+        return null === $user ? RateLimitSubject::ip( $ip ) : RateLimitSubject::customer( $user, $ip );
     }
 
     /**

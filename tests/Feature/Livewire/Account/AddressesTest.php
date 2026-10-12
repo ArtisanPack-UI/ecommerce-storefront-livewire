@@ -240,11 +240,11 @@ it( 'answers 404 for another customer\'s address', function ( string $method, ar
     'set default' => [ 'makeDefault', [ 'shipping' ] ],
 ] );
 
-it( 'rate limits saving addresses per user', function (): void {
-    config()->set( 'artisanpack.ecommerce.rate_limits.admin.mutate.per_user', 1 );
+it( 'rate limits saving addresses with the shopper write policy', function (): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+    config()->set( 'artisanpack.ecommerce.rate_limits.admin.mutate.per_user', 100 );
 
-    [ $user, $customer ] = shopper();
-    Illuminate\Support\Facades\RateLimiter::clear( 'ecommerce:admin:mutate:user:' . $user->id );
+    [ , $customer ] = shopper();
 
     foreach ( [ '1 First Street', '2 Second Street' ] as $street ) {
         $component = Livewire::test( Addresses::class )
@@ -258,3 +258,28 @@ it( 'rate limits saving addresses per user', function (): void {
     expect( $customer->addresses()->pluck( 'address1' )->all() )->toBe( [ '1 First Street' ] )
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Too many attempts' );
 } );
+
+it( 'rate limits deleting addresses and changing defaults', function ( string $action ): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+
+    [ , $customer ] = shopper();
+    $first          = CustomerAddress::factory()->create( [ 'customer_id' => $customer->id ] );
+    $second         = CustomerAddress::factory()->create( [ 'customer_id' => $customer->id ] );
+
+    $run = fn ( CustomerAddress $address ) => 'delete' === $action
+        ? Livewire::test( Addresses::class )->call( 'confirmDelete', $address->id )->call( 'delete' )
+        : Livewire::test( Addresses::class )->call( 'makeDefault', $address->id, 'billing' );
+
+    $run( $first );
+    $component = $run( $second );
+
+    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Too many attempts' );
+
+    if ( 'delete' === $action ) {
+        expect( CustomerAddress::query()->find( $first->id ) )->toBeNull()
+            ->and( CustomerAddress::query()->find( $second->id ) )->not->toBeNull();
+    } else {
+        expect( (bool) $first->refresh()->is_default_billing )->toBeTrue()
+            ->and( (bool) $second->refresh()->is_default_billing )->toBeFalse();
+    }
+} )->with( [ 'delete', 'makeDefault' ] );
