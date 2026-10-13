@@ -2,9 +2,23 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Ecommerce\Models\Order;
+use ArtisanPackUI\Ecommerce\Models\ProductCategory;
+use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
+use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\EcommerceStorefrontLivewireServiceProvider;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
+use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
 
 it( 'boots alongside the engine', function (): void {
     expect( $this->app->getProvider( EcommerceStorefrontLivewireServiceProvider::class ) )
@@ -16,11 +30,26 @@ it( 'merges the config under the artisanpack key', function (): void {
         'routes_enabled' => true,
         'route_prefix'   => 'shop',
         'middleware'     => [ 'web' ],
+        'layout'         => 'ecommerce-storefront::layouts.app',
+        'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
     ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.account' ) )->toBe( [
-            'route_prefix' => 'account',
-            'middleware'   => [ 'web', 'auth' ],
-        ] );
+            'route_prefix'                  => 'account',
+            'middleware'                    => [ 'web', 'auth' ],
+            'claim_requires_verified_email' => true,
+        ] )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.auth.login_route' ) )->toBe( 'login' )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.catalog' ) )->toBe( [
+            'per_page'          => 24,
+            'per_page_values'   => [ 12, 24, 48 ],
+            'default_sort'      => 'newest',
+            'show_stock_count'  => false,
+            'filter_attributes' => null,
+        ] )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add' ) )->toBe( 'drawer' )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.checkout.layout' ) )->toBe( 'multi_step' )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.payments.drivers' ) )->toBe( [] )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.visual_editor' ) )->toBe( [ 'blocks' => true, 'templates' => false ] );
 } );
 
 it( 'registers itself with the satellite registry', function (): void {
@@ -39,6 +68,85 @@ it( 'registers itself with the satellite registry', function (): void {
 
 it( 'registers the view namespace', function (): void {
     expect( $this->app['view']->getFinder()->getHints() )->toHaveKey( 'ecommerce-storefront' );
+} );
+
+it( 'registers the Blade components', function ( string $name ): void {
+    expect( Blade::getClassComponentAliases() )->toHaveKey( 'artisanpack-ec-' . $name );
+} )->with( array_keys( EcommerceStorefrontLivewireServiceProvider::BLADE_COMPONENTS ) );
+
+it( 'registers the Livewire components', function ( string $name, string $class ): void {
+    // Screens that take a subject get one.
+    $params = match ( true ) {
+        str_starts_with( $name, 'artisanpack-ecommerce-storefront-product-' ) => [ 'product' => makeProduct() ],
+        str_ends_with( $name, '-category-show' )                              => [ 'category' => ProductCategory::factory()->create() ],
+        str_ends_with( $name, '-tag-show' )                                   => [ 'tag' => ProductTag::factory()->create() ],
+        str_ends_with( $name, '-order-confirmation' ),
+        str_ends_with( $name, '-account-order' )                              => ( static fn ( Order $order ): array => [ 'order' => $order->id, 'token' => OrderViewToken::for( $order ) ] )( Order::factory()->create() ),
+        default                                                               => [],
+    };
+
+    // The checkout sends an empty cart back to the cart page.
+    if ( str_ends_with( $name, '-storefront-checkout' ) ) {
+        app( ArtisanPackUI\Ecommerce\Services\StorefrontCartService::class )->addItem( app( StorefrontCart::class )->current( true ), makeProduct()->id, null, 1 );
+    }
+
+    expect( Livewire::test( $name, $params )->instance() )->toBeInstanceOf( $class );
+} )->with( fn (): array => collect( EcommerceStorefrontLivewireServiceProvider::LIVEWIRE_COMPONENTS )->map( fn ( string $class, string $name ): array => [ $name, $class ] )->values()->all() );
+
+it( 'registers a purchase form for each core product type', function (): void {
+    $registry = app( ProductFormRegistry::class );
+
+    foreach ( EcommerceStorefrontLivewireServiceProvider::PRODUCT_FORMS as $type => $component ) {
+        expect( $registry->all()[ $type ] ?? null )->toBe( $component )
+            ->and( EcommerceStorefrontLivewireServiceProvider::LIVEWIRE_COMPONENTS )->toHaveKey( $component );
+    }
+} );
+
+it( 'makes the account middleware persistent, leaving out groups', function (): void {
+    expect( EcommerceStorefrontLivewireServiceProvider::accountPersistentMiddleware() )->toBe( [ Authenticate::class ] );
+
+    app()->getProvider( EcommerceStorefrontLivewireServiceProvider::class )->registerPersistentMiddleware();
+
+    expect( app( PersistentMiddleware::class )->getPersistentMiddleware() )->toContain( Authenticate::class );
+} );
+
+it( 'expands custom middleware groups in the account middleware, but not web', function (): void {
+    Route::middlewareGroup( 'customer', [ 'auth', 'verified' ] );
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [ 'web', 'customer' ] );
+
+    $middleware = EcommerceStorefrontLivewireServiceProvider::accountPersistentMiddleware();
+
+    expect( $middleware )->toBe( [ Authenticate::class, EnsureEmailIsVerified::class ] )
+        ->and( array_intersect( $middleware, Route::getMiddlewareGroups()['web'] ) )->toBe( [] );
+} );
+
+it( 'stops expanding a middleware group that contains itself', function (): void {
+    Route::middlewareGroup( 'loop-a', [ 'auth', 'loop-b' ] );
+    Route::middlewareGroup( 'loop-b', [ 'verified', 'loop-a' ] );
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [ 'loop-a' ] );
+
+    expect( EcommerceStorefrontLivewireServiceProvider::accountPersistentMiddleware() )->toBe( [ Authenticate::class, EnsureEmailIsVerified::class ] );
+} );
+
+it( 'builds the guest order-view link from app.url, not the booting request', function (): void {
+    config()->set( 'app.url', 'https://shop.example/' );
+    config()->set( 'artisanpack.ecommerce.checkout.order_view_url', null );
+
+    $request = Request::create( 'http://internal.local/webhooks/stripe' );
+    app()->instance( 'request', $request );
+    url()->setRequest( $request );
+
+    ( fn () => $this->registerOrderViewUrl() )->call( app()->getProvider( EcommerceStorefrontLivewireServiceProvider::class ) );
+
+    expect( config( 'artisanpack.ecommerce.checkout.order_view_url' ) )->toBe( 'https://shop.example/shop/order/{token}' );
+} );
+
+it( 'resolves the current cart once per request', function (): void {
+    expect( app( StorefrontCart::class ) )->toBe( app( StorefrontCart::class ) );
+} );
+
+it( 'registers the install command', function (): void {
+    expect( Artisan::all() )->toHaveKey( 'ecommerce-storefront:install' );
 } );
 
 it( 'registers the publish tags', function ( string $tag ): void {

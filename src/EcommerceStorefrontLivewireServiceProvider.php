@@ -15,8 +15,37 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
+use ArtisanPackUI\Ecommerce\Models\Product as ProductModel;
+use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
+use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Currency;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Order;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutMarketingConsent;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
+use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 /**
  * Bootstraps the Livewire storefront satellite.
@@ -60,7 +89,118 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     public const VIEW_NAMESPACE = 'ecommerce-storefront';
 
     /**
-     * Registers the package configuration.
+     * The view every page extends unless `storefront.layout` names another.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const DEFAULT_LAYOUT = 'ecommerce-storefront::layouts.app';
+
+    /**
+     * The composed Blade components, keyed by their name after the
+     * `artisanpack-ec-` prefix (spec §8.1). `money`, `address`,
+     * `address-form`, and `empty-state` share their names and base props
+     * with the admin's copies.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, class-string>
+     */
+    public const BLADE_COMPONENTS = [
+        'account-shell'   => Components\AccountShell::class,
+        'address'         => Components\Address::class,
+        'address-form'    => Components\AddressForm::class,
+        'category-grid'   => Components\CategoryGrid::class,
+        'empty-state'     => Components\EmptyState::class,
+        'field'           => Components\Field::class,
+        'gallery'         => Components\Gallery::class,
+        'money'           => Components\Money::class,
+        'price'           => Components\Price::class,
+        'price-range'     => Components\PriceRange::class,
+        'quantity'        => Components\Quantity::class,
+        'rating-input'    => Components\RatingInput::class,
+        'rating-summary'  => Components\RatingSummary::class,
+        'search-box'      => Components\SearchBox::class,
+        'sf-product-card' => Components\ProductCard::class,
+        'skeleton'        => Components\Skeleton::class,
+        'stock-status'    => Components\StockStatus::class,
+        'swatches'        => Components\Swatches::class,
+    ];
+
+    /**
+     * The package's Livewire components, keyed by component name.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, class-string>
+     */
+    public const LIVEWIRE_COMPONENTS = [
+        'artisanpack-ecommerce-storefront-catalog'               => Catalog\Index::class,
+        'artisanpack-ecommerce-storefront-category-show'         => Catalog\CategoryShow::class,
+        'artisanpack-ecommerce-storefront-tag-show'              => Catalog\TagShow::class,
+        'artisanpack-ecommerce-storefront-product-grid'          => Catalog\ProductGrid::class,
+        'artisanpack-ecommerce-storefront-search'                => Search\Index::class,
+        'artisanpack-ecommerce-storefront-search-box'            => Search\HeaderSearch::class,
+        'artisanpack-ecommerce-storefront-product-show'          => Product\Show::class,
+        'artisanpack-ecommerce-storefront-product-reviews'       => Product\Reviews::class,
+        'artisanpack-ecommerce-storefront-related-products'      => Product\RelatedProducts::class,
+        'artisanpack-ecommerce-storefront-recently-viewed'       => Product\RecentlyViewed::class,
+        'artisanpack-ecommerce-storefront-product-form-simple'   => Product\Forms\SimpleForm::class,
+        'artisanpack-ecommerce-storefront-product-form-variable' => Product\Forms\VariableForm::class,
+        'artisanpack-ecommerce-storefront-product-form-grouped'  => Product\Forms\GroupedForm::class,
+        'artisanpack-ecommerce-storefront-product-form-bundled'  => Product\Forms\BundledForm::class,
+        'artisanpack-ecommerce-storefront-product-form-digital'  => Product\Forms\DigitalForm::class,
+        ProductFormRegistry::OPTIONS_FORM                        => Product\Forms\OptionsForm::class,
+        'artisanpack-ecommerce-storefront-cart'                  => Cart\Index::class,
+        'artisanpack-ecommerce-storefront-cart-drawer'           => Cart\Drawer::class,
+        'artisanpack-ecommerce-storefront-cart-button'           => Cart\HeaderButton::class,
+        'artisanpack-ecommerce-storefront-cart-merge-prompt'     => Cart\MergePrompt::class,
+        'artisanpack-ecommerce-storefront-currency-switcher'     => Currency\Switcher::class,
+        'artisanpack-ecommerce-storefront-checkout'              => Checkout\Index::class,
+        'artisanpack-ecommerce-storefront-payment-redirect'      => Payment\RedirectDriver::class,
+        'artisanpack-ecommerce-storefront-payment-stripe'        => Payment\StripePaymentElement::class,
+        'artisanpack-ecommerce-storefront-order-confirmation'    => Order\Confirmation::class,
+        'artisanpack-ecommerce-storefront-order-lookup'          => Order\Lookup::class,
+        'artisanpack-ecommerce-storefront-account-dashboard'     => Account\Dashboard::class,
+        'artisanpack-ecommerce-storefront-account-orders'        => Account\Orders::class,
+        'artisanpack-ecommerce-storefront-account-order'         => Account\OrderShow::class,
+        'artisanpack-ecommerce-storefront-account-addresses'     => Account\Addresses::class,
+        'artisanpack-ecommerce-storefront-account-downloads'     => Account\Downloads::class,
+        'artisanpack-ecommerce-storefront-account-profile'       => Account\Profile::class,
+        'artisanpack-ecommerce-storefront-account-claim'         => Account\Claim::class,
+    ];
+
+    /**
+     * The purchase forms for the engine's core product types (spec §8.2).
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const PRODUCT_FORMS = [
+        'simple'   => 'artisanpack-ecommerce-storefront-product-form-simple',
+        'variable' => 'artisanpack-ecommerce-storefront-product-form-variable',
+        'grouped'  => 'artisanpack-ecommerce-storefront-product-form-grouped',
+        'bundled'  => 'artisanpack-ecommerce-storefront-product-form-bundled',
+        'digital'  => 'artisanpack-ecommerce-storefront-product-form-digital',
+    ];
+
+    /**
+     * The core payment drivers (spec §8.3), keyed by the `driver` of the
+     * engine's client-render contract.
+     *
+     * @since 1.0.0
+     *
+     * @var array<string, string>
+     */
+    public const PAYMENT_DRIVERS = [
+        'redirect'               => 'artisanpack-ecommerce-storefront-payment-redirect',
+        'stripe-payment-element' => 'artisanpack-ecommerce-storefront-payment-stripe',
+    ];
+
+    /**
+     * Registers the package configuration and the per-request cart resolver.
      *
      * @since 1.0.0
      *
@@ -72,6 +212,13 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
             __DIR__ . '/../config/artisanpack/ecommerce-storefront-livewire.php',
             'artisanpack.ecommerce-storefront-livewire',
         );
+
+        $this->app->scoped( StorefrontCart::class );
+        $this->app->scoped( CategoryPaths::class );
+        $this->app->scoped( StorefrontContext::class );
+        $this->app->scoped( StorefrontSeo::class );
+        $this->app->singleton( ProductFormRegistry::class );
+        $this->app->singleton( PaymentDriverRegistry::class );
     }
 
     /**
@@ -90,6 +237,19 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerPublishing();
         $this->registerViews();
         $this->registerTranslations();
+        $this->registerCommands();
+        $this->registerBladeComponents();
+        $this->registerLayoutResolver();
+        $this->registerLivewireComponents();
+        $this->registerProductForms();
+        $this->registerPaymentDrivers();
+        $this->registerSettings();
+        $this->registerRoutes();
+        $this->registerOrderViewUrl();
+        $this->registerVisualEditorBlocks();
+        $this->registerCacheInvalidation();
+        $this->registerMarketingConsent();
+        $this->registerListingFilter();
     }
 
     /**
@@ -115,6 +275,97 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
             'columns'         => [],
             'product_types'   => [],
         ];
+    }
+
+    /**
+     * The middleware classes behind `account.middleware`. Groups are
+     * expanded (recursively, guarding against cycles), except `web` and
+     * any group on Livewire's update route, which every update request
+     * already runs.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, class-string>
+     */
+    public static function accountPersistentMiddleware(): array
+    {
+        $router  = app( 'router' );
+        $aliases = $router->getMiddleware();
+        $groups  = $router->getMiddlewareGroups();
+        $skip    = [ 'web' => true ];
+
+        foreach ( [ 'livewire.update', 'default-livewire.update' ] as $updateRoute ) {
+            foreach ( (array) $router->getRoutes()->getByName( $updateRoute )?->middleware() as $routeMiddleware ) {
+                if ( is_string( $routeMiddleware ) && isset( $groups[ $routeMiddleware ] ) ) {
+                    $skip[ $routeMiddleware ] = true;
+                }
+            }
+        }
+
+        $classes = self::expandMiddleware( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ), $aliases, $groups, $skip );
+
+        return array_values( array_unique( $classes ) );
+    }
+
+    /**
+     * Makes the account middleware (`auth`, `verified`, ...) persistent, so
+     * Livewire re-runs it on every update request from an account page
+     * (spec §6).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    public function registerPersistentMiddleware(): void
+    {
+        $middleware = self::accountPersistentMiddleware();
+
+        if ( [] !== $middleware ) {
+            Livewire::addPersistentMiddleware( $middleware );
+        }
+    }
+
+    /**
+     * The middleware classes behind `$entries`, expanding groups not in
+     * `$skip`. A group being expanded is added to `$skip` so a group that
+     * (directly or indirectly) contains itself ends.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, mixed>                $entries  Middleware aliases, classes, or group names.
+     * @param  array<string, mixed>             $aliases  The router's middleware aliases.
+     * @param  array<string, array<int, mixed>> $groups   The router's middleware groups.
+     * @param  array<string, true>              $skip     Groups to leave out.
+     *
+     * @return array<int, class-string>
+     */
+    protected static function expandMiddleware( array $entries, array $aliases, array $groups, array $skip ): array
+    {
+        $classes = [];
+
+        foreach ( $entries as $entry ) {
+            if ( ! is_string( $entry ) || '' === $entry ) {
+                continue;
+            }
+
+            $name = explode( ':', $entry, 2 )[0];
+
+            if ( isset( $groups[ $name ] ) ) {
+                if ( ! isset( $skip[ $name ] ) ) {
+                    $classes = array_merge( $classes, self::expandMiddleware( (array) $groups[ $name ], $aliases, $groups, $skip + [ $name => true ] ) );
+                }
+
+                continue;
+            }
+
+            $class = $aliases[ $name ] ?? $name;
+
+            if ( is_string( $class ) && class_exists( $class ) ) {
+                $classes[] = $class;
+            }
+        }
+
+        return $classes;
     }
 
     /**
@@ -186,5 +437,244 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     {
         $this->loadJsonTranslationsFrom( __DIR__ . '/../lang' );
         $this->loadJsonTranslationsFrom( $this->app->langPath( 'vendor/' . self::VIEW_NAMESPACE ) );
+    }
+
+    /**
+     * Registers the Artisan commands.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerCommands(): void
+    {
+        if ( ! $this->app->runningInConsole() ) {
+            return;
+        }
+
+        $this->commands( [
+            InstallCommand::class,
+        ] );
+    }
+
+    /**
+     * Registers the `<x-artisanpack-ec-…>` Blade components.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerBladeComponents(): void
+    {
+        foreach ( self::BLADE_COMPONENTS as $name => $class ) {
+            Blade::component( 'artisanpack-ec-' . $name, $class );
+        }
+    }
+
+    /**
+     * Shares the layout every page view extends (spec §5.3) — the
+     * configured `storefront.layout`, or the package's standalone layout —
+     * and the page's SEO metadata (`$ecommerceSeo`, spec §12).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerLayoutResolver(): void
+    {
+        View::composer( self::VIEW_NAMESPACE . '::pages.*', static function ( ViewContract $view ): void {
+            $layout = config( 'artisanpack.ecommerce-storefront-livewire.storefront.layout' );
+
+            $view->with( 'ecommerceStorefrontLayout', is_string( $layout ) && '' !== $layout ? $layout : self::DEFAULT_LAYOUT );
+            $view->with( 'ecommerceSeo', app( StorefrontSeo::class ) );
+        } );
+    }
+
+    /**
+     * Registers the Livewire components and, once every middleware alias is
+     * known, the account middleware as persistent.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerLivewireComponents(): void
+    {
+        foreach ( self::LIVEWIRE_COMPONENTS as $name => $class ) {
+            Livewire::component( $name, $class );
+        }
+
+        $this->app->booted( fn () => $this->registerPersistentMiddleware() );
+    }
+
+    /**
+     * Registers the core product types' purchase forms, leaving any a
+     * satellite registered first in place.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerProductForms(): void
+    {
+        $registry = $this->app->make( ProductFormRegistry::class );
+
+        foreach ( self::PRODUCT_FORMS as $type => $component ) {
+            if ( ! $registry->has( $type ) ) {
+                $registry->register( $type, $component );
+            }
+        }
+    }
+
+    /**
+     * Registers the core payment drivers and the ones listed in
+     * `payments.drivers` (`driver => component`), leaving any a satellite
+     * registered first in place. Configured drivers win over core ones.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerPaymentDrivers(): void
+    {
+        $registry = $this->app->make( PaymentDriverRegistry::class );
+
+        foreach ( self::PAYMENT_DRIVERS as $driver => $component ) {
+            if ( ! $registry->has( $driver ) ) {
+                $registry->register( $driver, $component );
+            }
+        }
+
+        foreach ( (array) config( 'artisanpack.ecommerce-storefront-livewire.payments.drivers', [] ) as $driver => $component ) {
+            if ( is_string( $driver ) && '' !== trim( $driver ) && is_string( $component ) && '' !== trim( $component ) ) {
+                $registry->register( $driver, $component );
+            }
+        }
+    }
+
+    /**
+     * Adds the store owner's checkout choices (layout, terms page) to the
+     * engine's settings, so the admin's settings screen can change them.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerSettings(): void
+    {
+        CheckoutLayout::registerSettings( $this->app->make( SettingsRegistry::class ) );
+    }
+
+    /**
+     * Registers the storefront and account routes.
+     *
+     * Skipped when the routes are cached (the cache already holds them) or
+     * when `storefront.routes_enabled` is false, for hosts that route and
+     * embed the components themselves.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerRoutes(): void
+    {
+        if ( $this->app->routesAreCached() ) {
+            return;
+        }
+
+        if ( ! (bool) config( 'artisanpack.ecommerce-storefront-livewire.storefront.routes_enabled', true ) ) {
+            return;
+        }
+
+        $this->loadRoutesFrom( __DIR__ . '/../routes/storefront.php' );
+        $this->loadRoutesFrom( __DIR__ . '/../routes/account.php' );
+    }
+
+    /**
+     * Registers the commerce blocks when visual-editor is installed and
+     * `visual_editor.blocks` is on (spec §11).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerVisualEditorBlocks(): void
+    {
+        StorefrontBlocks::boot( $this->app );
+    }
+
+    /**
+     * Clears the storefront cache (category tree, facet counts) whenever
+     * the catalog changes ({@see StorefrontCache}).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerCacheInvalidation(): void
+    {
+        StorefrontCache::boot();
+    }
+
+    /**
+     * Leaves products whose type package is uninstalled out of every
+     * catalog listing (`ap.ecommerce.product.listQuery`), since their pages
+     * 404. Covers the catalog, product grids, and database search.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerListingFilter(): void
+    {
+        addFilter( 'ap.ecommerce.product.listQuery', static function ( mixed $query ): mixed {
+            return $query instanceof Builder
+                ? $query->whereIn( ( new ProductModel() )->qualifyColumn( 'type' ), app( ProductTypeRegistry::class )->keys() )
+                : $query;
+        } );
+    }
+
+    /**
+     * Points the engine's guest order links (confirmation emails,
+     * `checkout.order_view_url`) at the storefront's signed order page
+     * (spec §7.6), unless the host set its own. Skipped when the storefront
+     * doesn't register its routes. The base is `app.url` (the current
+     * request's only when that's empty).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerOrderViewUrl(): void
+    {
+        $current = config( 'artisanpack.ecommerce.checkout.order_view_url' );
+
+        if ( ( is_string( $current ) && '' !== trim( $current ) ) || ! (bool) config( 'artisanpack.ecommerce-storefront-livewire.storefront.routes_enabled', true ) ) {
+            return;
+        }
+
+        $prefix = trim( (string) config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix', 'shop' ), '/' );
+
+        $path = ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}';
+        $base = rtrim( trim( (string) config( 'app.url', '' ) ), '/' );
+
+        // Built from `app.url`, not the booting request: the engine bakes
+        // this into queued emails, and a webhook can boot the app on an
+        // internal host or plain http.
+        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => '' === $base ? url( $path ) : $base . '/' . $path ] );
+    }
+
+    /**
+     * Keeps the marketing consent given at checkout on the placed order
+     * and the customer, including for orders the provider's webhook
+     * places ({@see CheckoutMarketingConsent}).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerMarketingConsent(): void
+    {
+        CheckoutMarketingConsent::boot();
     }
 }

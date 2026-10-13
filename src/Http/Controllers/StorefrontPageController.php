@@ -1,0 +1,663 @@
+<?php
+
+/**
+ * Storefront page controller.
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage EcommerceStorefrontLivewire
+ *
+ * @since      1.0.0
+ */
+
+declare( strict_types=1 );
+
+namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
+
+use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
+use ArtisanPackUI\Ecommerce\Digital\DigitalFileStreamer;
+use ArtisanPackUI\Ecommerce\Exceptions\DigitalDownloadException;
+use ArtisanPackUI\Ecommerce\Exceptions\RateLimitExceededException;
+use ArtisanPackUI\Ecommerce\Models\Customer;
+use ArtisanPackUI\Ecommerce\Models\Order;
+use ArtisanPackUI\Ecommerce\Models\ProductCategory;
+use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\RateLimiting\EcommerceRateLimiter;
+use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
+use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
+use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontTemplates;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index as Checkout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search\Index as Search;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Routing\Controller;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Throwable;
+
+/**
+ * Returns the page view for each storefront and account screen (spec §5.1).
+ *
+ * Every page is a controller action (not a closure, so `route:cache` works)
+ * returning a view that extends the configured layout and embeds one
+ * Livewire component. Catalog subjects (category, tag, product) are resolved
+ * here so an unknown or hidden one is a 404; owned records (orders) are
+ * passed through unresolved for their component to load and authorize.
+ * Cart, checkout, confirmation, lookup, and account pages are marked
+ * private and `noindex`. Each page is described for search engines through
+ * the request's `StorefrontSeo` (spec §12). The page, and the product,
+ * category, tag, or (verified) order it is about, go into the request's
+ * `StorefrontContext` for visual-editor blocks; with visual-editor
+ * templates on, catalog, product, cart, checkout, and search pages render
+ * the saved template for the page (`$ecommerceTemplate`, spec §11.4).
+ *
+ * @package    ArtisanPack_UI
+ * @subpackage EcommerceStorefrontLivewire
+ *
+ * @since      1.0.0
+ */
+class StorefrontPageController extends Controller
+{
+    /**
+     * The catalog.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request  The request.
+     *
+     * @return View
+     */
+    public function catalog( Request $request ): View
+    {
+        app( StorefrontContext::class )->setPage( 'catalog' );
+        app( StorefrontSeo::class )->catalog( $request );
+
+        return view( 'ecommerce-storefront::pages.catalog', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'catalog' ) ] );
+    }
+
+    /**
+     * A category page, found by the last slug of its chain
+     * (`clothing/shirts`). A chain that isn't the category's canonical one
+     * (`shirts`, `shirts/clothing`) redirects there permanently, keeping
+     * the query string; an unknown slug is a 404.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request        $request  The request.
+     * @param  CategoryPaths  $paths    Category paths.
+     * @param  string         $path     The slug chain.
+     *
+     * @return RedirectResponse|View
+     */
+    public function category( Request $request, CategoryPaths $paths, string $path ): View|RedirectResponse
+    {
+        $segments = explode( '/', trim( $path, '/' ) );
+        $node     = $paths->bySlug( (string) end( $segments ) );
+        $category = null === $node ? null : ProductCategory::query()->find( $node['id'] );
+
+        abort_if( null === $category, 404 );
+
+        $canonical = (string) $paths->path( (int) $category->id );
+
+        if ( $canonical !== implode( '/', $segments ) ) {
+            return redirect()->route( 'artisanpack.ecommerce.storefront.category', [ ...$request->query(), 'path' => $canonical ], 301 );
+        }
+
+        app( StorefrontContext::class )->setPage( 'category' )->setCategory( $category );
+        app( StorefrontSeo::class )->category( $category, $request );
+
+        return view( 'ecommerce-storefront::pages.category', [ 'category' => $category, 'ecommerceTemplate' => StorefrontTemplates::for( 'category', $category ) ] );
+    }
+
+    /**
+     * A tag page.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request  The request.
+     * @param  string   $tag      The tag slug.
+     *
+     * @return View
+     */
+    public function tag( Request $request, string $tag ): View
+    {
+        $model = ProductTag::query()->where( 'slug', $tag )->first();
+
+        abort_if( null === $model, 404 );
+
+        app( StorefrontContext::class )->setPage( 'tag' )->setTag( $model );
+        app( StorefrontSeo::class )->tag( $model, $request );
+
+        return view( 'ecommerce-storefront::pages.tag', [ 'tag' => $model, 'ecommerceTemplate' => StorefrontTemplates::for( 'tag', $model ) ] );
+    }
+
+    /**
+     * A product page. Only storefront-visible products resolve; a product
+     * whose type's satellite is gone is a 404 too (parent plan §16.6).
+     *
+     * @since 1.0.0
+     *
+     * @param  CatalogQuery    $catalog  The engine's catalog query.
+     * @param  StorefrontCart  $carts    The shopper's cart.
+     * @param  string          $product  The product slug.
+     *
+     * @return View
+     */
+    public function product( CatalogQuery $catalog, StorefrontCart $carts, string $product ): View
+    {
+        $model = $catalog->productBySlug( $product );
+
+        abort_if( null === $model || $model->typeIsMissing(), 404 );
+
+        app( StorefrontContext::class )->setPage( 'product' )->setProduct( $model );
+        app( StorefrontSeo::class )->product( DisplayData::for( $model ), $carts->currency() );
+
+        return view( 'ecommerce-storefront::pages.product', [ 'product' => $model, 'ecommerceTemplate' => StorefrontTemplates::for( 'product', $model ) ] );
+    }
+
+    /**
+     * The search page. Results pages are `noindex` (spec §12): they are
+     * endless and duplicate the catalog.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request  The request.
+     *
+     * @return Response
+     */
+    public function search( Request $request ): Response
+    {
+        $term = $request->query( 'q' );
+        $term = is_string( $term ) ? mb_substr( Search::normalizeTerm( $term ), 0, Search::MAX_TERM_LENGTH ) : '';
+
+        app( StorefrontContext::class )->setPage( 'search' );
+        app( StorefrontSeo::class )->search( $term );
+
+        $response = response()->view( 'ecommerce-storefront::pages.search', [
+            'term'              => $term,
+            'ecommerceTemplate' => StorefrontTemplates::for( 'search' ),
+        ] );
+
+        $response->headers->set( 'X-Robots-Tag', StorefrontSeo::NOINDEX_FOLLOW );
+
+        return $response;
+    }
+
+    /**
+     * The cart page. Never cached or indexed: it is the shopper's own.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function cart(): Response
+    {
+        app( StorefrontContext::class )->setPage( 'cart' );
+
+        return $this->privateView( 'cart', 'ecommerce-storefront::pages.cart', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'cart' ) ] );
+    }
+
+    /**
+     * The checkout. Never cached or indexed: it holds the shopper's details.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function checkout(): Response
+    {
+        app( StorefrontContext::class )->setPage( 'checkout' );
+
+        return $this->privateView( 'checkout', 'ecommerce-storefront::pages.checkout', [ 'ecommerceTemplate' => StorefrontTemplates::for( 'checkout' ) ] );
+    }
+
+    /**
+     * Where the payment provider sends the shopper back (a redirect
+     * gateway, 3-D Secure, or a payment method that redirects).
+     *
+     * The cart's payment session is checked with its gateway: confirmed
+     * (authorized, succeeded, processing) for the cart's current total
+     * goes back to checkout, which places the order (payment is the last
+     * step); anything else goes back to the payment step with the reason.
+     * A `reference` (or Stripe's `payment_intent`) in the query string
+     * must be the cart's session. Without a session there's nothing to
+     * resume, so the shopper lands on checkout as it is.
+     *
+     * When the order was already placed and its payment needed confirming
+     * ({@see CheckoutPlacement}), the order's own session is checked the
+     * same way: a paid (or held for review) order goes to its
+     * confirmation, a confirmed payment back to checkout to finish the
+     * order. That order wins over an open cart when the returned reference
+     * is its payment, so a shopper who started a new cart can still finish
+     * it.
+     *
+     * Each return counts against the shopper's `ecommerce.cart.mutate`
+     * limit, since it asks the provider about the session.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request                 $request   The request.
+     * @param  StorefrontCart          $carts     The shopper's cart.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
+     */
+    public function checkoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
+    {
+        try {
+            return app( EcommerceRateLimiter::class )->attempt(
+                'ecommerce.cart.mutate',
+                $carts->subject(),
+                fn (): RedirectResponse => $this->resolveCheckoutReturn( $request, $carts, $gateways ),
+            );
+        } catch ( RateLimitExceededException ) {
+            return $this->backToPayment( __( 'Slow down' ), __( 'Too many attempts. Try again in a moment.' ) );
+        }
+    }
+
+    /**
+     * An order's confirmation page. The component loads the order and
+     * authorizes it (the signed `token` for guests). Never cached or
+     * indexed.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request  The request.
+     * @param  string   $order    The order id.
+     *
+     * @return Response
+     */
+    public function confirmation( Request $request, string $order ): Response
+    {
+        $token = $request->query( 'token' );
+
+        return $this->privateView( 'confirmation', 'ecommerce-storefront::pages.confirmation', [
+            'order' => $order,
+            'token' => is_string( $token ) ? $token : null,
+        ] );
+    }
+
+    /**
+     * The guest order lookup. Not cached or indexed.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function lookup(): Response
+    {
+        return $this->privateView( 'lookup', 'ecommerce-storefront::pages.lookup' );
+    }
+
+    /**
+     * A guest's order, opened with a signed order-view token (a lookup or
+     * a confirmation email). A malformed, tampered, or expired token is a
+     * 404. The component shows the order read-only. Never cached or
+     * indexed, and the token never leaves in a `Referer`.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $token  The signed order-view token.
+     *
+     * @return Response
+     */
+    public function orderView( string $token ): Response
+    {
+        $order = OrderViewToken::verify( $token );
+
+        abort_if( null === $order, 404 );
+
+        app( StorefrontContext::class )->setOrder( $order );
+
+        return $this->privateView( 'order-view', 'ecommerce-storefront::pages.order-view', [
+            'order' => (int) $order->id,
+            'token' => $token,
+        ] );
+    }
+
+    /**
+     * The account dashboard.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountDashboard(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.dashboard' );
+    }
+
+    /**
+     * The shopper's order history.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountOrders(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.orders' );
+    }
+
+    /**
+     * One of the shopper's orders. The component loads the order and
+     * authorizes it (another customer's order is a 404).
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $order  The order id.
+     *
+     * @return Response
+     */
+    public function accountOrder( string $order ): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.order', [ 'order' => $order ] );
+    }
+
+    /**
+     * The shopper's address book.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountAddresses(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.addresses' );
+    }
+
+    /**
+     * The shopper's downloads and licence keys.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountDownloads(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.downloads' );
+    }
+
+    /**
+     * Sends one of the shopper's files as an attachment, spending a
+     * download (engine `DigitalDownloadService::redeemOwned()`). Another
+     * customer's entitlement is a 404; one that is expired, used up, or
+     * streaming-only goes back to the downloads page saying why. The route
+     * only accepts the downloads page's temporary signed links (403
+     * otherwise).
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     *
+     * @return SymfonyResponse
+     */
+    public function accountDownloadFile( Request $request, int $download ): SymfonyResponse
+    {
+        try {
+            return $this->deliverDownload( $request, $download, DigitalDownloadService::MODE_DOWNLOAD, true );
+        } catch ( DigitalDownloadException $exception ) {
+            abort_if( 404 === $exception->status && 'download-not-found' === $exception->errorCode, 404 );
+
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage(), 'alert-warning' ) );
+
+            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.account.downloads' ) );
+        }
+    }
+
+    /**
+     * Streams one of the shopper's files for the browser's player
+     * (byte-range aware); the first request of a stream spends a download.
+     * A refusal answers with its status, since a media player can't follow
+     * a redirect to a page. Like downloads, the link must be signed.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     *
+     * @return SymfonyResponse
+     */
+    public function accountDownloadStream( Request $request, int $download ): SymfonyResponse
+    {
+        try {
+            return $this->deliverDownload( $request, $download, DigitalDownloadService::MODE_STREAM, DigitalFileStreamer::startsStream( $request ) );
+        } catch ( DigitalDownloadException $exception ) {
+            abort( $exception->status, $exception->getMessage() );
+        }
+    }
+
+    /**
+     * The shopper's profile and notification preferences.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountProfile(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.profile' );
+    }
+
+    /**
+     * Claiming a guest order.
+     *
+     * @since 1.0.0
+     *
+     * @return Response
+     */
+    public function accountClaim(): Response
+    {
+        return $this->privateView( 'account', 'ecommerce-storefront::pages.account.claim' );
+    }
+
+    /**
+     * Works out where a payment return goes (see
+     * {@see self::checkoutReturn()}).
+     *
+     * @since 1.0.0
+     *
+     * @param  Request                 $request   The request.
+     * @param  StorefrontCart          $carts     The shopper's cart.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
+     */
+    protected function resolveCheckoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
+    {
+        $cart      = $carts->current();
+        $placement = CheckoutPlacement::current();
+        $given     = $request->query( 'reference', $request->query( 'payment_intent' ) );
+        $placed    = null === $placement ? '' : (string) ( $placement['order']->payment_reference ?? '' );
+
+        if ( null !== $placement && ( null === $cart || ( is_string( $given ) && '' !== $placed && hash_equals( $placed, $given ) ) ) ) {
+            return $this->placedOrderReturn( $request, $placement['order'], $gateways );
+        }
+
+        $reference = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
+        $gateway   = null === $cart || null === $cart->payment_gateway_key ? null : $gateways->find( (string) $cart->payment_gateway_key );
+
+        if ( '' === $reference || null === $gateway ) {
+            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
+        }
+
+        if ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) {
+            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
+        }
+
+        if ( ! $session->isConfirmed() ) {
+            return $this->backToPayment(
+                __( 'Your payment wasn\'t completed.' ),
+                $session->requiresAction() ? __( 'Your bank needs you to confirm this payment. Try again.' ) : __( 'Try again or use another payment method.' ),
+            );
+        }
+
+        if ( ! PaymentSessions::confirmedFor( $session, $cart ) ) {
+            return $this->backToPayment( __( 'Your order total has changed.' ), __( 'Pay again for the new total.' ) );
+        }
+
+        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+    }
+
+    /**
+     * The payment return for an order already placed: a paid order — or
+     * one fraud screening holds for the store's review, its payment
+     * confirmed — goes to its confirmation; a session the gateway confirms
+     * goes back to checkout, which finishes the order; anything else back
+     * to the order's payment.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request                 $request   The request.
+     * @param  Order                   $order     The placed order.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
+     */
+    protected function placedOrderReturn( Request $request, Order $order, PaymentGatewayRegistry $gateways ): RedirectResponse
+    {
+        $held = ! CheckoutPlacement::isPaid( $order ) && CheckoutPlacement::isHeld( $order );
+
+        if ( $held ) {
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ), 'alert-success' ) );
+        }
+
+        if ( $held || CheckoutPlacement::isPaid( $order ) ) {
+            CheckoutPlacement::forget();
+
+            $url = CheckoutPlacement::confirmationUrl( $order );
+
+            return $this->keepPrivate( null === $url ? redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) : redirect()->to( $url ) );
+        }
+
+        $reference = (string) ( $order->payment_reference ?? '' );
+        $gateway   = null === $order->payment_gateway_key ? null : $gateways->find( (string) $order->payment_gateway_key );
+        $given     = $request->query( 'reference', $request->query( 'payment_intent' ) );
+
+        if ( '' === $reference || null === $gateway || ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) ) {
+            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Try paying for your order again.' ) );
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
+        }
+
+        if ( ! $session->isConfirmed() ) {
+            return $this->backToPayment( __( 'Your payment wasn\'t completed.' ), __( 'Try again or use another payment method.' ) );
+        }
+
+        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $order->total_amount ] );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
+    }
+
+    /**
+     * Redeems one of the signed-in shopper's entitlements and sends the
+     * file, marked private.
+     *
+     * @since 1.0.0
+     *
+     * @param  Request  $request   The request.
+     * @param  int      $download  The entitlement id.
+     * @param  string   $mode      `DigitalDownloadService::MODE_DOWNLOAD` or `MODE_STREAM`.
+     * @param  bool     $counted   Whether the request spends a download.
+     *
+     * @throws DigitalDownloadException When it isn't theirs or can't be redeemed.
+     *
+     * @return SymfonyResponse
+     */
+    protected function deliverDownload( Request $request, int $download, string $mode, bool $counted ): SymfonyResponse
+    {
+        $customer = Customer::forUser( $request->user() );
+
+        if ( null === $customer ) {
+            throw new DigitalDownloadException( 'download-not-found', 404, __( 'That download doesn\'t exist.' ) );
+        }
+
+        $entitlement = app( DigitalDownloadService::class )->redeemOwned( $customer, $download, $mode, $request, $counted );
+
+        return $this->keepPrivate( app( DigitalFileStreamer::class )->respond( $entitlement, $request, $mode ) );
+    }
+
+    /**
+     * Back to the checkout's payment step, with a warning.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $title        What happened.
+     * @param  string  $description  What to do.
+     *
+     * @return RedirectResponse
+     */
+    protected function backToPayment( string $title, string $description ): RedirectResponse
+    {
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+    }
+
+    /**
+     * A page that is never indexed (`noindex` in its head and headers) or
+     * cached.
+     *
+     * @since 1.0.0
+     *
+     * @param  string                $page  The page, for `StorefrontSeo`.
+     * @param  string                $view  The page view.
+     * @param  array<string, mixed>  $data  View data.
+     *
+     * @return Response
+     */
+    protected function privateView( string $page, string $view, array $data = [] ): Response
+    {
+        app( StorefrontSeo::class )->noindex( $page );
+
+        return $this->keepPrivate( response()->view( $view, $data ) );
+    }
+
+    /**
+     * Marks a response private: not stored by any cache, not indexed
+     * (spec §12), and not leaking its URL — which can carry a guest's
+     * signed order-view token — to other sites in the `Referer`.
+     *
+     * @since 1.0.0
+     *
+     * @template TResponse of SymfonyResponse
+     *
+     * @param  TResponse  $response  The response.
+     *
+     * @return TResponse
+     */
+    protected function keepPrivate( SymfonyResponse $response ): SymfonyResponse
+    {
+        $response->headers->set( 'Cache-Control', 'no-store, private' );
+        $response->headers->set( 'X-Robots-Tag', StorefrontSeo::NOINDEX );
+        $response->headers->set( 'Referrer-Policy', 'same-origin' );
+
+        return $response;
+    }
+}

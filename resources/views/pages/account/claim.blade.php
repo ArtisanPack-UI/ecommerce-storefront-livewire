@@ -1,0 +1,21 @@
+{{--
+    Claiming a guest order.
+
+    @package    ArtisanPack_UI
+    @subpackage EcommerceStorefrontLivewire
+
+    @since      1.0.0
+--}}
+@extends( $ecommerceStorefrontLayout )
+
+@push( 'head' )
+    @include( 'ecommerce-storefront::partials.seo' )
+@endpush
+
+@section( 'title', $ecommerceSeo->title( __( 'Claim an order' ) ) )
+
+@section( 'content' )
+    <x-artisanpack-ec-account-shell :title="__( 'Claim an order' )">
+        <livewire:artisanpack-ecommerce-storefront-account-claim />
+    </x-artisanpack-ec-account-shell>
+@endsection
