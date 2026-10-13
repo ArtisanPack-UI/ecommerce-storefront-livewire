@@ -76,7 +76,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.seo.meta', function ( array $meta, ?s
     }
 
     return $meta;
-}, 10, 3 );
+} );
 ```
 
 See [Hooks Reference](Extending-Hooks-Reference).

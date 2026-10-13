@@ -51,8 +51,8 @@ use Livewire\WithPagination;
  *   `ReviewService::eligibility()` allows it; otherwise the reason ("Sign in
  *   to review this product.", "You've already reviewed this product."). The
  *   form takes a rating, title, and text, plus a name and email from guests.
- *   Title and text pass through `sanitizeText()` (artisanpack-ui/security)
- *   first; submissions count against `ecommerce.review.submit`; a filled-in
+ *   Title and text are stored as plain text, with control characters
+ *   removed; submissions count against `ecommerce.review.submit`; a filled-in
  *   honeypot field files the review as spam without telling the sender.
  *
  * @package    ArtisanPack_UI

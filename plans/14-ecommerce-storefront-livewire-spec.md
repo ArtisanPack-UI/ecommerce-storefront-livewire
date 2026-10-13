@@ -250,7 +250,7 @@ Store-owner choices (checkout layout, guest checkout, account creation at checko
 ### 7.3 Cart, mini-cart, and drawer
 
 **Cart page**
-- Lines: image, name, options, unit price, quantity (U1, debounced `updateItem`), line total, remove (with undo toast).
+- Lines: image, name, options, unit price, quantity (U1, debounced `updateItem`), line total, remove (with an inline undo notice).
 - Coupon field (`applyCoupon` / `removeCoupon`), engine coupon messages shown inline, rate limit `ecommerce.coupon.attempt`.
 - Totals: subtotal, discounts by promotion, shipping (estimate or "calculated at checkout"), tax (estimated until an address exists, E6), total.
 - Shipping estimate: country/region/postcode → `ZoneShippingRateProvider` rates.

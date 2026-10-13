@@ -20,17 +20,21 @@ Every key has a default, so you only need the keys you change. Some choices are 
 | `storefront.route_prefix` | `'shop'` | URL prefix for the catalog, product, search, cart, checkout, confirmation, and order lookup pages. Leading and trailing slashes are trimmed. |
 | `storefront.middleware` | `[ 'web' ]` | Middleware on every storefront route. |
 | `storefront.layout` | `'ecommerce-storefront::layouts.app'` | The view every storefront and account page extends. Point it at your own layout to adopt its header and footer. An empty value falls back to the package layout. See [Layouts](Installation-Layouts). |
+| `storefront.rtl_locales` | `[ 'ar', 'he', 'fa', 'ur' ]` | Languages written right to left. The standalone layout sets `<html dir="rtl">` when the app locale's language is in this list (`ar_EG` and `ar-EG` follow `ar`). A host layout can do the same with `Support\TextDirection::for()`; see [Layouts](Installation-Layouts). |
 
 Route names are always `artisanpack.ecommerce.storefront.*` (for example `artisanpack.ecommerce.storefront.product`).
 
-When the storefront registers its routes and `artisanpack.ecommerce.checkout.order_view_url` is empty, the provider sets that engine key to `{route_prefix}/order/{token}`, so links in guest confirmation emails open the storefront's signed order page. A value you set yourself is left alone.
+When the storefront registers its routes and `artisanpack.ecommerce.checkout.order_view_url` is empty, the provider sets that engine key to `{APP_URL}/{route_prefix}/order/{token}`, so links in guest confirmation emails open the storefront's signed order page. A value you set yourself is left alone.
+
+The link is built from `app.url`, not from the request that boots the app: the engine bakes it into queued emails, and a payment webhook can arrive on an internal host or plain `http`. Set `APP_URL` to the store's public URL (scheme and host). Only when `app.url` is empty does the current request's URL stand in.
 
 ## Customer account routes
 
 | Key | Default | What it controls |
 | --- | --- | --- |
 | `account.route_prefix` | `'account'` | URL prefix for the account dashboard, orders, addresses, downloads, profile, and order claim pages. |
-| `account.middleware` | `[ 'web', 'auth' ]` | Middleware on every account route. Add `verified` here if you need it. Every entry except a middleware group (such as `web`) is also registered as Livewire persistent middleware, so it runs again on each Livewire update from an account page. |
+| `account.middleware` | `[ 'web', 'auth' ]` | Middleware on every account route. Add `verified` here if you need it. Every entry is also registered as Livewire persistent middleware, so it runs again on each Livewire update from an account page. A middleware group of your own is expanded into its members; `web`, and any group Livewire's update route already runs, are left out. |
+| `account.claim_requires_verified_email` | `true` | Who may claim guest orders. A claim attaches every unclaimed guest order placed with the account's email, so by default only users whose model implements `MustVerifyEmail` and who have verified may claim. Set to `false` only when your user model doesn't verify emails and you accept that any account can claim orders placed with its address. A `MustVerifyEmail` user who hasn't verified is refused either way. |
 
 Route names are always `artisanpack.ecommerce.account.*` (for example `artisanpack.ecommerce.account.orders.index`).
 

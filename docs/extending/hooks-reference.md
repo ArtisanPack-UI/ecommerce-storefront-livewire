@@ -4,9 +4,9 @@ title: Hooks Reference
 
 # Hooks Reference
 
-Every seam a satellite or host can use to change the storefront without publishing views (spec §8.4). Filters and actions use the `artisanpack-ui/hooks` helpers; registries are singletons resolved from the container. Register everything from a service provider's `boot()`.
+Every seam a satellite or host can use to change the storefront without publishing views. Filters and actions use the `artisanpack-ui/hooks` helpers; registries are singletons resolved from the container. Register everything from a service provider's `boot()`.
 
-Filters receive the value as the first argument and must return it; extra arguments need the `$acceptedArgs` count when you add the callback (`addFilter( $hook, $callback, 10, 3 )`). A filter that returns the wrong type is ignored and the storefront's own value is used.
+Filters receive the value as the first argument and must return it; every extra argument is passed to the callback, so declare only the ones you need. A filter that returns the wrong type is ignored and the storefront's own value is used.
 
 ## Registries
 
@@ -45,7 +45,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
     $card['actions']['wishlist'] = 'wishlist::heart';
 
     return $card;
-}, 10, 2 );
+} );
 ```
 
 ## Product page
@@ -62,14 +62,39 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
 | `ap.ecommerceStorefrontLivewire.cart.sections` | filter | Rendering the sections below the cart page (cross-sells by default) | `array $sections` (key => `component`, `params`, `position`), `?Cart $cart` | Sections. Each component except `cross-sells` also receives `cart`. |
-| `ap.ecommerceStorefrontLivewire.checkout.steps` | filter | Building the checkout steps | `array $steps`, `Cart $cart` | Steps. Add one with `label`, `component`, and `before` (`address`, `shipping`, `payment`, or `review`, the default). Core steps can't be removed. |
-| `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` | action | Just before the engine places the order (once per "Place order") | `Cart $cart`, `array $context` (note, IP, user agent) | — Throw a `CartOperationException` to stop the order with its message; any other exception stops it with a generic error. |
+| `ap.ecommerceStorefrontLivewire.checkout.steps` | filter | Building the checkout steps | `array $steps`, `Cart $cart` | Steps. Add one with `label`, `component`, `before` (`address`, `shipping`, `review`, the default, or `payment`), and optionally `complete`: a `callable( Cart $cart ): bool` the checkout asks on the server whether the step is done. Core steps can't be removed. An entry with a missing label or component, an invalid key, or a `complete` that isn't callable is ignored. |
+| `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` | action | Just before the engine places the order: when the shopper confirms the payment, or presses "Place order" when nothing is due. Runs once per placement, after every added step is checked again. | `Cart $cart`, `array $context` (note, IP, user agent) | — Throw a `CartOperationException` to stop the order with its message; any other exception stops it with a generic error. |
+
+A step without a `complete` callable counts as done once its component dispatches `ecommerce-checkout-step-completed` with `step: <key>`, and only while the shopper can reach it. That event comes from the browser, so a step that must hold the shopper back (an age check, say) should give `complete`.
+
+```php
+addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $steps, Cart $cart ): array {
+    $steps['age-check'] = [
+        'label'     => __( 'Date of birth' ),
+        'component' => 'age-check-checkout-step',
+        'before'    => 'payment',
+        'complete'  => fn ( Cart $cart ): bool => AgeChecks::passed( $cart ),
+    ];
+
+    return $steps;
+} );
+```
 
 ## Account and orders
 
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
 | `ap.ecommerceStorefrontLivewire.order.statusLabel` | filter | Showing an order's status to the shopper | `string $label`, `Order $order` | The label. |
+| `ap.ecommerce.customer.orderClaimed` (engine) | action | An order is attached to a customer: a guest order claimed from the account, or the order just placed when the shopper creates an account at checkout | `Customer $customer`, `Order $order` | — |
+
+## Livewire events
+
+| Event | Sent when | Parameters |
+| --- | --- | --- |
+| `ecommerce-cart-updated` | Any storefront component changes the cart (a browser and Livewire event) | `count` (items in the cart now), `source` (the class of the component that made the change) |
+| `ecommerce-cart-open` | The cart drawer should open: after an add to cart with `cart.after_add` set to `drawer`, or when the header cart button is pressed. Dispatch it yourself to open the drawer. | — |
+
+A listener that already followed its own change can ignore an `ecommerce-cart-updated` whose `source` is its own class; the cart page, cart drawer, and checkout do.
 
 ## Addresses
 

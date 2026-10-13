@@ -18,7 +18,7 @@ The storefront calls the engine's services in-process and owns no tables. Its ro
 
 ## Requirements
 
-- PHP 8.3+
+- PHP 8.3+ with the `intl` extension
 - Laravel 12 or 13
 - Livewire 3.6+ or 4
 - `artisanpack-ui/ecommerce` 1.1+

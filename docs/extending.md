@@ -42,10 +42,39 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
     $card['badges'][] = __( 'New' );
 
     return $card;
-}, 10, 2 );
+} );
 ```
 
-A filter receives the value first and must return it. Pass the number of arguments you need (`10, 2` above) when the filter has more than one. A filter that returns the wrong type is ignored and the storefront's own value is used. [Hooks Reference](Extending-Hooks-Reference) lists every one.
+A filter receives the value first and must return it. Every extra argument is passed to the callback, so declare only the ones you need. A filter that returns the wrong type is ignored and the storefront's own value is used. [Hooks Reference](Extending-Hooks-Reference) lists every one.
+
+## Custom purchase forms
+
+A purchase form registered with `ProductFormRegistry` should extend `Livewire\Product\Forms\PurchaseForm`. A form that overrides `addToCart()` calls `$this->startAdding()` first: it clears the last announcement and keys a new error summary, so a refused add is announced even when the same error repeats.
+
+```php
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\PurchaseForm;
+
+class SubscriptionForm extends PurchaseForm
+{
+    public function addToCart(): void
+    {
+        $this->startAdding();
+        $this->validateQuantity();
+
+        // ... add the lines
+    }
+}
+```
+
+## Error summaries in your own forms
+
+The storefront's forms list every problem in an error summary that is announced and focused after each failed submit. To do the same in your own Livewire form, use the `Livewire\Concerns\SummarizesErrors` concern, call `$this->newErrorSummary()` at the start of each submit, and include the partial inside the form:
+
+```blade
+@include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'my-form' ] )
+```
+
+`summaryId` must be unique on the page. `summaryExcept` (error keys shown elsewhere) and `summaryClass` (extra classes) are optional. Each entry links to its field, found by an `<x-artisanpack-ec-field>` (`data-field-key`) or a `data-field` wrapper.
 
 ## Rules every extension follows
 

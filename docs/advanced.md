@@ -33,7 +33,7 @@ Shopper actions run through the engine's rate limit policies. They count against
 
 | Policy | Covers |
 | --- | --- |
-| `ecommerce.cart.mutate` | Adding, updating, and removing cart lines, choosing a shipping rate, and starting a payment |
+| `ecommerce.cart.mutate` | Adding, updating, and removing cart lines, choosing a shipping rate, and starting a payment. Also **Buy again** on an account order, and saving, deleting, or changing the default of an address in the account: the engine has no account write policy yet, so these share the shopper-write policy, keyed by cart or IP. |
 | `ecommerce.coupon.attempt` | Applying a coupon |
 | `ecommerce.checkout.finalize` | Placing an order |
 | `ecommerce.review.submit` | Submitting a review |
@@ -45,7 +45,7 @@ The limits are engine settings (`artisanpack.ecommerce.rate_limits`).
 
 ## Account middleware
 
-The account routes use `account.middleware` (`[ 'web', 'auth' ]` by default; add `verified` if you need it). The storefront also registers those middleware classes as Livewire persistent middleware, so Livewire re-runs them on every update request from an account page.
+The account routes use `account.middleware` (`[ 'web', 'auth' ]` by default; add `verified` if you need it). The storefront also registers those middleware classes as Livewire persistent middleware, so Livewire re-runs them on every update request from an account page. A middleware group of your own is expanded into its members; `web`, and any group Livewire's update route already runs, are left out.
 
 ## Registering routes yourself
 

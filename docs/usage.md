@@ -16,7 +16,7 @@ Checkout has its own section: see [Checkout](Checkout).
 
 - **Browsing.** A catalog with filters, sorts, and pagination; category and tag pages; search with a header search box; product pages with a gallery, a purchase form per product type, reviews, and related products.
 - **Cart.** A cart page, a slide-out cart drawer, and a header cart button with a count. A currency switcher when the store sells in more than one currency.
-- **Checkout.** Contact, address, shipping, payment, and review, as a multi-step wizard or a single page. See [Checkout](Checkout).
+- **Checkout.** Contact, address, shipping, review, and payment, as a multi-step wizard or a single page. Confirming the payment places the order. See [Checkout](Checkout).
 - **After the order.** A confirmation page, a guest order lookup, and signed order links for guests.
 - **Account.** A dashboard, order history and order detail, an address book, downloads and licence keys, a profile with notification preferences, and a page to claim guest orders.
 

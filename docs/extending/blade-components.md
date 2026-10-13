@@ -75,6 +75,7 @@ The gallery switches images when it receives the browser event `ecommerce-galler
 | `<x-artisanpack-ec-rating-input>` | `id`, `label`, `error`, `required`, plus `wire:model` | A 1 to 5 star picker made of labelled radios ("4 stars") |
 | `<x-artisanpack-ec-price-range>` | `min`, `max`, `currency`, `from-model`, `to-model`, `step` (default 100), `label`, `id-prefix` | Two labelled range inputs bound to the parent component's properties in minor units. Values are sent when a handle is released; a handle at its end sends `null`. |
 | `<x-artisanpack-ec-address-form>` | `model`, `legend`, `live`, `with-name` (default `true`), `country`, `section`, `require-name` | Address fields bound to `{model}.{field}`, with `autocomplete` tokens (prefixed with `section` when two forms share a page). Countries with a region list get a region select bound to `region_code`; the postcode is labelled and hinted for the country. Errors show under each field. |
+| `<x-artisanpack-ec-field>` | `id` (required), `control` (`input`, `select`, `textarea`, `password`, or `checkbox`; default `input`), `label`, `hint`, `error-field` (defaults to the `wire:model` property), and for a select `options`, `placeholder`, `placeholder-value`, `option-value` (default `id`), `option-label` (default `name`); every other attribute (`wire:model`, `type`, `required`, `autocomplete`, `data-*`) goes to the control | A library input, select, textarea, password, or checkbox with its error and hint linked to it. When the field has an error, the control gets `aria-invalid="true"` and `aria-describedby` points at the error and the hint. A select or textarea also gets its label as `aria-label`. |
 | `<x-artisanpack-ec-search-box>` | `input-id` (default `ecommerce-header-search`) | The header search box with live suggestions. Give each box on a page its own `input-id`. |
 
 ```blade
@@ -97,7 +98,13 @@ The gallery switches images when it receives the browser event `ecommerce-galler
 <x-artisanpack-ec-address-form model="shipping" section="shipping" :country="$shipping['country_code'] ?? null" :legend="__( 'Shipping address' )" />
 
 <x-artisanpack-ec-search-box input-id="footer-search" class="w-full" />
+
+<x-artisanpack-ec-field id="email" type="email" :label="__( 'Email' )" :hint="__( 'For your receipt.' )" wire:model="email" autocomplete="email" required />
+
+<x-artisanpack-ec-field id="country" control="select" :label="__( 'Country' )" :options="$countries" option-value="code" :placeholder="__( 'Choose a country' )" wire:model.live="country" />
 ```
+
+The library prints errors and hints without ids and never marks a control invalid ([livewire-ui-components#117](https://github.com/ArtisanPack-UI/livewire-ui-components/issues/117)), so `ec-field` tells it to omit its error and prints the error and hint itself (`data-field-error`, `data-field-hint`). A checkbox keeps its hint inside its label, where it is already part of the name. The storefront's own forms use it, and the error summary links to fields through its `data-field-key`. An unknown `control` throws an `InvalidArgumentException`.
 
 ## Account pages
 

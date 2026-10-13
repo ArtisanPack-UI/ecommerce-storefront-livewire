@@ -52,6 +52,13 @@ The choice is applied through the engine's `CurrentCart`. Lines are re-priced in
 
 The contact step asks every shopper for an email address, prefilled from the cart or, for a signed-in shopper, their account. Saving the step validates it (required, a valid address, up to 254 characters) and saves it to the cart through `CheckoutService::setEmail()`, before any payment. That lets the engine follow up on carts left in checkout (`cart.abandoned_after_minutes`).
 
-The same step has a marketing consent checkbox, unchecked by default. The choice is kept in the cart's `meta` (`storefront_marketing_consent`) until the order is placed.
+The same step has a marketing consent checkbox, unchecked by default. The choice is kept in the cart's `meta` (`storefront_marketing_consent`) until the order is placed. When the order is placed with the box ticked, the consent is recorded in two places:
+
+- **On the order**, as the audit trail: `orders.meta.marketing_consent` holds `given` (true), `at` (an ISO 8601 time), `source` (`storefront-checkout`), `customer_id` (the customer whose preference was set), and `customer_created`.
+- **On the customer**, as `accepts_marketing`, through the engine's `CustomerService::updateProfile()`. That is the order's customer or, for a guest, the customer for the order's email, created when there is none (`customer_created` is then true).
+
+A guest checkout never changes the preferences of a customer linked to a user account: that shopper manages them while signed in. The consent is still recorded on the order.
+
+This runs on the engine's `ap.ecommerce.checkout.finalized` action, so it also covers orders the provider's webhook placed. Unticked, nothing is written. A failure is reported and never holds up the order.
 
 For a guest, the order's email is what order lookup and account claiming match against. See [Screens](Usage-Screens#orders-after-checkout).

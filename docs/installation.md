@@ -56,7 +56,7 @@ The config loads under `artisanpack.ecommerce-storefront-livewire`:
 config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix' ); // 'shop'
 ```
 
-Views and translations load under the `ecommerce-storefront::` namespace. Prefer the [extension points](Extending) over published views: a published view does not pick up fixes in later releases.
+Views load under the `ecommerce-storefront::` namespace. Translations are not namespaced: they are JSON catalogues (`lang/{locale}.json`) keyed by their English text, as with `__( 'Add to cart' )`. A published catalogue in `lang/vendor/ecommerce-storefront` overrides the package's strings, and your app's own `lang/{locale}.json` overrides both. Prefer the [extension points](Extending) over published views: a published view does not pick up fixes in later releases.
 
 ## Routes
 

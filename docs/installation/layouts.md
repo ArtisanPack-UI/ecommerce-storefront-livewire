@@ -29,10 +29,11 @@ When `artisanpack-ui/seo` is installed, the storefront hands its JSON-LD to the 
 
 ## 1. Standalone layout
 
-`ecommerce-storefront::layouts.app` is used unless you configure another. It is built from `x-artisanpack-nav` and `x-artisanpack-main` and includes:
+`ecommerce-storefront::layouts.app` is used unless you configure another. It is built from `x-artisanpack-nav` and a plain `<main>` (the storefront has no sidebar, so it doesn't use `x-artisanpack-main` and its drawer toggle) and includes:
 
+- `<html dir>` set from the app locale (see [Right-to-left languages](#right-to-left-languages));
 - a "Skip to content" link;
-- a sticky header with the store name (`app.name`) linking to the catalog, a "Shop" link, the search box, the header actions, and the theme toggle;
+- a sticky header with the store name (`app.name`) linking to the catalog, a "Shop" link, the search box (a search icon linking to the search page on phones), the header actions, and the theme toggle. On a 320px screen the actions wrap instead of scrolling sideways;
 - a footer with the copyright line and a "Find an order" link to the order lookup;
 - your Vite entries (see [Front-End Setup](Installation-Front-End#which-entries-the-storefront-loads)), `@livewireStyles`, `@livewireScripts`, the `head`, `styles`, and `scripts` stacks, and the global partial.
 
@@ -79,7 +80,7 @@ and make it meet the contract. A minimal example:
 
 ```blade
 <!DOCTYPE html>
-<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}">
+<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" dir="{{ \ArtisanPackUI\EcommerceStorefrontLivewire\Support\TextDirection::for() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -117,11 +118,13 @@ Add @stack( 'head' ) inside its <head> for page descriptions, canonical URLs, an
 Your layout replaces the package header, so it has no search box or cart button unless you add them. The header pieces are plain views and components you can include in your own header:
 
 ```blade
-<x-artisanpack-ec-search-box />
+@include( 'ecommerce-storefront::partials.header.search' )
 @include( 'ecommerce-storefront::partials.header.currency' )
 @include( 'ecommerce-storefront::partials.header.account' )
 @include( 'ecommerce-storefront::partials.header.cart' )
 ```
+
+The search partial shows the search box with live suggestions from the `md` breakpoint up, and a search icon linking to the search page below it, so phones keep a way to search. Use `<x-artisanpack-ec-search-box />` on its own if you want only the box.
 
 If a page shows more than one search box, give each its own `input-id` (the default is `ecommerce-header-search`). See [Blade Components](Extending-Blade-Components).
 
@@ -154,6 +157,26 @@ and set:
 For a Breeze-style `<x-app-layout>`, use that tag instead and pass the title however your component accepts it.
 
 The wrapper passes the page title to the component as its `title` prop and puts the page body and the global partial in its slot. Your component still has to meet the rest of the contract: `@stack( 'head' )` in its `<head>`, the `styles` and `scripts` stacks, and Livewire's assets. Pages push onto the stacks before your component renders, so the stacks work inside a component layout.
+
+## Right-to-left languages
+
+The standalone layout sets `<html dir="rtl">` when the app locale's language is in `storefront.rtl_locales` (`ar`, `he`, `fa`, and `ur` by default; see [Configuration](Installation-Configuration#storefront-routes)). In your own layout, set `dir` the same way, as in the example above:
+
+```blade
+<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" dir="{{ \ArtisanPackUI\EcommerceStorefrontLivewire\Support\TextDirection::for() }}">
+```
+
+The storefront's views use logical properties (`start`/`end`), so they mirror with `dir`.
+
+## A guest order link on your sign-in page
+
+The host owns the sign-in screen, so the storefront can't add its "Ordered as a guest? Find your order" link there. Include it yourself:
+
+```blade
+@include( 'ecommerce-storefront::partials.order-lookup-link' )
+```
+
+It renders nothing when the order lookup route isn't registered.
 
 ## The global partial
 

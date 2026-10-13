@@ -51,7 +51,7 @@ public function all(): array
 | Driver | Component | Used for |
 | --- | --- | --- |
 | `stripe-payment-element` | `artisanpack-ecommerce-storefront-payment-stripe` (`Livewire\Payment\StripePaymentElement`) | The engine's Stripe gateway. On-site card and wallet entry with Stripe's Payment Element. |
-| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. Shows "Continue to {gateway}" and redirects to the session's `redirect_url`. |
+| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. Says "You'll go to {gateway} to pay, then come back here to finish your order.", shows "Continue to {gateway}", and redirects to the session's `redirect_url`. |
 
 **Stripe Payment Element** loads Stripe.js from `https://js.stripe.com/v3` once per page and mounts the Payment Element with the session's client secret, the locale, and an appearance built from your daisyUI theme (`--color-primary`, `--color-base-100`, `--color-base-content`, `--color-error`, `--radius-field`), with the gateway's `appearance` config on top. "Pay now" calls `stripe.confirmPayment()` with `redirect: 'if_required'`, so 3-D Secure runs in the page, and methods that must redirect come back through the return route. A Stripe error shows under the form in an assertive live region. With a Content Security Policy, allow `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com`, and `connect-src https://api.stripe.com`.
 
@@ -82,24 +82,25 @@ The checkout mounts the driver with:
 | `gateway` | The gateway key. |
 | `gatewayLabel` | The gateway's name. |
 | `reference` | The payment session reference. |
+| `token` | The one-time action token that places the order, minted when the payment step rendered. It goes back with `payment-confirmed`. Empty when the driver pays for an order that is already placed. |
 
-All four are `#[Locked]`: the browser can't change them. The driver is keyed by the reference, so a new session (a changed total) mounts a fresh driver.
+All five are `#[Locked]`: the browser can't change them. The driver is keyed by the reference, so a new session (a changed total) mounts a fresh driver.
 
 ### Methods
 
 | Method | Use |
 | --- | --- |
 | `confirm(): void` | **Abstract.** Start or finish the payment confirmation: redirect to the provider, or check the outcome the provider's client SDK reported. Then call `confirmed()` or `failed()`. You may add optional parameters (the Stripe driver takes the PaymentIntent id). |
-| `confirmed()` | Tells the checkout the payment is confirmed: dispatches `payment-confirmed` with `reference` and `gateway`. |
+| `confirmed()` | Tells the checkout the payment is confirmed: dispatches `payment-confirmed` with `reference`, `gateway`, and `token`. The checkout then places the order. |
 | `failed( string $message )` | Tells the checkout it failed: dispatches `payment-failed` with `message` (tags stripped, up to 300 characters) and `gateway`. The shopper stays on the payment step. |
 | `fail( string $message = '' )` | Public, for your client script to call when the provider's SDK reports an error. Calls `failed()`, with a generic message when none is given. |
 | `confirmedByProvider(): bool` | Asks the gateway whether the session is confirmed (authorized, succeeded, or processing). Use it before `confirmed()`. |
-| `session(): ?PaymentSession` | The session as the gateway sees it now, or null when it can't be loaded. |
+| `session(): ?PaymentSession` | The session as the gateway sees it now, or null when it can't be loaded. Each call counts against the shopper's `ecommerce.cart.mutate` limit, so a looping script can't spend the store's provider API quota. Over the limit, it returns null and the shopper gets a "slow down" toast. |
 | `returnUrl(): ?string` | `/shop/checkout/return`, for providers that redirect or run 3-D Secure off-page. Null when the storefront routes are off. |
 
 Use `confirmed()` and `failed()` rather than dispatching the events yourself. The checkout doesn't repeat a failure message, so show it in your driver, in a live region.
 
-The checkout doesn't trust `payment-confirmed` on its own: it checks the reference against the cart's session and asks the gateway whether the session is confirmed for the cart's current total and currency. The engine's `finalize()` checks the session with the provider again before capturing.
+Payment is the checkout's last step, so `payment-confirmed` places the order. The checkout doesn't trust the event on its own: it checks the reference against the cart's session and asks the gateway whether the session is confirmed for the cart's current total and currency, then places the order under the action token. The token makes a repeated confirmation place one order. The engine's `finalize()` checks the session with the provider again before capturing.
 
 ### PCI
 
@@ -272,15 +273,15 @@ The package's own browser suite never talks to Stripe: `tests/BrowserTestCase.ph
    stripe listen --forward-to https://your-store.test/ecommerce/webhooks/stripe
    ```
 
-   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. Webhooks matter when the shopper closes the tab after paying; the checkout itself doesn't wait for them.
+   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. The checkout doesn't wait for webhooks, but they matter when the shopper closes the tab after paying: the reconciler places the order from the cart. When the webhook places the order before the checkout does, the checkout picks up that order and still sends the shopper to the confirmation (see [Checkout](Checkout#when-the-providers-webhook-places-the-order-first)).
 
 4. **Check out** at `/shop/checkout` and pay with a test card. Use any future expiry date and any CVC.
 
    | Card | Result |
    | --- | --- |
    | `4242 4242 4242 4242` | Succeeds. |
-   | `4000 0025 0000 3155` | Asks for 3-D Secure. Completing the challenge confirms the payment; failing it keeps the shopper on the payment step. |
+   | `4000 0025 0000 3155` | Asks for 3-D Secure. Completing the challenge confirms the payment and places the order; failing it keeps the shopper on the payment step. |
    | `4000 0000 0000 0002` | Declined ("Your card was declined"). |
    | `4000 0000 0000 9995` | Declined for insufficient funds. |
 
-Payment methods that redirect (and 3-D Secure, when Stripe can't run it in the page) come back to `/shop/checkout/return` (`artisanpack.ecommerce.storefront.checkout.return`). The storefront passes that URL to the engine as the session's `return_url`, which must be on your site. Without it, the engine turns off Stripe's redirect-based payment methods.
+Payment methods that redirect (and 3-D Secure, when Stripe can't run it in the page) come back to `/shop/checkout/return` (`artisanpack.ecommerce.storefront.checkout.return`). A confirmed payment goes back to the checkout's payment step, which places the order. The storefront passes that URL to the engine as the session's `return_url`, which must be on your site. Without it, the engine turns off Stripe's redirect-based payment methods.

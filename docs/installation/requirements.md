@@ -6,7 +6,7 @@ title: Requirements
 
 ## Core requirements
 
-- **PHP 8.3+** with the `bcmath` extension
+- **PHP 8.3+** with the `intl` extension
 - **Laravel 12 or 13**
 - **Livewire 3.6+ or 4**
 
@@ -18,7 +18,7 @@ Composer installs these ArtisanPack UI packages with it:
 | `artisanpack-ui/livewire-ui-components` | `^2.1` | Every input, button, drawer, modal, and toast |
 | `artisanpack-ui/core` | `^1.0` | Shared helpers |
 | `artisanpack-ui/hooks` | `^1.2` | The filters used for [extension](Extending) |
-| `artisanpack-ui/security` | `^1.0` or `^2.0` | Output escaping and sanitization |
+| `artisanpack-ui/security` | `^1.0.3` or `^2.0` | Output escaping and sanitization |
 
 ## Front-end requirements
 
@@ -50,9 +50,10 @@ Shoppers can't pay until the engine has a payment gateway registered and configu
 
 The storefront detects these at runtime and uses them when present:
 
-| Package | What it adds |
-| --- | --- |
-| `artisanpack-ui/visual-editor` | Commerce blocks (product grid, single product, add to cart, cart contents, checkout steps, and more) and block patterns. With `visual_editor.templates` on and `artisanpack-ui/cms-framework` installed, editable product, category, tag, catalog, cart, checkout, and search templates. See [Visual Editor](Visual-Editor). |
-| `artisanpack-ui/media-library` | Responsive product, variant, and category images with a `srcset` from the library's image sizes. Without it, images come from http(s) image URLs. |
-| `artisanpack-ui/seo` | The storefront's JSON-LD goes to the SEO package's schema collector, printed by `<x-seo:schema />`. Meta tags are still rendered by the storefront. See [SEO](Seo). |
-| `artisanpack-ui/livewire-drag-and-drop` | Reorderable lists for satellites that need them, such as a wishlist. The storefront itself does not use it. |
+| Package | Minimum version | What it adds |
+| --- | --- | --- |
+| `artisanpack-ui/visual-editor` | `1.8` (older versions conflict) | Commerce blocks (product grid, single product, add to cart, cart contents, checkout steps, and more) and block patterns. With `visual_editor.templates` on and `artisanpack-ui/cms-framework` installed, editable product, category, tag, catalog, cart, checkout, and search templates. See [Visual Editor](Visual-Editor). |
+| `artisanpack-ui/media-library` | — | Responsive product, variant, and category images with a `srcset` from the library's image sizes. Without it, images come from http(s) image URLs. |
+| `artisanpack-ui/seo` | `1.4` | The storefront's JSON-LD goes to the SEO package's schema collector, printed by `<x-seo:schema />`. Meta tags are still rendered by the storefront. See [SEO](Seo). |
+| `artisanpack-ui/cms-framework` | `2.11` (required by visual-editor 1.8) | Editable storefront templates: with `visual_editor.templates` on, pages resolve saved templates through its template resolver and active theme. |
+| `artisanpack-ui/livewire-drag-and-drop` | — | Reorderable lists for satellites that need them, such as a wishlist. The storefront itself does not use it. |

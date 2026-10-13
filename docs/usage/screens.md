@@ -42,6 +42,18 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 
 `{download}` is an entitlement id. Another customer's entitlement is a 404. One that is expired, used up, or streaming-only sends the shopper back to the downloads page with a toast saying why.
 
+Both file routes only accept temporary signed links, so a cross-site request or a link prefetcher can't spend a download. The downloads page renders them fresh on each visit: a download link works for 10 minutes and a stream link for 4 hours. An unsigned or expired link is a 403. To link to a file from your own page, sign the URL yourself:
+
+```php
+use Illuminate\Support\Facades\URL;
+
+URL::temporarySignedRoute( 'artisanpack.ecommerce.account.downloads.file', now()->addMinutes( 10 ), [ 'download' => $download->id ] );
+```
+
+### Account navigation
+
+Every account page sits in `<x-artisanpack-ec-account-shell>`, whose menu lists the storefront's own pages (dashboard, orders, addresses, downloads, profile, and "Claim an order", which only shoppers who may claim see), then the entries satellites register with the engine's `AccountMenuRegistry` that the shopper may see, all sorted by `position`. The storefront's own entries use positions 10–60. The engine's core `ecommerce.account.*` entries (profile, orders, addresses, downloads, licence keys, notifications) are left out, since the storefront's own pages already cover them. See [Hooks Reference](Extending-Hooks-Reference#registries).
+
 ## Catalog
 
 The catalog lists products from the engine's `CatalogQuery`.
@@ -64,7 +76,9 @@ Everything lives in the query string:
 | `rating` | Minimum rating |
 | `f[{key}]` | A filter group added through the filter hook |
 
-Product cards show the image, name, price, rating, and stock. Simple products get a quick "Add to cart" button. With `catalog.show_stock_count` on, low-stock products say "Only 3 left" (the engine's `inventory.show_quantity` must be on).
+Product cards show the image, name, price, rating, and stock. Prices are the signed-in customer's (passed to the engine's `PriceDisplayResolver`), so a customer-group price shows in listings as it does in the cart. Simple products get a quick "Add to cart" button. Other types need a choice made on the product page (a variant, a licence type, options), so they get none, and quick add refuses them if called directly. With `catalog.show_stock_count` on, low-stock products say "Only 3 left" (the engine's `inventory.show_quantity` must be on).
+
+Products whose type's satellite isn't installed are left out of every listing, search, and header suggestion. A malformed query string (`?per_page=abc`, `?sort[]=x`) is ignored rather than causing an error.
 
 The category page adds breadcrumbs, the category's name, description, and image, and sub-category chips. The tag page has the catalog's filters, less the tag filter.
 
@@ -96,12 +110,17 @@ Rendered under `#reviews`:
 - A histogram of approved reviews by rating. Each row filters the list to that rating (`?review-rating=`).
 - Approved reviews, newest first, `reviews.per_page` (5) a page (`?reviews-page=`), with a "Verified purchase" badge.
 - **Write a review** when the engine's `ReviewService::eligibility()` allows it, otherwise the reason. Guests also give a name and email.
+- A signed-in shopper the engine can't link to a customer record (an unverified account whose email belongs to a guest customer, or a user with a non-numeric id) can't review. The reason is `Reviews::CUSTOMER_UNAVAILABLE`, shown as "Verify your email address to review this product." or "You can't review this product.", instead of the review being posted anonymously.
+
+The title and text are stored as plain text, with control characters removed, and printed escaped, so "Love it <3" is kept whole.
 
 Who may review and moderation are engine settings.
 
 ### Related products
 
 Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. On small screens the cards scroll sideways with "Previous" and "Next" buttons.
+
+Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit`.
 
 ## Cart
 
@@ -111,10 +130,10 @@ Related products, upsells, and cart cross-sells come from the engine's `RelatedP
 - A coupon field, with the engine's message under it.
 - Totals: subtotal, each promotion's discount, shipping (the chosen estimate, "Free", or "Calculated at checkout"), tax (marked estimated until the engine knows a destination), and total.
 - A shipping estimate by country, region, and postcode. The rate chosen here carries into checkout.
-- Lines that can't be bought are flagged with the reason and a "Remove" button. "Checkout" is disabled until they are gone.
+- Lines that can't be bought are flagged with the reason and a "Remove" button. A line whose quantity is more than the stock left says so ("Only 2 are left in stock.") and keeps its quantity stepper. "Checkout" is disabled, saying why, until the lines are removed or lowered.
 - Sections below the cart from the `ap.ecommerceStorefrontLivewire.cart.sections` filter: cross-sells by default.
 
-**Cart drawer** (`cart-drawer`): the lines with a quantity stepper and "Remove", the subtotal, and "View cart" and "Checkout" links. It opens on the `ecommerce-cart-open` browser event, closes on `ecommerce-cart-close`, Escape, or the overlay, and returns focus to whatever opened it. It is mounted once by `ecommerce-storefront::partials.global`, so it works in your own layout too.
+**Cart drawer** (`cart-drawer`): the lines with a quantity stepper and "Remove", the subtotal, and "View cart" and "Checkout" links. It opens on the `ecommerce-cart-open` browser event, closes on `ecommerce-cart-close`, Escape, or the overlay, and returns focus to whatever opened it. It is mounted once by `ecommerce-storefront::partials.global`, so it works in your own layout too. It lists the lines only once it has first opened, showing a loading state (`data-cart-loading`) until then, so pages don't load the cart's lines on every visit.
 
 **Header cart button** (`cart-button`): a link to the cart page with a count badge. When the drawer is on the page, it opens the drawer instead.
 
@@ -126,15 +145,17 @@ Related products, upsells, and cart cross-sells come from the engine's `RelatedP
 | `toast` | Shows an "Added to your cart" toast |
 | `none` | Only the cart count updates |
 
-**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. See [Guest Checkout](Checkout-Guest-Checkout).
+**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](Checkout-Guest-Checkout).
 
 ## Currency switcher
 
 `currency-switcher` renders only when the store sells in more than one currency. Each option names the currency, its code, and symbol ("Euro (EUR, €)"). A choice is stored through the engine's `CurrencyResolver` and its currency cookie, an existing cart is re-priced through `StorefrontCartService::changeCurrency()`, and the page reloads with a toast. If the cart can't be re-priced, the choice is undone and the shopper told why.
 
+Prices are shown in the open cart's currency when there is one, so a shopper whose account cart is in euros (opened on another device, or after a merge) sees euro prices even if they last chose dollars. Without a cart, it is the currency the engine's `CurrencyResolver` returns. The switcher is the only way to change a cart's currency, since that re-prices it. From PHP, `StorefrontCart::currency()` gives the display currency, `rememberCurrency( $code )` stores a choice (without re-pricing the cart), and `customer()` gives the signed-in shopper's engine customer.
+
 ## Search
 
-**Search page:** the term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
+**Search page:** the term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". Each search counts against the engine's `ecommerce.catalog.read` limiter; over it, the page shows "Slow down" until the shopper can search again. The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
 
 **Header search** (`search-box`): as the shopper types, up to five products (image, name, price) and five categories open in a popover. It is an ARIA combobox: arrow keys move through results, Enter opens the highlighted one or the search page, Escape closes. Without JavaScript it is a plain form to the search page. Embed it with `<x-artisanpack-ec-search-box />`.
 
@@ -145,10 +166,10 @@ Related products, upsells, and cart cross-sells come from the engine's `RelatedP
 | Dashboard | Latest orders, default shipping and billing addresses, download count, and links to the account pages and to the host's profile and password screens (`auth.profile_route`, `auth.password_route`). Prompts the shopper to claim unclaimed guest orders placed with their verified email. |
 | Orders | Newest first, with number, date, status, total, and item count. Filter by open, completed, or cancelled (`?status=`). |
 | Order | Number, date, status, lines, totals, addresses, payment method, shipments with tracking links, refunds, notes the store shared, and downloads. **Buy again** adds the lines that can still be bought, at today's prices, and says which couldn't be. |
-| Addresses | Add and edit in a modal, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. |
+| Addresses | Add and edit in a modal, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](Advanced#rate-limits)). |
 | Downloads | Each entitlement's product, file, version, downloads left, and expiry, with a download button (or a play button for streaming-only files). Licence keys in full with a copy button, activation count, and expired or revoked state. |
 | Profile | First and last name, phone, marketing consent, and notification preferences per channel. Order and account emails are always on. Marketing switches are locked off without consent, and withdrawing consent switches marketing off everywhere. Email and password link to the host's screens. |
-| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account. The email must be verified when the user model verifies emails. |
+| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](Installation-Configuration#customer-account-routes)). |
 
 A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save.
 

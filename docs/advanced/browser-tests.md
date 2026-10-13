@@ -29,7 +29,7 @@ composer test:browser
 | Build | `package.json`, `vite.config.js` | `npm run build:browser` builds the workbench stylesheet into `tests/Browser/workbench/public/build`. The package itself ships no front-end build; `package.json` exists only for this harness. |
 | Accessibility helper | `tests/Browser/Support/Accessibility.php` | `Accessibility::assertAccessible( $page )` runs every axe rule (axe-core is injected into every page by the Pest browser plugin), with `target-size` turned on, and fails on any violation |
 | Locators | `tests/Browser/Support/Locators.php` | Finds controls the way a person or screen reader does |
-| Tests | `tests/Browser/*Test.php` | Journeys, accessibility, keyboard |
+| Tests | `tests/Browser/*Test.php` | Journeys, accessibility, keyboard, phones |
 
 The base test case throws if `public/build/manifest.json` is missing. Run `npm run build:browser` first.
 
@@ -40,8 +40,9 @@ Pest's group config in `tests/Pest.php` applies `BrowserTestCase` and the `brows
 | Suite | Covers |
 | --- | --- |
 | `JourneysTest` | Adding to the cart from the catalog and the product page, choosing a variant, updating the cart and applying a coupon, guest checkout in the multi-step layout through to the confirmation, signed-in checkout on the single-page layout, guest order lookup (found, and not found without saying which part was wrong), and opening an order from the account |
-| `AccessibilityTest` | axe on every storefront and account screen, the filled cart and each checkout step, and screens showing errors |
-| `KeyboardTest` | The skip link, the cart drawer's focus and Escape, choosing a variant with the arrow keys, filter result announcements, the checkout error summary and step focus, header search with the arrow keys and Escape, and the focus outline on product card links |
+| `AccessibilityTest` | axe on every storefront and account screen, the filled cart and each checkout step, and screens showing errors; a guard that an unlabelled field in the page content is still reported; a field linked to its error and hint |
+| `KeyboardTest` | The skip link, the cart drawer's focus and Escape, choosing a variant with the arrow keys, filter result announcements, the checkout error summary and step focus, header search with the arrow keys and Escape, the focus outline on product card links, the refused add-to-cart announcement, the review error summary, the quick-add button's name, focus after removing a cart line, after undo, around the review form, and after deleting an address, the gallery's zoom name and image announcement, and the rating input's focus outline |
+| `MobileTest` | At 390×844: axe on the catalog (filters open), a product, and each checkout step with the summary open; the filters drawer by keyboard; no tab stop on a drawer toggle; the header search link. At 320px: no sideways scroll |
 
 ## Locators
 

@@ -37,7 +37,7 @@ See [Blocks](Visual-Editor-Blocks).
 
 ## Terms and conditions
 
-Set a terms page and the review step shows a required "I accept the terms and conditions" checkbox. Placing the order without it fails with "Accept the terms and conditions to place your order."
+Set a terms page and the review step shows a required "I accept the terms and conditions" checkbox. It is checked when the shopper presses "Continue to payment", before they pay. Without it, the review step stays open with "Accept the terms and conditions to place your order."
 
 The page comes from the engine setting `storefront.terms_url` ("Terms and conditions page" in the admin's Checkout settings), falling back to config `checkout.terms_url`. It must be an `http(s)` URL or a path on this site (`/terms`). Anything else, including `//host`, is ignored, and no checkbox is shown. `null` or blank shows no checkbox.
 
@@ -46,17 +46,19 @@ The page comes from the engine setting `storefront.terms_url` ("Terms and condit
 Satellites and hosts add steps with the `ap.ecommerceStorefrontLivewire.checkout.steps` filter. It receives the steps (key => definition) and the cart:
 
 ```php
+use App\Support\AgeChecks;
 use ArtisanPackUI\Ecommerce\Models\Cart;
 
 addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $steps, Cart $cart ): array {
     $steps['age-check'] = [
         'label'     => __( 'Date of birth' ),
         'component' => 'age-check-checkout-step',
-        'before'    => 'payment',
+        'before'    => 'review',
+        'complete'  => fn ( Cart $cart ): bool => AgeChecks::passed( $cart ),
     ];
 
     return $steps;
-}, 10, 2 );
+} );
 ```
 
 | Key | Meaning |
@@ -64,19 +66,20 @@ addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $st
 | Array key | The step key. Lower-case letters, numbers, `-` and `_`, up to 64 characters, starting with a letter or number. |
 | `label` | The step's heading. Required. |
 | `component` | A registered Livewire component. Required. |
-| `before` | `address`, `shipping`, `payment`, or `review` (default). When the cart doesn't ship, `shipping` means the next core step. |
+| `before` | `address`, `shipping`, `review` (default), or `payment`. When the cart doesn't ship, `shipping` means the next core step (review). |
+| `complete` | Optional. A callable that takes the cart and returns whether the step is done, checked on the server. See [Writing the step component](#writing-the-step-component). |
 
 Rules:
 
-- Core steps (`contact`, `address`, `shipping`, `payment`, `review`) can't be removed, relabelled, or reordered. Changes to them are ignored.
+- The core steps are `contact`, `address`, `shipping` (only for carts that ship), `review`, and `payment`, in that order. They can't be removed, relabelled, or reordered. Changes to them are ignored.
 - Added steps before the same core step keep the order they were added in.
-- An entry without a label or component, or with an invalid key, is ignored.
+- An entry without a label or component, with an invalid key, or with a `complete` that isn't callable, is ignored.
 
 ### Writing the step component
 
-The checkout mounts your component with a `step` prop (its key). When the shopper has finished it, dispatch `ecommerce-checkout-step-completed` with `step`, and the checkout moves on. Until then, later steps stay locked.
+The checkout mounts your component with a `step` prop (its key). When the shopper has finished it, dispatch `ecommerce-checkout-step-completed` with `step`, and the checkout moves on. Until then, later steps stay locked. The checkout ignores the event for a step the shopper can't reach yet.
 
-That event comes from the browser, so it can't be trusted on its own. A step that must hold the shopper back also refuses the engine's next checkout state through `ap.ecommerce.checkout.canTransitionTo`. The checkout shows the refusal as an error.
+That event comes from the browser, so it can't be trusted on its own. A step that must hold the shopper back gives a `complete` callable. The checkout then asks the callable, on the server, whether the step is done, and the event alone no longer counts. Just before the order is placed, every added step is checked again: a step that isn't done stops the order with "Finish the steps above before placing your order." A step without a `complete` callable counts as done once it reports done.
 
 ```php
 <?php
@@ -131,11 +134,10 @@ class AgeCheckStep extends Component
 </form>
 ```
 
-Register the component, the step, and the server-side check in a service provider's `boot()`:
+Register the component and the step, with its server-side check, in a service provider's `boot()`:
 
 ```php
 use App\Livewire\AgeCheckStep;
-use ArtisanPackUI\Ecommerce\Checkout\CheckoutState;
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use Livewire\Livewire;
 
@@ -145,20 +147,14 @@ addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $st
     $steps['age-check'] = [
         'label'     => __( 'Date of birth' ),
         'component' => 'age-check-checkout-step',
-        'before'    => 'payment',
+        'before'    => 'review',
+        'complete'  => fn ( Cart $cart ): bool => ! empty( ( (array) ( $cart->meta ?? [] ) )['age_verified_at'] ),
     ];
 
     return $steps;
-}, 10, 2 );
-
-// Starting a payment session moves the cart to `payment_pending`; refuse it until the age is checked.
-addFilter( 'ap.ecommerce.checkout.canTransitionTo', function ( mixed $allowed, Cart $cart, string $to ): mixed {
-    if ( CheckoutState::PAYMENT_PENDING === $to && empty( ( (array) ( $cart->meta ?? [] ) )['age_verified_at'] ) ) {
-        return false;
-    }
-
-    return $allowed;
-}, 10, 3 );
+} );
 ```
+
+To hold back orders placed outside this checkout too, also refuse the engine's checkout states through `ap.ecommerce.checkout.canTransitionTo`. The checkout shows that refusal as an error.
 
 The engine's checkout states are listed in its `docs/checkout.md` ("Checkout states"). See [Hooks Reference](Extending-Hooks-Reference) for every checkout hook.
