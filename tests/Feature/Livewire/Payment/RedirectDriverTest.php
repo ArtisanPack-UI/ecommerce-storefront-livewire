@@ -25,7 +25,7 @@ it( 'offers to continue to the gateway', function (): void {
     Livewire::test( RedirectDriver::class, redirectDriverProps( 'https://pay.example.test/session/1' ) )
         ->assertSeeHtml( 'data-payment-driver="redirect"' )
         ->assertSee( 'Continue to Hosted pay' )
-        ->assertSee( 'You\'ll go to Hosted pay to pay, then come back here to review your order.' )
+        ->assertSee( 'You\'ll go to Hosted pay to pay, then come back here to finish your order.' )
         ->assertSeeHtml( 'data-payment-redirect' );
 } );
 

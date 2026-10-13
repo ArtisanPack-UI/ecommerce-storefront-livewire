@@ -3,11 +3,14 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Models\Customer;
+use ArtisanPackUI\Ecommerce\Models\CustomerAddress;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Actions\CreateCustomerAccount;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Contracts\CreatesCustomerAccounts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account\Addresses;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Tests\Fixtures\User;
 
 it( 'is the default account action and implements the contract', function (): void {
@@ -72,4 +75,20 @@ it( 'checks the password against the application\'s rules', function (): void {
 
     expect( validator( [ 'password' => 'short' ], [ 'password' => $rules ] )->fails() )->toBeTrue()
         ->and( validator( [ 'password' => 'correct-horse-battery' ], [ 'password' => $rules ] )->passes() )->toBeTrue();
+} );
+
+it( 'does not link an existing unlinked customer record for an unverified checkout email', function (): void {
+    $victim = Customer::factory()->create( [ 'email' => 'grace@example.test', 'user_id' => null ] );
+    CustomerAddress::factory()->create( [ 'customer_id' => $victim->id ] + checkoutAddress( [ 'address1' => '7 Private Lane' ] ) );
+
+    $order = placedOrder( [ 'email' => 'grace@example.test' ] );
+
+    $user = app( CreateCustomerAccount::class )->create( $order, 'correct-horse-battery' );
+
+    expect( $victim->refresh()->user_id )->toBeNull()
+        ->and( Customer::forUser( $user ) )->toBeNull()
+        ->and( $order->refresh()->customer_id )->toBeNull()
+        ->and( auth()->id() )->toBe( $user->id );
+
+    Livewire::test( Addresses::class )->assertDontSee( '7 Private Lane' );
 } );

@@ -77,6 +77,29 @@ trait ManagesCartLines
     public string $announcement = '';
 
     /**
+     * Counts removals and undos, to key the focus hand-off that runs after
+     * each (`ecommerce-storefront::livewire.cart.partials.focus-after-change`):
+     * the control that had focus is gone, so focus moves to "Undo", or to
+     * the restored line's "Remove".
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $lineChanges = 0;
+
+    /**
+     * The line "Undo" put back, for the focus hand-off.
+     *
+     * @since 1.0.0
+     *
+     * @var int|null
+     */
+    #[Locked]
+    public ?int $restoredLineId = null;
+
+    /**
      * Sets `$quantities` from the cart.
      *
      * @since 1.0.0
@@ -182,6 +205,9 @@ trait ManagesCartLines
         }
 
         $this->cartChanged( $cart );
+        // The component skips its own cart event, so re-read the lines here
+        // (a promotion may have added or dropped one).
+        $this->syncQuantities();
         $this->linesChanged();
     }
 
@@ -234,8 +260,10 @@ trait ManagesCartLines
         }
 
         // A line whose product is gone can't be added back.
-        $this->removedLine  = null === $item->product ? null : $removed;
-        $this->announcement = __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] );
+        $this->removedLine    = null === $item->product ? null : $removed;
+        $this->announcement   = __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] );
+        $this->restoredLineId = null;
+        $this->lineChanges++;
 
         $this->cartChanged( $cart );
         $this->syncQuantities();
@@ -281,7 +309,9 @@ trait ManagesCartLines
 
         $item->loadMissing( 'cart' );
 
-        $this->announcement = __( ':name is back in your cart.', [ 'name' => $line['name'] ] );
+        $this->announcement   = __( ':name is back in your cart.', [ 'name' => $line['name'] ] );
+        $this->restoredLineId = (int) $item->id;
+        $this->lineChanges++;
 
         $this->cartChanged( $item->cart );
         $this->syncQuantities();

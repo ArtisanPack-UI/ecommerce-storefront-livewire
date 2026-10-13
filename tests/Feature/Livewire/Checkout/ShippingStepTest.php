@@ -67,7 +67,7 @@ it( 'applies the chosen rate straight away and updates the totals', function ():
         ->checkout_state->toBe( CheckoutState::PAYMENT_SELECTION );
 } );
 
-it( 'moves on to payment with the chosen rate', function (): void {
+it( 'moves on to review with the chosen rate', function (): void {
     checkoutShipping( [ 'Standard' => 500, 'Express' => 1500 ] );
     checkoutCart();
 
@@ -76,7 +76,8 @@ it( 'moves on to payment with the chosen rate', function (): void {
     $component->set( 'shippingRate', quotedRate( $component, 'Standard' ) )
         ->call( 'saveShipping' )
         ->assertHasNoErrors()
-        ->assertSet( 'step', 'payment' )
+        ->assertSet( 'step', 'review' )
+        ->assertSet( 'announcement', 'Step 4 of 5: Review order' )
         ->assertSeeHtml( 'data-checkout-step-summary="shipping"' )
         ->assertSee( 'Standard' );
 } );
@@ -141,7 +142,7 @@ it( 're-quotes when the address changes and clears a choice that no longer appli
     $cart = checkoutCart();
 
     $component = checkoutAtShipping();
-    $component->set( 'shippingRate', quotedRate( $component, 'US standard' ) )->call( 'saveShipping' )->assertSet( 'step', 'payment' );
+    $component->set( 'shippingRate', quotedRate( $component, 'US standard' ) )->call( 'saveShipping' )->assertSet( 'step', 'review' );
 
     $component->call( 'goTo', 'address' )
         ->set( 'shipping', checkoutAddress( [ 'country_code' => 'CA', 'region_code' => 'ON', 'postal_code' => 'K1A 0B1' ] ) )
@@ -170,6 +171,32 @@ it( 'keeps a rate that is still offered after the address changes, for the shopp
         ->assertSet( 'shippingRate', $standard )
         ->assertSet( 'shippingNotice', null )
         ->assertDontSeeHtml( 'data-checkout-shipping-notice' );
+} );
+
+it( 'doesn\'t re-quote for its own cart update after a rate is chosen', function (): void {
+    checkoutShipping( [ 'Standard' => 500, 'Express' => 1500 ] );
+    checkoutCart();
+
+    $quotes = 0;
+    addFilter( 'ap.ecommerce.shipping.availableMethods', function ( mixed $rates ) use ( &$quotes ): mixed {
+        $quotes++;
+
+        return $rates;
+    } );
+
+    $component = checkoutAtShipping();
+    $component->set( 'shippingRate', quotedRate( $component, 'Express' ) )
+        ->assertDispatched( 'ecommerce-cart-updated', source: Index::class );
+
+    $before = $quotes;
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 1, source: Index::class );
+
+    expect( $quotes )->toBe( $before );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 1 );
+
+    expect( $quotes )->toBeGreaterThan( $before );
 } );
 
 it( 're-quotes when the lines change in the cart drawer', function (): void {

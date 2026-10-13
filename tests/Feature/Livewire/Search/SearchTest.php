@@ -3,12 +3,17 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Catalog\CategoryTree;
+use ArtisanPackUI\Ecommerce\Contracts\SearchProvider;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Registries\SearchProviderRegistry;
+use ArtisanPackUI\Ecommerce\Search\SearchQuery;
+use ArtisanPackUI\Ecommerce\Search\SearchResult;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search\Index;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 use Tests\Fixtures\Search\FakeSearchProvider;
 
@@ -41,7 +46,46 @@ beforeEach( function (): void {
 
 afterEach( function (): void {
     removeAllFilters( 'ap.ecommerceStorefrontLivewire.catalog.filters' );
+    RateLimiter::clear( 'ecommerce.catalog.read' );
 } );
+
+/**
+ * Makes a provider that answers with `$search` the active one, and
+ * returns the queries it gets.
+ *
+ * @param  Closure(SearchQuery): SearchResult  $search  Answers a query.
+ */
+function scriptedSearchProvider( Closure $search ): ArrayObject
+{
+    $queries  = new ArrayObject();
+    $provider = new class( $search, $queries ) implements SearchProvider {
+        public function __construct( private Closure $search, private ArrayObject $queries )
+        {
+        }
+
+        public function key(): string
+        {
+            return 'scripted-search';
+        }
+
+        public function label(): string
+        {
+            return 'Scripted search';
+        }
+
+        public function search( SearchQuery $query ): SearchResult
+        {
+            $this->queries[] = $query;
+
+            return ( $this->search )( $query );
+        }
+    };
+
+    app( SearchProviderRegistry::class )->register( $provider->key(), $provider );
+    config( [ 'artisanpack.ecommerce.search.provider' => $provider->key() ] );
+
+    return $queries;
+}
 
 it( 'invites a search when there is no term', function (): void {
     Livewire::test( Index::class )
@@ -62,6 +106,28 @@ it( 'lists matching products in the catalog grid, by relevance', function (): vo
         ->assertDontSee( 'Stoneware mug' )
         ->assertSee( '2 results for "linen"' )
         ->assertSeeHtml( 'data-product-card="' . $this->linen->id . '"' );
+} );
+
+it( 'treats a malformed term or page size in the query string as missing (Livewire 3)', function (): void {
+    Livewire::withQueryParams( [ 'q' => [ 'x' ] ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'q', '' )
+        ->assertSeeHtml( 'data-empty-reason="idle"' );
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'per_page' => 'abc' ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'perPage', 24 )
+        ->assertSee( 'Linen shirt' );
+} );
+
+it( 'treats a malformed term set from the browser as empty', function (): void {
+    Livewire::withQueryParams( [ 'q' => 'linen' ] )
+        ->test( Index::class )
+        ->set( 'q', [ 'x' ] )
+        ->assertOk()
+        ->assertSet( 'q', '' );
 } );
 
 it( 'offers relevance and the catalog sorts', function (): void {
@@ -136,6 +202,16 @@ it( 'shows "did you mean" suggestions and searches for one', function (): void {
         ->call( 'useSuggestion', 'linen' )
         ->assertSet( 'q', 'linen' )
         ->assertSee( 'Linen shirt' );
+} );
+
+it( 'punctuates "did you mean" for the shopper\'s language', function (): void {
+    useSearchProvider( new FakeSearchProvider( [ 'linen', 'lino' ] ) );
+    app()->setLocale( 'es' );
+
+    $html = Livewire::withQueryParams( [ 'q' => 'lnen' ] )->test( Index::class )->html();
+
+    expect( preg_replace( '/\s+/', ' ', strip_tags( (string) preg_replace( '/.*?(<p class="text-sm" data-search-suggestions>.*?<\/p>).*/s', '$1', $html ) ) ) )
+        ->toBe( ' ¿Quizás quisiste decir: linen, lino? ' );
 } );
 
 it( 'finds a typo through a typo-tolerant provider', function (): void {
@@ -214,4 +290,75 @@ it( 'serves the search page with the term in the title, not indexed', function (
         ->assertSee( 'Search results for &quot;linen&quot;', false )
         ->assertSeeLivewire( Index::class )
         ->assertSee( 'Linen shirt' );
+} );
+
+it( 'leaves products whose type package is uninstalled out of the results', function (): void {
+    makeProduct( 1000, [ 'name' => 'Linen ghost', 'type' => 'uninstalled-satellite-type' ] );
+
+    Livewire::withQueryParams( [ 'q' => 'linen' ] )
+        ->test( Index::class )
+        ->assertSee( 'Linen shirt' )
+        ->assertDontSee( 'Linen ghost' );
+
+    $ghost = Product::query()->where( 'name', 'Linen ghost' )->firstOrFail();
+    scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => new SearchResult( new Collection( [ $ghost, $this->linen ] ), 2 ) );
+
+    Livewire::withQueryParams( [ 'q' => 'linen' ] )
+        ->test( Index::class )
+        ->assertSee( 'Linen shirt' )
+        ->assertDontSee( 'Linen ghost' );
+} );
+
+it( 'stops at the deepest page a shopper can reach', function (): void {
+    scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => new SearchResult( new Collection( [ $this->linen ] ), 50_000 ) );
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'per_page' => 24 ] )
+        ->test( Index::class )
+        ->assertViewHas( 'products', static fn ( $products ): bool => 417 === $products->lastPage() );
+} );
+
+it( 'counts ratings and sales through the active provider', function (): void {
+    $this->linen->update( [ 'avg_rating' => 4.5 ] );
+    $this->mug->update( [ 'avg_rating' => 4.5 ] );
+
+    // A typo-tolerant provider: "shrit" finds the linen shirt, which the
+    // database's own search wouldn't.
+    scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider( aliases: [ 'shrit' => 'linen shirt' ] ) )->search( $query ) );
+
+    $component = Livewire::withQueryParams( [ 'q' => 'shrit' ] )->test( Index::class );
+    $rating    = collect( $component->viewData( 'groups' ) )->firstWhere( 'key', 'rating' );
+
+    $onSale    = collect( $component->viewData( 'groups' ) )->firstWhere( 'key', 'on_sale' );
+
+    expect( collect( $rating['options'] )->firstWhere( 'value', '4' )['count'] )->toBe( 1 )
+        ->and( $onSale['count'] )->toBe( 0 );
+} );
+
+it( 'counts searches against the catalog read limit and asks the shopper to slow down', function (): void {
+    config( [ 'artisanpack.ecommerce.rate_limits.catalog.read.per_ip' => 2 ] );
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => new SearchResult( new Collection( [ $this->linen ] ), 1 ) );
+
+    $component = Livewire::withQueryParams( [ 'q' => 'linen' ] )->test( Index::class )->assertSee( 'Linen shirt' );
+    $searches  = static fn (): int => count( array_filter( $queries->getArrayCopy(), static fn ( SearchQuery $query ): bool => $query->perPage > 1 ) );
+
+    $component->set( 'q', 'linen shirt' )->assertSee( 'Linen shirt' );
+    $component->set( 'q', 'linen shirts' )
+        ->assertSeeHtml( 'data-empty-reason="throttled"' )
+        ->assertSee( 'Slow down' )
+        ->assertDontSee( 'Linen shirt' );
+
+    expect( $searches() )->toBe( 2 );
+} );
+
+it( 'caches the filter counts, so a repeat render only runs the search', function (): void {
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider() )->search( $query ) );
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'attr' => [ 'size' => [ 'm' ] ] ] )->test( Index::class );
+    $first = count( $queries );
+
+    app()->forgetScopedInstances();
+    Livewire::withQueryParams( [ 'q' => 'linen', 'attr' => [ 'size' => [ 'm' ] ] ] )->test( Index::class );
+
+    expect( $first )->toBeLessThanOrEqual( 12 )
+        ->and( count( $queries ) - $first )->toBe( 1 );
 } );

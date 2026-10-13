@@ -23,6 +23,9 @@ use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\ReviewService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +64,7 @@ class Reviews extends Component
 {
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
     use WithPagination;
 
     /**
@@ -71,6 +75,18 @@ class Reviews extends Component
      * @var string
      */
     public const PAGE_NAME = 'reviews-page';
+
+    /**
+     * The eligibility reason for a signed-in shopper the engine can't link
+     * to a customer record (an unverified account whose email belongs to a
+     * guest customer, or a non-numeric user id), so the review can't be
+     * filed under them.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    public const CUSTOMER_UNAVAILABLE = 'customer-unavailable';
 
     /**
      * The product reviewed.
@@ -253,6 +269,7 @@ class Reviews extends Component
      */
     public function submit(): void
     {
+        $this->newErrorSummary();
         $guest = null === auth()->user();
 
         if ( ! $this->allowForm || ! $this->eligibility()->allowed ) {
@@ -264,7 +281,15 @@ class Reviews extends Component
         $this->validate( $this->reviewRules( $guest ), $this->reviewMessages() );
 
         $customer = $guest ? null : app( CustomerService::class )->customerForUser( auth()->user(), true );
-        $isSpam   = '' !== trim( $this->honeypot );
+
+        // Never file a signed-in shopper's review as an anonymous guest one.
+        if ( ! $guest && null === $customer ) {
+            $this->addError( 'review', $this->reasonMessage( self::CUSTOMER_UNAVAILABLE ) );
+
+            return;
+        }
+
+        $isSpam = '' !== trim( $this->honeypot );
 
         try {
             $review = $this->rateLimited(
@@ -343,7 +368,8 @@ class Reviews extends Component
      *
      * A signed-in shopper with no customer record yet (one is created on
      * submit) has no purchases and no reviews, so only `require_purchase`
-     * can stop them.
+     * can stop them, unless the engine won't be able to create or link
+     * one ({@see self::CUSTOMER_UNAVAILABLE}).
      *
      * @since 1.0.0
      *
@@ -355,12 +381,49 @@ class Reviews extends Component
         $customer = Customer::forUser( $user );
 
         if ( null !== $user && null === $customer ) {
+            if ( ! $this->customerLinkable( $user ) ) {
+                return new ReviewEligibility( false, self::CUSTOMER_UNAVAILABLE );
+            }
+
             return (bool) config( 'artisanpack.ecommerce.reviews.require_purchase', false )
                 ? new ReviewEligibility( false, ReviewEligibility::PURCHASE_REQUIRED )
                 : new ReviewEligibility( true );
         }
 
         return app( ReviewService::class )->eligibility( $this->product, $customer );
+    }
+
+    /**
+     * Whether the engine's `CustomerService::customerForUser( $user, true )`
+     * would give a signed-in shopper with no customer record one, without
+     * creating it: the user id must be numeric and have an email, and no
+     * customer may hold that email unless a verified user can claim it.
+     *
+     * @since 1.0.0
+     *
+     * @param  Authenticatable  $user  The signed-in shopper.
+     *
+     * @return bool
+     */
+    protected function customerLinkable( Authenticatable $user ): bool
+    {
+        if ( ! is_numeric( $user->getAuthIdentifier() ) ) {
+            return false;
+        }
+
+        $email = isset( $user->email ) && is_string( $user->email ) ? $user->email : ( method_exists( $user, 'getEmailForVerification' ) ? $user->getEmailForVerification() : null );
+
+        if ( ! is_string( $email ) || '' === trim( $email ) ) {
+            return false;
+        }
+
+        $existing = Customer::query()->where( 'email', mb_strtolower( trim( $email ) ) )->first();
+
+        if ( null === $existing ) {
+            return true;
+        }
+
+        return null === $existing->user_id && $user instanceof MustVerifyEmail && $user->hasVerifiedEmail();
     }
 
     /**
@@ -468,7 +531,7 @@ class Reviews extends Component
     }
 
     /**
-     * The review as the engine takes it, with the text sanitized.
+     * The review as the engine takes it, as plain text.
      *
      * @since 1.0.0
      *
@@ -478,8 +541,8 @@ class Reviews extends Component
      */
     protected function reviewAttributes( bool $guest ): array
     {
-        $title = trim( sanitizeText( $this->title ) );
-        $body  = trim( sanitizeText( $this->body ) );
+        $title = self::plainText( $this->title );
+        $body  = self::plainText( $this->body );
 
         $attributes = [
             'rating' => (int) $this->rating,
@@ -488,11 +551,28 @@ class Reviews extends Component
         ];
 
         if ( $guest ) {
-            $attributes['author_name']  = trim( sanitizeText( $this->authorName ) );
+            $attributes['author_name']  = self::plainText( $this->authorName );
             $attributes['author_email'] = mb_strtolower( trim( $this->authorEmail ) );
         }
 
         return $attributes;
+    }
+
+    /**
+     * Review text as typed, trimmed, with control characters removed.
+     *
+     * Not tag-stripped: reviews are plain text, printed escaped, so
+     * "Love it <3" keeps everything after the `<`.
+     *
+     * @since 1.0.0
+     *
+     * @param  string|null  $value  The text.
+     *
+     * @return string
+     */
+    protected static function plainText( ?string $value ): string
+    {
+        return trim( (string) preg_replace( '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', (string) $value ) );
     }
 
     /**
@@ -510,8 +590,23 @@ class Reviews extends Component
             ReviewEligibility::GUESTS_NOT_ALLOWED => __( 'Sign in to review this product.' ),
             ReviewEligibility::ALREADY_REVIEWED   => __( 'You\'ve already reviewed this product.' ),
             ReviewEligibility::PURCHASE_REQUIRED  => __( 'Only customers who bought this product can review it.' ),
+            self::CUSTOMER_UNAVAILABLE            => $this->unverified() ? __( 'Verify your email address to review this product.' ) : __( 'You can\'t review this product.' ),
             default                               => __( 'You can\'t review this product.' ),
         };
+    }
+
+    /**
+     * Whether the signed-in shopper's account still has to verify its email.
+     *
+     * @since 1.0.0
+     *
+     * @return bool
+     */
+    protected function unverified(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail();
     }
 
     /**

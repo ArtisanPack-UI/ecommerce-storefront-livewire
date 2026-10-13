@@ -17,7 +17,7 @@ use Tests\Fixtures\Gateways\FakeGateway;
 use Tests\Fixtures\Livewire\FakePaymentDriver;
 
 /**
- * The checkout, at the payment step.
+ * The checkout, at the payment step (after review).
  */
 function checkoutAtPayment(): Testable
 {
@@ -29,6 +29,8 @@ function checkoutAtPayment(): Testable
 
     return $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )
         ->call( 'saveShipping' )
+        ->assertSet( 'step', 'review' )
+        ->call( 'saveReview' )
         ->assertSet( 'step', 'payment' );
 }
 
@@ -148,24 +150,29 @@ it( 'renders a redirect gateway with the redirect driver', function (): void {
         ->assertSee( 'Continue to Hosted pay' );
 } );
 
-it( 'moves on to review once the driver confirms the payment', function (): void {
+it( 'is the last step, after review, and tells the shopper paying places the order', function (): void {
+    checkoutGateway();
+    checkoutCart();
+
+    checkoutAtPayment()
+        ->assertSet( 'announcement', 'Step 5 of 5: Payment' )
+        ->assertSeeHtml( 'data-checkout-step-summary="review"' )
+        ->assertSee( 'Your order is placed as soon as your payment is confirmed.' )
+        ->assertDontSeeHtml( 'data-checkout-place-order' );
+} );
+
+it( 'places the order once the driver confirms the payment', function (): void {
     $gateway = checkoutGateway();
     $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
 
     $component = checkoutAtPayment();
-    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_AUTHORIZED );
 
-    $component
-        ->dispatch( 'payment-confirmed', reference: 'fake_ps_1', gateway: 'fake' )
+    payAtCheckout( $component, $gateway )
         ->assertHasNoErrors()
-        ->assertSet( 'step', 'review' )
-        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
-        ->assertSet( 'announcement', 'Step 5 of 5: Review order' )
-        ->assertSeeHtml( 'data-checkout-review' )
-        ->assertSeeHtml( 'data-checkout-step-summary="payment"' )
-        ->assertSee( 'Fake card' );
+        ->assertSet( 'orderPlaced', true );
 
-    expect( $cart->refresh()->checkout_state )->toBe( CheckoutState::PAYMENT_PENDING );
+    expect( $cart->refresh()->completed_order_id )->not->toBeNull()
+        ->and( $gateway->captures )->toBe( 1 );
 } );
 
 it( 'refuses a confirmation the gateway doesn\'t back up', function ( bool $providerDown ): void {
@@ -194,6 +201,73 @@ it( 'refuses a confirmed payment made for an older total', function (): void {
         ->assertHasErrors( 'gateway' )
         ->assertSet( 'confirmedPayment', null )
         ->assertSet( 'step', 'payment' );
+} );
+
+it( 'throttles payment confirmations', function (): void {
+    $gateway = checkoutGateway();
+    checkoutCart();
+
+    $component = checkoutAtPayment();
+
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 3 );
+
+    $before = $gateway->retrievals;
+
+    foreach ( range( 1, 5 ) as $attempt ) {
+        $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1', gateway: 'fake', token: placeOrderToken( $component ) );
+    }
+
+    expect( $gateway->retrievals - $before )->toBeLessThan( 5 )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Slow down' );
+} );
+
+it( 'doesn\'t drop a confirmed payment when the shopper tries to go back', function (): void {
+    $gateway = checkoutGateway();
+    checkoutCart( [ makeProduct( 2000 ) ] );
+
+    $component = checkoutAtPayment();
+
+    // A placement that fails after the payment is confirmed leaves the
+    // payment confirmed but the order unplaced.
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', static function (): void {
+        throw new RuntimeException( 'A listener broke.' );
+    } );
+
+    payAtCheckout( $component, $gateway )
+        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
+        ->call( 'goTo', 'shipping' )
+        ->assertSet( 'step', 'payment' )
+        ->assertHasErrors( 'payment' )
+        ->assertSee( 'Your payment is confirmed. Contact us to change this order.' )
+        ->call( 'saveShipping' )
+        ->assertHasErrors( 'payment' )
+        ->set( 'gateway', 'other' )
+        ->assertSet( 'gateway', 'fake' )
+        ->assertSet( 'payment.reference', 'fake_ps_1' )
+        ->dispatch( 'ecommerce-cart-updated', count: 1 )
+        ->assertHasErrors( 'payment' )
+        ->assertSet( 'payment.reference', 'fake_ps_1' );
+
+    expect( $gateway->sessions )->toHaveCount( 1 );
+} );
+
+it( 'offers "Place order" for a payment confirmed before a reload', function (): void {
+    $gateway = checkoutGateway();
+    checkoutCart( [ makeProduct( 2000 ) ] );
+
+    checkoutAtPayment();
+    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
+
+    $component = Livewire::test( Index::class )
+        ->assertSet( 'step', 'payment' )
+        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
+        ->assertSeeHtml( 'data-checkout-payment-confirmed' )
+        ->assertSeeHtml( 'data-checkout-place-order' )
+        ->assertDontSeeLivewire( FakePaymentDriver::class );
+
+    $component->call( 'placeOrder', placeOrderToken( $component ) )->assertSet( 'orderPlaced', true );
+
+    expect( $gateway->sessions )->toHaveCount( 1 );
 } );
 
 it( 'sets the payment up again when the cart changes on the payment step', function (): void {
@@ -233,25 +307,20 @@ it( 'keeps the shopper on payment when the driver reports a failure', function (
         ->dispatch( 'payment-failed', message: 'Your card was declined.' )
         ->assertSet( 'step', 'payment' )
         ->assertSet( 'confirmedPayment', null )
-        ->call( 'goTo', 'review' )
-        ->assertSet( 'step', 'payment' );
+        ->assertSet( 'orderPlaced', false );
 } );
 
-it( 'asks for the payment again when the total changes after it was confirmed', function (): void {
+it( 'ignores its own cart updates', function (): void {
     $gateway = checkoutGateway();
-    $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
+    checkoutCart( [ makeProduct( 2000 ) ] );
 
     $component = checkoutAtPayment();
-    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_AUTHORIZED );
+    $before    = $gateway->retrievals;
 
-    $component
-        ->dispatch( 'payment-confirmed', reference: 'fake_ps_1' )
-        ->assertSet( 'step', 'review' );
+    $component->dispatch( 'ecommerce-cart-updated', count: 1, source: Index::class );
 
-    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
-
-    $component->dispatch( 'ecommerce-cart-updated', count: 2 )
-        ->assertSet( 'step', fn ( string $step ): bool => 'review' !== $step );
+    expect( $gateway->retrievals )->toBe( $before )
+        ->and( $gateway->sessions )->toHaveCount( 1 );
 } );
 
 it( 'asks a guest to sign in before paying when the store requires an account', function (): void {
@@ -278,12 +347,12 @@ it( 'needs no payment for a free order', function (): void {
         ->call( 'saveContact' )
         ->set( 'billing', checkoutAddress() )
         ->call( 'saveAddress' )
+        ->assertSet( 'step', 'review' )
+        ->call( 'saveReview' )
         ->assertSet( 'step', 'payment' )
         ->assertSeeHtml( 'data-checkout-payment-free' )
-        ->assertSet( 'payment', null )
-        ->call( 'continueWithoutPayment' )
-        ->assertSet( 'step', 'review' )
-        ->assertSee( 'No payment needed' );
+        ->assertSeeHtml( 'data-checkout-place-order' )
+        ->assertSet( 'payment', null );
 } );
 
 it( 'shows the engine\'s refusal to set up the payment', function (): void {
@@ -320,7 +389,7 @@ it( 'confirms through a satellite driver end to end', function (): void {
 
     $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_AUTHORIZED );
 
-    Livewire::test( FakePaymentDriver::class, [ 'config' => [], 'gateway' => 'fake', 'gatewayLabel' => 'Fake card', 'reference' => 'fake_ps_1' ] )
+    Livewire::test( FakePaymentDriver::class, [ 'config' => [], 'gateway' => 'fake', 'gatewayLabel' => 'Fake card', 'reference' => 'fake_ps_1', 'token' => 'the-token' ] )
         ->call( 'confirm' )
-        ->assertDispatched( 'payment-confirmed', reference: 'fake_ps_1', gateway: 'fake' );
+        ->assertDispatched( 'payment-confirmed', reference: 'fake_ps_1', gateway: 'fake', token: 'the-token' );
 } );

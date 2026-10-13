@@ -52,12 +52,16 @@ class VariableForm extends PurchaseForm
     /**
      * The matched variant's id.
      *
+     * Untyped because it comes straight from `?variant=`, which can hold
+     * anything (`abc`, `[]`); {@see self::normalizedVariant()} turns it into
+     * a positive id or null in `mount()` and `updatedVariant()`.
+     *
      * @since 1.0.0
      *
-     * @var int|null
+     * @var mixed
      */
     #[Url( as: 'variant', history: true )]
-    public ?int $variant = null;
+    public mixed $variant = null;
 
     /**
      * The chosen value id per attribute id.
@@ -107,6 +111,8 @@ class VariableForm extends PurchaseForm
     {
         parent::mount();
 
+        $this->variant = self::normalizedVariant( $this->variant );
+
         $this->selectVariant( $this->variant );
 
         foreach ( $this->groups() as $group ) {
@@ -131,6 +137,7 @@ class VariableForm extends PurchaseForm
     {
         $this->selectionNotice = '';
         $this->resetErrorBag( 'variant' );
+        $this->variant = self::normalizedVariant( $this->variant );
         $this->selectVariant( $this->variant );
         $this->resolveVariant();
     }
@@ -279,11 +286,13 @@ class VariableForm extends PurchaseForm
             return __( 'Choose an option for :name.', [ 'name' => (string) $missing->label ] );
         }
 
-        if ( null === $this->variant ) {
+        $variantId = self::normalizedVariant( $this->variant );
+
+        if ( null === $variantId ) {
             return __( 'That combination isn\'t available. Choose different options.' );
         }
 
-        $row = $this->rowFor( $this->variant );
+        $row = $this->rowFor( $variantId );
 
         return null === $row || ! $row['available'] ? __( 'This option is out of stock.' ) : null;
     }
@@ -347,7 +356,24 @@ class VariableForm extends PurchaseForm
      */
     protected function lineVariantId(): ?int
     {
-        return $this->variant;
+        return self::normalizedVariant( $this->variant );
+    }
+
+    /**
+     * A variant id from the query string or the client: a positive integer,
+     * or null for anything else.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return int|null
+     */
+    protected static function normalizedVariant( mixed $value ): ?int
+    {
+        $variantId = is_int( $value ) || is_string( $value ) ? filter_var( $value, FILTER_VALIDATE_INT ) : false;
+
+        return is_int( $variantId ) && $variantId > 0 ? $variantId : null;
     }
 
     /**

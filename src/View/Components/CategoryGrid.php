@@ -14,9 +14,12 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
+use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Str;
 use Illuminate\View\Component;
@@ -28,7 +31,10 @@ use Throwable;
  * Categories as linked tiles (spec §11.3, the Category Grid block): the
  * top-level categories, or a parent's sub-categories, in tree order, each
  * with its image and how many storefront products it holds (sub-categories
- * included). Counts and images can be turned off.
+ * included, each product once). Counts and images can be turned off.
+ *
+ * The counts come from one grouped query, cached ({@see StorefrontCache})
+ * and dropped whenever the catalog changes.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -131,22 +137,21 @@ class CategoryGrid extends Component
             }
         }
 
-        $counts = $this->showCounts ? $this->counts() : [];
+        $nodes  = array_slice( $paths->children( $parent ), 0, $this->limit );
+        $counts = $this->showCounts ? $this->counts( $nodes ) : [];
         $tiles  = [];
 
-        foreach ( array_slice( $paths->children( $parent ), 0, $this->limit ) as $node ) {
-            $count = 0;
+        if ( $this->showImages ) {
+            ProductImages::preload( array_column( $nodes, 'image_media_id' ) );
+        }
 
-            foreach ( [ $node, ...$paths->descendants( $node['id'] ) ] as $member ) {
-                $count += (int) ( $counts[ $member['id'] ] ?? 0 );
-            }
-
+        foreach ( $nodes as $node ) {
             $tiles[] = [
                 'id'    => $node['id'],
                 'name'  => $node['name'],
                 'url'   => $paths->url( $node['id'] ),
                 'image' => $this->showImages ? ProductImages::media( $node['image_media_id'], $node['name'] ) : null,
-                'count' => $count,
+                'count' => $counts[ $node['id'] ] ?? 0,
             ];
         }
 
@@ -154,17 +159,34 @@ class CategoryGrid extends Component
     }
 
     /**
-     * Storefront products per category id, or none when the engine can't
-     * count (a product filed under a category and its child counts twice).
+     * How many storefront products each tile's category and its
+     * sub-categories hold, each product once, keyed by tile category id;
+     * none when the count fails.
      *
      * @since 1.0.0
      *
+     * @param  array<int, array{id: int}>  $nodes  The tiles' categories.
+     *
      * @return array<int, int>
      */
-    protected function counts(): array
+    protected function counts( array $nodes ): array
     {
+        if ( [] === $nodes ) {
+            return [];
+        }
+
+        $paths   = app( CategoryPaths::class );
+        $subtree = [];
+
+        foreach ( $nodes as $node ) {
+            $subtree[ $node['id'] ] = [ $node['id'], ...array_column( $paths->descendants( $node['id'] ), 'id' ) ];
+        }
+
         try {
-            return (array) ( app( CatalogQuery::class )->facets()['categories'] ?? [] );
+            return StorefrontCache::remember(
+                StorefrontCache::key( 'category-counts', $subtree ),
+                static fn (): array => self::countSubtrees( $subtree ),
+            );
         } catch ( Throwable $exception ) {
             report( $exception );
 
@@ -172,5 +194,39 @@ class CategoryGrid extends Component
 
             return [];
         }
+    }
+
+    /**
+     * One grouped query: distinct storefront products per subtree. The
+     * tiles are siblings, so each category belongs to one subtree at most.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, array<int, int>>  $subtree  Category ids per tile category id.
+     *
+     * @return array<int, int>
+     */
+    private static function countSubtrees( array $subtree ): array
+    {
+        $category = new ProductCategory();
+        $pivot    = $category->products()->getTable();
+        $cases    = [];
+        $bindings = [];
+
+        foreach ( $subtree as $tile => $ids ) {
+            $cases[]  = 'WHEN product_category_id IN (' . implode( ', ', array_fill( 0, count( $ids ), '?' ) ) . ') THEN ?';
+            $bindings = [ ...$bindings, ...$ids, $tile ];
+        }
+
+        $visible = app( CatalogQuery::class )->builder( false )->select( ( new Product() )->qualifyColumn( 'id' ) );
+
+        return $category->getConnection()->table( $pivot )
+            ->whereIn( 'product_category_id', array_merge( ...array_values( $subtree ) ) )
+            ->whereIn( 'product_id', $visible )
+            ->selectRaw( 'CASE ' . implode( ' ', $cases ) . ' END as tile_id, COUNT(DISTINCT product_id) as products', $bindings )
+            ->groupBy( 'tile_id' )
+            ->pluck( 'products', 'tile_id' )
+            ->mapWithKeys( static fn ( mixed $count, mixed $tile ): array => [ (int) $tile => (int) $count ] )
+            ->all();
     }
 }

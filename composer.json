@@ -3,7 +3,6 @@
   "description": "Livewire storefront for the ArtisanPack UI ecommerce engine.",
   "type": "library",
   "license": "MIT",
-  "version": "1.0.0",
   "keywords": [
     "laravel",
     "livewire",
@@ -30,14 +29,14 @@
   ],
   "require": {
     "php": "^8.3",
-    "ext-bcmath": "*",
+    "ext-intl": "*",
     "illuminate/support": "^12.0|^13.0",
     "livewire/livewire": "^3.6|^4.0",
     "artisanpack-ui/ecommerce": "^1.1",
     "artisanpack-ui/livewire-ui-components": "^2.1",
     "artisanpack-ui/core": "^1.0",
     "artisanpack-ui/hooks": "^1.2",
-    "artisanpack-ui/security": "^1.0|^2.0"
+    "artisanpack-ui/security": "^1.0.3|^2.0"
   },
   "require-dev": {
     "pestphp/pest": "^4.0",
@@ -51,10 +50,14 @@
     "orchestra/testbench": "^10.2|^11.0",
     "friendsofphp/php-cs-fixer": "^3.75"
   },
+  "conflict": {
+    "artisanpack-ui/visual-editor": "<1.8"
+  },
   "suggest": {
-    "artisanpack-ui/visual-editor": "Commerce blocks (product grid, single product, add to cart, cart contents, checkout steps, and more) and editable product/category templates.",
+    "artisanpack-ui/visual-editor": "Commerce blocks (product grid, single product, add to cart, cart contents, checkout steps, and more) and editable product/category templates (^1.8).",
     "artisanpack-ui/media-library": "Responsive product, variant, and category images from the media library's conversions.",
-    "artisanpack-ui/livewire-drag-and-drop": "Reorderable lists, such as a wishlist when a wishlist satellite is installed."
+    "artisanpack-ui/seo": "Meta tags and JSON-LD through the SEO package's schema collector (^1.4).",
+    "artisanpack-ui/cms-framework": "Theme-aware visual-editor template resolution for storefront pages."
   },
   "scripts": {
     "lint": [

@@ -73,6 +73,8 @@ describe( 'gallery', function (): void {
             ->assertDontSee( 'data-gallery-thumbnail="2"', false )
             ->assertDontSee( 'javascript:alert', false )
             ->assertSee( 'data-gallery-zoom', false )
+            ->assertSee( 'aria-label="Zoom image: Front"', false )
+            ->assertSee( 'data-gallery-announcement', false )
             ->assertSee( '<dialog', false );
     } );
 

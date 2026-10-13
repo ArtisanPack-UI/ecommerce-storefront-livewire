@@ -4,14 +4,17 @@ declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\CartItem;
 use ArtisanPackUI\Ecommerce\Models\InventoryItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
 use ArtisanPackUI\Ecommerce\Models\ProductPrice;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Support\GuestCartCookie;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index;
+use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -19,6 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Tests\Fixtures\ProductTypes\EngravedProductType;
 
 afterEach( function (): void {
     removeAllFilters( 'ap.ecommerceStorefrontLivewire.catalog.sorts' );
@@ -129,6 +133,59 @@ it( 'falls back to the defaults for an unknown sort or page size', function (): 
         ->test( Index::class )
         ->assertSet( 'sort', 'newest' )
         ->assertSet( 'perPage', 24 );
+} );
+
+it( 'normalises malformed query-string values instead of failing (Livewire 3)', function (): void {
+    Livewire::withQueryParams( [
+        'sort'      => [ 'x' ],
+        'per_page'  => 'abc',
+        'category'  => [ 'a' ],
+        'tag'       => [ 'a' ],
+        'price_min' => 'cheap',
+        'price_max' => [ '1' ],
+        'attr'      => 'red',
+        'in_stock'  => [ '1' ],
+        'on_sale'   => 'true',
+        'rating'    => 'x',
+        'f'         => 'x',
+    ] )
+        ->test( Index::class )
+        ->assertOk()
+        ->assertSet( 'sort', 'newest' )
+        ->assertSet( 'perPage', 24 )
+        ->assertSet( 'categoryFilter', '' )
+        ->assertSet( 'tagFilter', '' )
+        ->assertSet( 'priceMin', null )
+        ->assertSet( 'priceMax', null )
+        ->assertSet( 'attributeFilters', [] )
+        ->assertSet( 'inStock', false )
+        ->assertSet( 'onSale', true )
+        ->assertSet( 'minRating', 0 )
+        ->assertSet( 'extraFilters', [] );
+} );
+
+it( 'reads numeric query-string values given as strings', function (): void {
+    Livewire::withQueryParams( [ 'per_page' => '12', 'price_min' => '500', 'rating' => '3', 'in_stock' => '1' ] )
+        ->test( Index::class )
+        ->assertSet( 'perPage', 12 )
+        ->assertSet( 'priceMin', 500 )
+        ->assertSet( 'minRating', 3 )
+        ->assertSet( 'inStock', true );
+} );
+
+it( 'normalises malformed values set from the browser', function (): void {
+    Livewire::test( Index::class )
+        ->set( 'sort', [ 'x' ] )
+        ->assertSet( 'sort', 'newest' )
+        ->set( 'perPage', 'abc' )
+        ->assertSet( 'perPage', 24 )
+        ->set( 'perPage', '48' )
+        ->assertSet( 'perPage', 48 )
+        ->set( 'minRating', [ 4 ] )
+        ->assertSet( 'minRating', 0 )
+        ->set( 'attributeFilters', 'red' )
+        ->assertSet( 'attributeFilters', [] )
+        ->assertOk();
 } );
 
 it( 'rejects an unknown sort or page size set from the browser', function (): void {
@@ -319,6 +376,45 @@ it( 'explains why a product could not be added', function ( Closure $make, strin
     'not visible'  => [ fn (): Product => Product::factory()->draft()->create(), 'That product is not available.' ],
 ] );
 
+it( 'refuses quick add for products that need a choice', function ( Closure $make ): void {
+    $product = $make();
+
+    $component = Livewire::test( Index::class )
+        ->call( 'quickAdd', $product->id )
+        ->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    expect( CartItem::query()->count() )->toBe( 0 )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )
+        ->toContain( 'Not added to your cart' )
+        ->toContain( 'options on its page' );
+} )->with( [
+    'digital with licence types' => [ function (): Product {
+        $product = Product::factory()->digital()->create( [ 'name' => 'Field guide', 'meta' => [ 'licensing' => [ 'types' => [ 'personal', 'team' ] ] ] ] );
+        ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'USD', 'price_amount' => 1500, 'compare_at_amount' => null ] );
+
+        return $product;
+    } ],
+    'variable'     => [ fn (): Product => makeVariableProduct( [ 'red/m' => [ 'price' => 2000, 'stock' => 5 ] ] )['product'] ],
+    'options form' => [ function (): Product {
+        app( ProductTypeRegistry::class )->register( EngravedProductType::KEY, new EngravedProductType() );
+
+        $product = Product::factory()->create( [ 'type' => EngravedProductType::KEY, 'name' => 'Pocket watch' ] );
+        ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'USD', 'price_amount' => 9900, 'compare_at_amount' => null ] );
+
+        return $product;
+    } ],
+] );
+
+it( 'offers quick add on the card only for a quick-addable product', function (): void {
+    $mug     = makeProduct( 1200, [ 'name' => 'Mug' ] );
+    $shirt   = makeVariableProduct( [ 'red/m' => [ 'price' => 2000, 'stock' => 5 ] ] )['product'];
+
+    expect( ProductCard::quickAddable( $mug ) )->toBeTrue()
+        ->and( ProductCard::quickAddable( $shirt ) )->toBeFalse()
+        ->and( ( new ProductCard( $mug ) )->card['quick_add'] )->toBeTrue()
+        ->and( ( new ProductCard( $shirt ) )->card['quick_add'] )->toBeFalse();
+} );
+
 it( 'throttles quick adds per cart', function (): void {
     config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 2 );
 
@@ -387,4 +483,29 @@ it( 'adds to the cart in hosts that prevent lazy loading', function (): void {
     Livewire::test( Index::class )
         ->call( 'quickAdd', $mug->id )
         ->assertDispatched( 'ecommerce-cart-updated', count: 1 );
+} );
+
+it( 'leaves products whose type package is uninstalled out of listings', function (): void {
+    makeProduct( 1000, [ 'name' => 'Kept kettle' ] );
+    makeProduct( 1000, [ 'name' => 'Ghost kettle', 'type' => 'uninstalled-satellite-type' ] );
+
+    Livewire::test( Index::class )
+        ->assertSee( 'Kept kettle' )
+        ->assertDontSee( 'Ghost kettle' )
+        ->assertSee( '1 product' );
+
+    Livewire::test( ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\ProductGrid::class )
+        ->assertSee( 'Kept kettle' )
+        ->assertDontSee( 'Ghost kettle' );
+} );
+
+it( 'moves a page past the end to the last page', function (): void {
+    foreach ( range( 1, 14 ) as $i ) {
+        makeProduct( 1000 + $i, [ 'name' => 'Pot ' . $i ] );
+    }
+
+    Livewire::withQueryParams( [ 'per_page' => 12, 'page' => 999 ] )
+        ->test( Index::class )
+        ->assertSet( 'paginators.page', 2 )
+        ->assertSee( 'Pot ' );
 } );

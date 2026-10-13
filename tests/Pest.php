@@ -257,9 +257,9 @@ if ( ! function_exists( 'checkoutAddress' ) ) {
 
 if ( ! function_exists( 'checkoutAtReview' ) ) {
     /**
-     * A checkout at the review step: contact, a US address, the first
-     * shipping rate, and a payment the fake gateway confirmed. Needs
-     * {@see checkoutShipping()}, {@see checkoutGateway()}, and a cart.
+     * A checkout at the review step: contact, a US address, and the first
+     * shipping rate. Needs {@see checkoutShipping()}, {@see checkoutGateway()},
+     * and a cart.
      */
     function checkoutAtReview( Tests\Fixtures\Gateways\FakeGateway $gateway, string $email = 'ada@example.test' ): Livewire\Features\SupportTesting\Testable
     {
@@ -269,25 +269,70 @@ if ( ! function_exists( 'checkoutAtReview' ) ) {
             ->set( 'shipping', checkoutAddress() )
             ->call( 'saveAddress' );
 
-        $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' );
+        return $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )
+            ->call( 'saveShipping' )
+            ->assertSet( 'step', 'review' );
+    }
+}
 
-        $reference = (string) $component->get( 'payment' )['reference'];
-
-        $gateway->setStatus( $reference, ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession::STATUS_AUTHORIZED );
-
-        return $component->dispatch( 'payment-confirmed', reference: $reference, gateway: $gateway->key() )->assertSet( 'step', 'review' );
+if ( ! function_exists( 'checkoutAtPaymentStep' ) ) {
+    /**
+     * A checkout past review, at the payment step with the fake gateway's
+     * session (`fake_ps_1`) set up. Needs what {@see checkoutAtReview()}
+     * needs.
+     */
+    function checkoutAtPaymentStep( Tests\Fixtures\Gateways\FakeGateway $gateway, string $email = 'ada@example.test' ): Livewire\Features\SupportTesting\Testable
+    {
+        return checkoutAtReview( $gateway, $email )
+            ->call( 'saveReview' )
+            ->assertHasNoErrors()
+            ->assertSet( 'step', 'payment' );
     }
 }
 
 if ( ! function_exists( 'placeOrderToken' ) ) {
     /**
-     * The action token the review step's "Place order" form carries.
+     * The action token the payment step hands the payment driver (and its
+     * "Place order" button carries).
      */
     function placeOrderToken( Livewire\Features\SupportTesting\Testable $component ): string
     {
-        preg_match( "/placeOrder\\( '([^']+)' \\)/", $component->html(), $matches );
+        if ( 1 === preg_match( "/placeOrder\\( '([^']+)' \\)/", $component->html(), $matches ) ) {
+            return $matches[1];
+        }
 
-        return $matches[1] ?? '';
+        return ArtisanPackUI\EcommerceStorefrontLivewire\Support\ActionTokens::mint(
+            ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index::class . '|place-order|Cart:' . $component->get( 'cartId' ),
+        );
+    }
+}
+
+if ( ! function_exists( 'payAtCheckout' ) ) {
+    /**
+     * Has the fake gateway confirm the payment step's session and the
+     * driver report it, as a real driver would: this places the order.
+     */
+    function payAtCheckout( Livewire\Features\SupportTesting\Testable $component, Tests\Fixtures\Gateways\FakeGateway $gateway, ?string $token = null ): Livewire\Features\SupportTesting\Testable
+    {
+        $reference = (string) $component->get( 'payment' )['reference'];
+
+        $gateway->setStatus( $reference, ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession::STATUS_AUTHORIZED );
+
+        return $component->dispatch( 'payment-confirmed', reference: $reference, gateway: $gateway->key(), token: $token ?? placeOrderToken( $component ) );
+    }
+}
+
+if ( ! function_exists( 'payAtCheckoutThen' ) ) {
+    /**
+     * Makes the payment the shopper confirms come back as `$status` when
+     * the engine places the order (3-D Secure asked for once more, a
+     * session lost), by changing it just before `finalize()`.
+     */
+    function payAtCheckoutThen( Tests\Fixtures\Gateways\FakeGateway $gateway, string $status ): void
+    {
+        addAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', static function ( ArtisanPackUI\Ecommerce\Models\Cart $cart ) use ( $gateway, $status ): void {
+            $gateway->setStatus( (string) $cart->payment_reference, $status );
+        } );
     }
 }
 
@@ -340,6 +385,25 @@ if ( ! function_exists( 'shopper' ) ) {
     function shopper( array $customer = [] ): array
     {
         $user = makeUser();
+
+        $record = ArtisanPackUI\Ecommerce\Models\Customer::factory()->create( $customer + [ 'user_id' => $user->id, 'email' => $user->email ] );
+
+        test()->actingAs( $user );
+
+        return [ $user, $record ];
+    }
+}
+
+if ( ! function_exists( 'verifiedShopper' ) ) {
+    /**
+     * A signed-in user whose model verifies emails and who has verified,
+     * with a customer record: one that may claim guest orders.
+     *
+     * @return array{0: Tests\Fixtures\VerifiedUser, 1: ArtisanPackUI\Ecommerce\Models\Customer}
+     */
+    function verifiedShopper( array $customer = [] ): array
+    {
+        $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email_verified_at' => now() ] )->id );
 
         $record = ArtisanPackUI\Ecommerce\Models\Customer::factory()->create( $customer + [ 'user_id' => $user->id, 'email' => $user->email ] );
 

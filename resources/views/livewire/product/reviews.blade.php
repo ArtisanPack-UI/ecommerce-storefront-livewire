@@ -53,24 +53,27 @@
             @if ( $allowForm )
                 <div class="border-t border-base-content/10 pt-4" data-review-cta>
                     @if ( $submitted )
+                        {{-- Takes focus from the form it replaces. --}}
                         <x-artisanpack-alert
                             icon="o-check-circle"
                             class="alert-success"
                             :title="$published ? __( 'Thanks — your review is published' ) : __( 'Thanks — your review is awaiting moderation' )"
                             role="status"
+                            tabindex="-1"
+                            x-data
+                            x-init="$el.focus()"
                             data-review-submitted
                         />
                     @elseif ( $eligibility->allowed )
-                        @unless ( $showForm )
-                            <x-artisanpack-button
-                                :label="__( 'Write a review' )"
-                                icon="o-pencil-square"
-                                wire:click="openForm"
-                                aria-controls="{{ $ecommerceFormId }}"
-                                aria-expanded="false"
-                                data-review-open
-                            />
-                        @endunless
+                        {{-- Stays while the form is open, so it can report (and toggle) that state and take focus back on Cancel. --}}
+                        <x-artisanpack-button
+                            :label="__( 'Write a review' )"
+                            icon="o-pencil-square"
+                            x-on:click="$wire.showForm ? $wire.closeForm() : $wire.openForm()"
+                            aria-controls="{{ $ecommerceFormId }}"
+                            :aria-expanded="$showForm ? 'true' : 'false'"
+                            data-review-open
+                        />
                     @else
                         <p class="text-sm" data-review-ineligible="{{ $eligibility->reason }}">
                             @if ( null !== $loginUrl && in_array( $eligibility->reason, [ \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::GUESTS_NOT_ALLOWED, \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::PURCHASE_REQUIRED ], true ) )
@@ -87,22 +90,24 @@
         <div class="flex flex-col gap-6 lg:col-span-2">
             @if ( $showForm )
                 <form id="{{ $ecommerceFormId }}" wire:submit="submit" class="flex flex-col gap-4 rounded-box border border-base-content/10 p-4" aria-labelledby="{{ $ecommerceFormId }}-heading" novalidate data-review-form>
-                    <h3 id="{{ $ecommerceFormId }}-heading" class="text-lg font-semibold">{{ __( 'Write a review' ) }}</h3>
+                    <h3 id="{{ $ecommerceFormId }}-heading" tabindex="-1" class="text-lg font-semibold focus:outline-none" x-data x-init="$el.focus()">{{ __( 'Write a review' ) }}</h3>
+
+                    @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => $ecommerceFormId, 'summaryExcept' => [ 'review' ] ] )
 
                     @error( 'review' )
                         <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error" :title="$message" role="alert" data-review-error />
                     @enderror
 
-                    <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required />
+                    <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required data-field-key="rating" />
 
-                    <x-artisanpack-input :id="$ecommerceFormId . '-title'" :label="__( 'Title' )" wire:model="title" maxlength="255" error-field="title" />
+                    <x-artisanpack-ec-field :id="$ecommerceFormId . '-title'" :label="__( 'Title' )" wire:model="title" maxlength="255" error-field="title" />
 
-                    <x-artisanpack-textarea :id="$ecommerceFormId . '-body'" :label="__( 'Your review' )" wire:model="body" rows="5" maxlength="10000" error-field="body" />
+                    <x-artisanpack-ec-field control="textarea" :id="$ecommerceFormId . '-body'" :label="__( 'Your review' )" wire:model="body" rows="5" maxlength="10000" error-field="body" />
 
                     @if ( $guest )
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <x-artisanpack-input :id="$ecommerceFormId . '-name'" :label="__( 'Your name' )" wire:model="authorName" autocomplete="name" required error-field="authorName" />
-                            <x-artisanpack-input :id="$ecommerceFormId . '-email'" type="email" :label="__( 'Your email' )" :hint="__( 'Not shown with your review.' )" wire:model="authorEmail" autocomplete="email" required error-field="authorEmail" />
+                            <x-artisanpack-ec-field :id="$ecommerceFormId . '-name'" :label="__( 'Your name' )" wire:model="authorName" autocomplete="name" required error-field="authorName" />
+                            <x-artisanpack-ec-field :id="$ecommerceFormId . '-email'" type="email" :label="__( 'Your email' )" :hint="__( 'Not shown with your review.' )" wire:model="authorEmail" autocomplete="email" required error-field="authorEmail" />
                         </div>
                     @endif
 
@@ -114,7 +119,7 @@
 
                     <div class="flex flex-wrap gap-2">
                         <x-artisanpack-button type="submit" :label="__( 'Submit review' )" color="primary" spinner="submit" wire:loading.attr="disabled" wire:target="submit" data-review-submit />
-                        <x-artisanpack-button :label="__( 'Cancel' )" class="btn-ghost" wire:click="closeForm" />
+                        <x-artisanpack-button :label="__( 'Cancel' )" class="btn-ghost" x-on:click="$wire.closeForm().then( () => $nextTick( () => document.querySelector( '[data-product-reviews=&quot;{{ $product->id }}&quot;] [data-review-open]' )?.focus() ) )" data-review-cancel />
                     </div>
                 </form>
             @endif

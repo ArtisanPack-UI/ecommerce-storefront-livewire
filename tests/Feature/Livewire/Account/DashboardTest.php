@@ -92,7 +92,7 @@ it( 'lists the core account pages and satellite entries by position, marking the
     app( AccountMenuRegistry::class )->register( 'hidden', [ 'label' => 'Hidden thing', 'route' => '/account/hidden', 'visible' => false ] );
     app( AccountMenuRegistry::class )->register( 'wishlist', [ 'label' => 'Wishlist', 'route' => '/account/wishlist' ] );
 
-    shopper();
+    verifiedShopper();
 
     $html = $this->get( route( 'artisanpack.ecommerce.account.orders.index' ) )
         ->assertOk()
@@ -114,6 +114,44 @@ it( 'lists the core account pages and satellite entries by position, marking the
         ->and( $dashboard[0] ?? '' )->not->toContain( 'aria-current' );
 } );
 
+it( 'leaves out the engine\'s own account entries when the host defines their routes', function (): void {
+    foreach ( [ 'profile', 'orders', 'addresses', 'downloads', 'license-keys', 'notifications' ] as $key ) {
+        Route::get( '/legacy-account/' . $key, fn (): string => $key )->name( 'ecommerce.account.' . $key );
+    }
+
+    Route::getRoutes()->refreshNameLookups();
+
+    verifiedShopper();
+
+    $html = $this->get( route( 'artisanpack.ecommerce.account.dashboard' ) )->assertOk()->getContent();
+
+    preg_match_all( '/data-account-nav-entry="([^"]+)"/', $html, $entries );
+
+    expect( $entries[1] )->toBe( [ 'dashboard', 'orders.index', 'addresses', 'downloads', 'profile', 'claim' ] )
+        ->and( $html )->not->toContain( '/legacy-account/' );
+} );
+
+it( 'hides "Claim an order" from a shopper who can\'t claim', function (): void {
+    shopper();
+
+    $html = $this->get( route( 'artisanpack.ecommerce.account.dashboard' ) )->assertOk()->getContent();
+
+    expect( $html )->toContain( 'data-account-nav-entry="orders.index"' )
+        ->and( $html )->not->toContain( 'data-account-nav-entry="claim"' );
+} );
+
+it( 'doesn\'t prompt a user model that can\'t verify email to claim, by default', function (): void {
+    [ , $customer ] = shopper();
+
+    placedOrder( [ 'email' => $customer->email, 'is_claimed' => false ] );
+
+    Livewire::test( Dashboard::class )->assertDontSeeHtml( 'data-account-claim-prompt' );
+
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.claim_requires_verified_email', false );
+
+    Livewire::test( Dashboard::class )->assertSeeHtml( 'data-account-claim-prompt' );
+} );
+
 it( 'keeps "Orders" active on an order\'s page', function (): void {
     [ , $customer ] = shopper();
     $order          = placedOrder( [], $customer );
@@ -126,7 +164,7 @@ it( 'keeps "Orders" active on an order\'s page', function (): void {
 } );
 
 it( 'prompts the shopper to claim guest orders placed with their email', function (): void {
-    [ , $customer ] = shopper();
+    [ , $customer ] = verifiedShopper();
 
     placedOrder( [ 'email' => $customer->email, 'is_claimed' => false ] );
     placedOrder( [ 'email' => $customer->email, 'is_claimed' => false ] );

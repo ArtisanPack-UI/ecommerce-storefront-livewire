@@ -63,8 +63,8 @@ it( 'shows every section on a single page, disabling the ones after an unfinishe
         ->assertSeeHtml( 'data-checkout-step-summary="contact"' )
         ->assertSeeHtml( 'data-checkout-address-form' )
         ->assertSeeHtml( 'data-checkout-step-locked="shipping"' )
-        ->assertSeeHtml( 'data-checkout-step-locked="payment"' )
         ->assertSeeHtml( 'data-checkout-step-locked="review"' )
+        ->assertSeeHtml( 'data-checkout-step-locked="payment"' )
         ->assertSeeHtml( 'aria-disabled="true"' )
         ->assertSee( 'Complete “Address” first.' );
 } );

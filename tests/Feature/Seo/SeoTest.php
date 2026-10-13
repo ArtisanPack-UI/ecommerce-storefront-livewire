@@ -143,7 +143,16 @@ it( 'describes a category page with its own description and page number', functi
     $this->get( $url . '?page=1&sort=name' )->assertSee( '<link rel="canonical" href="' . $url . '">', false );
 } );
 
+it( 'drops an unknown category filter from the catalog\'s canonical URL', function (): void {
+    $url = route( 'artisanpack.ecommerce.storefront.catalog' );
+
+    $this->get( $url . '?category=nope' )->assertSee( '<link rel="canonical" href="' . $url . '">', false );
+} );
+
 it( 'keeps a category filter and the page in the catalog\'s canonical URL, and drops the rest', function (): void {
+    ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+    CategoryTree::flush();
+
     $url = route( 'artisanpack.ecommerce.storefront.catalog' );
 
     $this->get( $url . '?sort=-price&price_min=100&category=kitchen&attr[colour][]=red&page=3' )

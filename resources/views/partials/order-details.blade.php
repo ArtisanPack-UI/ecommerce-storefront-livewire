@@ -90,7 +90,7 @@
 
                 @if ( null !== ( $downloadsUrl ?? null ) )
                     <div>
-                        <x-artisanpack-button :label="__( 'Go to your downloads' )" :link="$downloadsUrl" icon="o-arrow-down-tray" class="btn-sm" data-order-downloads-link />
+                        <x-artisanpack-button :label="__( 'Go to your downloads' )" :link="$downloadsUrl" no-wire-navigate icon="o-arrow-down-tray" class="btn-sm" data-order-downloads-link />
                     </div>
                 @else
                     <p class="text-sm text-base-content/70" data-order-downloads-email>{{ __( 'We\'ve emailed your download links to :email.', [ 'email' => $order->email ] ) }}</p>

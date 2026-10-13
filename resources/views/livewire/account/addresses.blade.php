@@ -7,6 +7,23 @@
     @since      1.0.0
 --}}
 <div class="flex flex-col gap-6" data-account-addresses>
+    @if ( $deletions > 0 )
+        {{-- After a delete, focus (left on the removed card, or nowhere) moves to "Add an address". The modal hands focus back as it closes, so this waits for it. --}}
+        <span
+            hidden
+            wire:key="account-address-focus-{{ $deletions }}"
+            x-data
+            x-init="setTimeout( () => {
+                if ( document.activeElement && document.activeElement !== document.body && document.activeElement.isConnected ) {
+                    return;
+                }
+
+                $el.closest( '[data-account-addresses]' )?.querySelector( '[data-account-address-add]' )?.focus();
+            }, 100 )"
+            data-account-address-focus
+        ></span>
+    @endif
+
     @if ( $failed )
         <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your addresses couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-addresses-failed />
     @endif
@@ -40,15 +57,17 @@
                     <x-artisanpack-ec-address :address="$row['address']" />
 
                     <div class="mt-auto flex flex-wrap gap-2">
-                        <x-artisanpack-button :label="__( 'Edit' )" icon="o-pencil" class="btn-sm" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}" />
-                        <x-artisanpack-button :label="__( 'Delete' )" icon="o-trash" class="btn-sm btn-ghost" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}" />
+                        {{-- Each button names its address for screen readers, after the visible word (WCAG 2.5.3). --}}
+                        @php( $ecommerceAddressName = implode( ', ', array_filter( [ $row['label'], $row['summary'] ] ) ) )
+                        <x-artisanpack-button icon="o-pencil" class="btn-sm" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}">{{ __( 'Edit' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                        <x-artisanpack-button icon="o-trash" class="btn-sm btn-ghost" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}">{{ __( 'Delete' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
 
                         @unless ( $row['default_shipping'] )
-                            <x-artisanpack-button :label="__( 'Use for shipping' )" class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping" />
+                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping">{{ __( 'Use for shipping' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
 
                         @unless ( $row['default_billing'] )
-                            <x-artisanpack-button :label="__( 'Use for billing' )" class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing" />
+                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing">{{ __( 'Use for billing' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
                     </div>
                 </li>
@@ -58,7 +77,9 @@
 
     <x-artisanpack-modal wire:model="editing" :title="null === $editingId ? __( 'Add an address' ) : __( 'Edit address' )" box-class="max-w-2xl" data-account-address-modal>
         <form wire:submit="save" class="flex flex-col gap-4" novalidate>
-            <x-artisanpack-input id="form.label" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-address' ] )
+
+            <x-artisanpack-ec-field id="form.label" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
 
             <x-artisanpack-ec-address-form model="form" :country="$form['country_code'] ?? null" />
 

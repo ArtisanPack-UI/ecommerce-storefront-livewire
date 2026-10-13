@@ -16,7 +16,8 @@
     @endif
 
     <div class="sm:col-span-2" wire:key="{{ $model }}-country_code" data-field="{{ $model }}.country_code">
-        <x-artisanpack-select
+        <x-artisanpack-ec-field
+            control="select"
             :id="$model . '.country_code'"
             :label="__( 'Country' )"
             :options="$countries()"
@@ -31,7 +32,7 @@
     @foreach ( $fields() as $field => $definition )
         <div @class( [ 'sm:col-span-2' => $definition['wide'] ] ) wire:key="{{ $model }}-{{ $field }}" data-field="{{ $model }}.{{ $field }}">
             @if ( $live )
-                <x-artisanpack-input
+                <x-artisanpack-ec-field
                     :id="$model . '.' . $field"
                     :label="$definition['label']"
                     :autocomplete="$autocomplete( $definition['autocomplete'] )"
@@ -40,7 +41,7 @@
                     wire:model.live.blur="{{ $model }}.{{ $field }}"
                 />
             @else
-                <x-artisanpack-input
+                <x-artisanpack-ec-field
                     :id="$model . '.' . $field"
                     :label="$definition['label']"
                     :autocomplete="$autocomplete( $definition['autocomplete'] )"
@@ -54,7 +55,8 @@
 
     @if ( [] !== $ecommerceAddressRegions )
         <div wire:key="{{ $model }}-region_code-{{ $country }}" data-field="{{ $model }}.region_code">
-            <x-artisanpack-select
+            <x-artisanpack-ec-field
+                control="select"
                 :id="$model . '.region_code'"
                 :label="$regionLabel()"
                 :options="$ecommerceAddressRegions"
@@ -68,18 +70,18 @@
     @else
         <div wire:key="{{ $model }}-region" data-field="{{ $model }}.region">
             @if ( $live )
-                <x-artisanpack-input :id="$model . '.region'" :label="$regionLabel()" :autocomplete="$autocomplete( 'address-level1' )" wire:model.live.blur="{{ $model }}.region" />
+                <x-artisanpack-ec-field :id="$model . '.region'" :label="$regionLabel()" :autocomplete="$autocomplete( 'address-level1' )" wire:model.live.blur="{{ $model }}.region" />
             @else
-                <x-artisanpack-input :id="$model . '.region'" :label="$regionLabel()" :autocomplete="$autocomplete( 'address-level1' )" wire:model="{{ $model }}.region" />
+                <x-artisanpack-ec-field :id="$model . '.region'" :label="$regionLabel()" :autocomplete="$autocomplete( 'address-level1' )" wire:model="{{ $model }}.region" />
             @endif
         </div>
     @endif
 
     <div wire:key="{{ $model }}-postal_code-{{ $country }}" data-field="{{ $model }}.postal_code">
         @if ( $live )
-            <x-artisanpack-input :id="$model . '.postal_code'" :label="$postcodeLabel()" :hint="$postcodeHint()" :autocomplete="$autocomplete( 'postal-code' )" :required="$postcodeRequired()" wire:model.live.blur="{{ $model }}.postal_code" />
+            <x-artisanpack-ec-field :id="$model . '.postal_code'" :label="$postcodeLabel()" :hint="$postcodeHint()" :autocomplete="$autocomplete( 'postal-code' )" :required="$postcodeRequired()" wire:model.live.blur="{{ $model }}.postal_code" />
         @else
-            <x-artisanpack-input :id="$model . '.postal_code'" :label="$postcodeLabel()" :hint="$postcodeHint()" :autocomplete="$autocomplete( 'postal-code' )" :required="$postcodeRequired()" wire:model="{{ $model }}.postal_code" />
+            <x-artisanpack-ec-field :id="$model . '.postal_code'" :label="$postcodeLabel()" :hint="$postcodeHint()" :autocomplete="$autocomplete( 'postal-code' )" :required="$postcodeRequired()" wire:model="{{ $model }}.postal_code" />
         @endif
     </div>
 </fieldset>

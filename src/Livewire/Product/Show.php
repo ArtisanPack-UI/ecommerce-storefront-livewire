@@ -96,6 +96,19 @@ class Show extends Component
     public bool $recordView = true;
 
     /**
+     * What doesn't change with the chosen variant, worked out once in
+     * `mount()` so a variant change doesn't re-query the gallery or
+     * re-clean the descriptions: `images`, `shortDescription`,
+     * `description`, and `specifications`.
+     *
+     * @since 1.0.0
+     *
+     * @var array{images: array<int, array<string, mixed>>, shortDescription: string|null, description: string|null, specifications: array<int, array{label: string, value: string}>}
+     */
+    #[Locked]
+    public array $content = [ 'images' => [], 'shortDescription' => null, 'description' => null, 'specifications' => [] ];
+
+    /**
      * The open details section.
      *
      * @since 1.0.0
@@ -105,8 +118,9 @@ class Show extends Component
     public ?string $openSection = 'description';
 
     /**
-     * Checks the product can be shown, picks up a variant from the query
-     * string, and records the view.
+     * Checks the product can be shown, works out its gallery, descriptions,
+     * and attributes table, picks up a variant from the query string, and
+     * records the view.
      *
      * @since 1.0.0
      *
@@ -115,6 +129,13 @@ class Show extends Component
     public function mount(): void
     {
         abort_if( ! Product::query()->storefrontVisible()->whereKey( $this->product->id )->exists() || $this->product->typeIsMissing(), 404 );
+
+        $this->content = [
+            'images'           => $this->images(),
+            'shortDescription' => SafeHtml::clean( $this->product->short_description ),
+            'description'      => SafeHtml::clean( $this->product->description ),
+            'specifications'   => $this->specifications(),
+        ];
 
         $variant = request()->query( 'variant' );
 
@@ -176,13 +197,13 @@ class Show extends Component
         $currency = app( StorefrontCart::class )->currency();
 
         return view( 'ecommerce-storefront::livewire.product.show', [
-            'images'           => $this->images(),
-            'price'            => app( PriceDisplayResolver::class )->for( $subject, $currency ),
+            'images'           => $this->content['images'],
+            'price'            => app( PriceDisplayResolver::class )->for( $subject, $currency, null, app( StorefrontCart::class )->customer() ),
             'stock'            => StockStatus::for( $subject ),
             'sku'              => $variant?->sku ?? $product->sku,
-            'shortDescription' => SafeHtml::clean( $product->short_description ),
-            'description'      => SafeHtml::clean( $product->description ),
-            'specifications'   => $this->specifications(),
+            'shortDescription' => $this->content['shortDescription'],
+            'description'      => $this->content['description'],
+            'specifications'   => $this->content['specifications'],
             'shippingReturns'  => $this->shippingReturns(),
             'form'             => app( ProductFormRegistry::class )->for( $product ),
             'sections'         => $this->sections(),

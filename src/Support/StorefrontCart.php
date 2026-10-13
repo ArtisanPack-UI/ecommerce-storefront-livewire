@@ -15,11 +15,14 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Support;
 
 use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\RateLimiting\RateLimitSubject;
 use ArtisanPackUI\Ecommerce\Services\CurrentCart;
+use ArtisanPackUI\Ecommerce\Services\StoreCurrencies;
 use ArtisanPackUI\Ecommerce\Support\GuestCartCookie;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 
 /**
  * Knows which cart belongs to the shopper (spec §5.2).
@@ -46,6 +49,15 @@ use Illuminate\Http\Request;
 class StorefrontCart
 {
     /**
+     * How long the currency cookie lasts, in minutes (a year).
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const CURRENCY_COOKIE_MINUTES = 525_600;
+
+    /**
      * The cart resolved during this request.
      *
      * @since 1.0.0
@@ -62,6 +74,16 @@ class StorefrontCart
      * @var bool
      */
     protected bool $resolved = false;
+
+    /**
+     * The signed-in shopper's customer record, keyed by the user's
+     * identifier, once looked up.
+     *
+     * @since 1.0.0
+     *
+     * @var array{0: mixed, 1: Customer|null}|null
+     */
+    protected ?array $customer = null;
 
     /**
      * @since 1.0.0
@@ -172,6 +194,28 @@ class StorefrontCart
     }
 
     /**
+     * The signed-in shopper's engine customer, or null for a guest or a
+     * user with no customer record. Looked up once per request (and again
+     * if the signed-in user changes), for prices that depend on who is
+     * buying (`PriceDisplayResolver::for()`'s `$customer`).
+     *
+     * @since 1.0.0
+     *
+     * @return Customer|null
+     */
+    public function customer(): ?Customer
+    {
+        $user = $this->user();
+        $id   = $user?->getAuthIdentifier();
+
+        if ( null === $this->customer || $this->customer[0] !== $id ) {
+            $this->customer = [ $id, null === $user ? null : Customer::forUser( $user ) ];
+        }
+
+        return $this->customer[1];
+    }
+
+    /**
      * Who a rate-limited call counts against: the cart when the shopper has
      * one, else the signed-in shopper, else the client IP. Never the
      * `/livewire/update` route alone.
@@ -198,13 +242,57 @@ class StorefrontCart
     /**
      * The shopper's display currency.
      *
+     * The open cart's currency when the shopper has a cart in an enabled
+     * currency, so prices and availability are judged in the currency the
+     * lines will be priced in (an account cart opened on another device,
+     * or a merge into the account cart's currency, can leave it different
+     * from the stored choice). Otherwise the engine's `CurrencyResolver`.
+     * Only the currency switcher changes a cart's currency, since that
+     * re-prices it.
+     *
      * @since 1.0.0
      *
      * @return string
      */
     public function currency(): string
     {
+        $cart     = $this->current();
+        $currency = null === $cart ? '' : strtoupper( (string) $cart->currency );
+
+        if ( '' !== $currency && app( StoreCurrencies::class )->isEnabled( $currency ) ) {
+            return $currency;
+        }
+
         return $this->currencies->resolve( $this->request() );
+    }
+
+    /**
+     * Stores `$code` as the shopper's display currency: through the
+     * resolver (the default resolver keeps it in the session) and in the
+     * engine's `currency.cookie` cookie.
+     *
+     * The engine's `CurrencyResolver` contract only promises `resolve()`,
+     * so the choice counts as kept only when the resolver now answers with
+     * it.
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $code  An ISO 4217 currency code.
+     *
+     * @return bool Whether the resolver now resolves to `$code`.
+     */
+    public function rememberCurrency( string $code ): bool
+    {
+        $code    = strtoupper( trim( $code ) );
+        $request = $this->request();
+
+        if ( method_exists( $this->currencies, 'remember' ) ) {
+            $this->currencies->remember( $request, $code );
+        }
+
+        Cookie::queue( (string) config( 'artisanpack.ecommerce.currency.cookie', 'ecommerce_currency' ), $code, self::CURRENCY_COOKIE_MINUTES );
+
+        return strtoupper( $this->currencies->resolve( $request ) ) === $code;
     }
 
     /**

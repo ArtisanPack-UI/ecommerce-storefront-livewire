@@ -172,15 +172,25 @@ class Index extends Component
     }
 
     /**
-     * Follows changes made elsewhere (the cart drawer).
+     * Follows changes made elsewhere (the cart drawer). Its own
+     * `ecommerce-cart-updated` (sent with `source` set to this class) is
+     * skipped without re-rendering: the change that sent it already did.
      *
      * @since 1.0.0
+     *
+     * @param  string|null  $source  The component that changed the cart.
      *
      * @return void
      */
     #[On( 'ecommerce-cart-updated' )]
-    public function cartUpdated(): void
+    public function cartUpdated( ?string $source = null ): void
     {
+        if ( static::class === $source ) {
+            $this->skipRender();
+
+            return;
+        }
+
         $this->syncQuantities();
     }
 
@@ -394,6 +404,7 @@ class Index extends Component
             'totals'           => null === $cart || [] === $lines ? null : $this->totals( $cart ),
             'coupon'           => null === $cart ? null : $this->appliedCoupon( $cart ),
             'hasUnsellable'    => [] !== array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] ),
+            'onlyShort'        => [] === array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] && ! $line['short'] ),
             'requiresShipping' => null !== $cart && [] !== $lines && $this->requiresShipping( $cart ),
             'countries'        => Countries::options(),
             'regions'          => AddressFormats::regions( $this->estimateCountry ),

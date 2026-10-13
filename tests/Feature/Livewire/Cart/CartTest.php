@@ -223,7 +223,8 @@ it( 'shows the engine\'s coupon messages inline', function ( string $code, strin
         ->set( 'couponCode', $code )
         ->call( 'applyCoupon' )
         ->assertHasErrors( 'couponCode' )
-        ->assertSee( $message );
+        ->assertSee( $message )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-ec-cart-coupon-error"' );
 } )->with( [
     'empty'   => [ '  ', 'Enter a coupon code.' ],
     'unknown' => [ 'NOPE', 'That coupon code is not valid.' ],
@@ -387,6 +388,52 @@ it( 'flags an out-of-stock line', function (): void {
     expect( $cart->items()->count() )->toBe( 1 );
 } );
 
+it( 'flags a line asking for more than the stock left and blocks checkout until it is lowered', function (): void {
+    $mug  = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    setStock( $mug, 10 );
+    $cart = shopperCartWith( [ $mug ], 5 );
+    $line = $cart->items()->sole();
+
+    $mug->inventoryItems()->update( [ 'quantity_on_hand' => 2 ] );
+
+    $component = Livewire::test( Index::class )
+        ->assertSee( 'Only 2 are left in stock.' )
+        ->assertSeeHtml( 'data-cart-line-short' )
+        ->assertSeeHtml( 'data-cart-checkout-blocked' )
+        ->assertSee( 'Lower the quantities marked to check out.' )
+        // The quantity stays editable, so the shopper can lower it.
+        ->assertSeeHtml( 'id="ec-cart-quantity-' . $line->id . '"' );
+
+    $component->set( 'quantities.' . $line->id, 2 )
+        ->assertDontSee( 'left in stock' )
+        ->assertDontSeeHtml( 'data-cart-checkout-blocked' );
+} );
+
+it( 'says when only one is left, and counts what the cart already holds', function (): void {
+    $mug  = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    setStock( $mug, 10 );
+    $cart = shopperCartWith( [ $mug ], 3 );
+
+    $mug->inventoryItems()->update( [ 'quantity_on_hand' => 1 ] );
+
+    Livewire::test( Index::class )->assertSee( 'Only 1 is left in stock.' );
+
+    // Stock this cart has reserved (at checkout) is still its to buy.
+    $mug->inventoryItems()->update( [ 'quantity_on_hand' => 3, 'quantity_reserved' => 3 ] );
+    ArtisanPackUI\Ecommerce\Models\InventoryReservation::query()->create( [
+        'inventory_item_id' => $mug->inventoryItems()->sole()->id,
+        'reservable_type'   => $cart->getMorphClass(),
+        'reservable_id'     => $cart->id,
+        'quantity'          => 3,
+        'expires_at'        => now()->addMinutes( 30 ),
+    ] );
+
+    Livewire::test( Index::class )
+        ->assertDontSee( 'left in stock' )
+        ->assertDontSee( 'This item is out of stock.' )
+        ->assertDontSeeHtml( 'data-cart-checkout-blocked' );
+} );
+
 it( 'follows changes made in the cart drawer', function (): void {
     $line = shopperCartWith( [ makeProduct() ] )->items()->sole();
 
@@ -409,4 +456,17 @@ it( 'renders the cart page route with the component', function (): void {
         ->assertOk()
         ->assertSeeLivewire( Index::class )
         ->assertDontSeeHtml( 'data-screen-pending' );
+} );
+
+it( 'skips its own cart event and follows the drawer\'s', function (): void {
+    $line = shopperCartWith( [ makeProduct() ] )->items()->sole();
+
+    $component = Livewire::test( Index::class )->assertSet( "quantities.{$line->id}", 1 );
+
+    $line->update( [ 'quantity' => 4 ] );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 4, source: Index::class )
+        ->assertSet( "quantities.{$line->id}", 1 )
+        ->dispatch( 'ecommerce-cart-updated', count: 4, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 4 );
 } );

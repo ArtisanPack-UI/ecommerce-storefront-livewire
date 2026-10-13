@@ -12,6 +12,8 @@
 <div class="flex flex-col gap-10" data-ecommerce-cart>
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-cart-announcement>{{ $announcement }}</p>
 
+    @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '[data-ecommerce-cart]', 'fallback' => '[data-cart-line-remove], [data-cart-empty] a, #ecommerce-storefront-content' ] )
+
     @if ( null !== $removedLine )
         <x-artisanpack-alert icon="o-information-circle" :title="__( ':name was removed from your cart.', [ 'name' => $removedLine['name'] ] )" data-cart-undo>
             <x-slot:actions>
@@ -28,7 +30,7 @@
             data-cart-empty
         >
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" color="primary" />
+                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
             @endif
         </x-artisanpack-ec-empty-state>
     @else
@@ -86,7 +88,7 @@
                                     </p>
                                 </div>
 
-                                @if ( null !== $line['unsellable'] )
+                                @if ( null !== $line['unsellable'] && ! $line['short'] )
                                     <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable>
                                         <x-slot:actions>
                                             <x-artisanpack-button
@@ -100,6 +102,11 @@
                                         </x-slot:actions>
                                     </x-artisanpack-alert>
                                 @elseif ( ! $line['free'] )
+                                    @if ( $line['short'] )
+                                        {{-- More than the stock left: the shopper can lower the quantity. --}}
+                                        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable data-cart-line-short />
+                                    @endif
+
                                     <div class="flex flex-wrap items-end gap-3">
                                         <x-artisanpack-ec-quantity
                                             :id="'ec-cart-quantity-' . $line['id']"
@@ -149,7 +156,7 @@
 
                         <form wire:submit="applyCoupon" class="flex items-end gap-2" novalidate>
                             <div class="grow">
-                                <x-artisanpack-input
+                                <x-artisanpack-ec-field
                                     id="ec-cart-coupon"
                                     :label="__( 'Coupon code' )"
                                     wire:model="couponCode"
@@ -168,7 +175,8 @@
                     <form wire:submit="estimateShipping" class="flex flex-col gap-3 border-t border-base-content/10 pt-4" aria-labelledby="ec-cart-estimate-heading" novalidate data-cart-estimate>
                         <h3 id="ec-cart-estimate-heading" class="font-semibold">{{ __( 'Estimate shipping' ) }}</h3>
 
-                        <x-artisanpack-select
+                        <x-artisanpack-ec-field
+                            control="select"
                             id="ec-cart-estimate-country"
                             :label="__( 'Country' )"
                             :options="$countries"
@@ -179,7 +187,8 @@
                         />
 
                         @if ( [] !== $regions )
-                            <x-artisanpack-select
+                            <x-artisanpack-ec-field
+                                control="select"
                                 id="ec-cart-estimate-region"
                                 :label="__( 'Region' )"
                                 :options="$regions"
@@ -190,7 +199,7 @@
                             />
                         @endif
 
-                        <x-artisanpack-input
+                        <x-artisanpack-ec-field
                             id="ec-cart-estimate-postcode"
                             :label="$postcodeLabel"
                             wire:model="estimatePostcode"
@@ -227,13 +236,13 @@
                 <div class="flex flex-col gap-2">
                     @if ( $hasUnsellable )
                         <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout />
-                        <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-checkout />
+                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-checkout />
                     @endif
 
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-ghost w-full" />
+                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-ghost w-full" />
                     @endif
                 </div>
             </section>

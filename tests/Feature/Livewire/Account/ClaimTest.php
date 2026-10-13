@@ -32,7 +32,7 @@ it( 'renders the claim form', function (): void {
 } );
 
 it( 'claims the shopper\'s guest orders and moves them into the order history', function (): void {
-    [ , $customer ] = shopper();
+    [ , $customer ] = verifiedShopper();
 
     $first  = guestOrderFor( $customer->email, 'ORD-1001' );
     $second = guestOrderFor( $customer->email, 'ORD-1002' );
@@ -58,7 +58,9 @@ it( 'requires the order number and postcode', function (): void {
 
     Livewire::test( Claim::class )
         ->call( 'claim' )
-        ->assertHasErrors( [ 'orderNumber' => 'Enter the order number.', 'postalCode' => 'Enter the postcode the order was shipped to.' ] );
+        ->assertHasErrors( [ 'orderNumber' => 'Enter the order number.', 'postalCode' => 'Enter the postcode the order was shipped to.' ] )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-orderNumber-error"' )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-postalCode-error"' );
 
     Livewire::test( Claim::class )
         ->set( 'orderNumber', str_repeat( '1', 51 ) )
@@ -70,7 +72,7 @@ it( 'requires the order number and postcode', function (): void {
 } );
 
 it( 'gives one message for a wrong postcode, a wrong number, and someone else\'s order', function (): void {
-    [ , $customer ] = shopper();
+    [ , $customer ] = verifiedShopper();
 
     guestOrderFor( $customer->email, 'ORD-1001' );
     guestOrderFor( 'someone@example.test', 'ORD-2002' );
@@ -91,7 +93,7 @@ it( 'gives one message for a wrong postcode, a wrong number, and someone else\'s
 it( 'stops the shopper after the engine\'s failed-attempt cap', function (): void {
     config()->set( 'artisanpack.ecommerce.customers.claim_rate_limit', 2 );
 
-    [ , $customer ] = shopper();
+    [ , $customer ] = verifiedShopper();
     $order          = guestOrderFor( $customer->email );
 
     foreach ( range( 1, 2 ) as $attempt ) {
@@ -111,7 +113,7 @@ it( 'stops the shopper after the engine\'s failed-attempt cap', function (): voi
 it( 'is rate limited per IP', function (): void {
     config()->set( 'artisanpack.ecommerce.rate_limits.claim.attempt.per_ip', 1 );
 
-    [ , $customer ] = shopper();
+    [ , $customer ] = verifiedShopper();
     guestOrderFor( $customer->email );
 
     Livewire::test( Claim::class )->set( 'orderNumber', 'ORD-1001' )->set( 'postalCode', '00000' )->call( 'claim' );
@@ -127,6 +129,8 @@ it( 'is rate limited per IP', function (): void {
 } );
 
 it( 'tells a shopper whose account can\'t have a customer record yet', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.claim_requires_verified_email', false );
+
     // An unverified user can't take over a customer record another account's email already has.
     Customer::factory()->create( [ 'email' => 'taken@example.test' ] );
     $this->actingAs( makeUser( [ 'email' => 'taken@example.test' ] ) );
@@ -139,7 +143,7 @@ it( 'tells a shopper whose account can\'t have a customer record yet', function 
 } );
 
 it( 'reports an unexpected engine failure', function (): void {
-    shopper();
+    verifiedShopper();
 
     app()->instance( CustomerClaimService::class, Mockery::mock( CustomerClaimService::class, function ( $mock ): void {
         $mock->shouldReceive( 'claim' )->andThrow( new RuntimeException( 'Database is down.' ) );
@@ -175,4 +179,36 @@ it( 'won\'t claim for an account whose email isn\'t verified, even with a custom
 
     expect( $order->refresh()->customer_id )->toBeNull()
         ->and( CustomerClaimAttempt::query()->count() )->toBe( 0 );
+} );
+
+it( 'won\'t claim for a user model that can\'t verify email, by default', function (): void {
+    [ , $customer ] = shopper();
+    $order          = guestOrderFor( $customer->email );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertNoRedirect()
+        ->assertSet( 'failure', 'Guest orders can\'t be added to your account. Contact us if you need help with an earlier order.' );
+
+    expect( $order->refresh()->customer_id )->toBeNull()
+        ->and( $order->is_claimed )->toBeFalse()
+        ->and( CustomerClaimAttempt::query()->count() )->toBe( 0 );
+} );
+
+it( 'claims for a user model that can\'t verify email when the host opts out', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.account.claim_requires_verified_email', false );
+
+    [ , $customer ] = shopper();
+    $order          = guestOrderFor( $customer->email );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertSet( 'failure', null )
+        ->assertRedirect( route( 'artisanpack.ecommerce.account.orders.index' ) );
+
+    expect( $order->refresh()->customer_id )->toBe( $customer->id );
 } );

@@ -35,22 +35,23 @@ function fillShippingAddress( object $page ): object
 }
 
 /**
- * From the address step to the review step: the address, the first
- * shipping option, and a test-card payment.
+ * From the address step to the payment step: the address, the first
+ * shipping option, and the review.
  *
  * @param  object  $page  The page (a Pest browser webpage).
  *
  * @return object
  */
-function checkoutToReview( object $page ): object
+function checkoutToPayment( object $page ): object
 {
     return fillShippingAddress( $page )
         ->click( '[data-checkout-address-submit]' )
         ->assertPresent( '[data-checkout-shipping-form]' )
         ->click( 'internal:label=/Standard shipping/' )
         ->click( '[data-checkout-shipping-submit]' )
-        ->click( '[data-test-card-pay]' )
-        ->assertPresent( '[data-checkout-place-order]' );
+        ->assertPresent( '[data-checkout-review-form]' )
+        ->click( '[data-checkout-review-submit]' )
+        ->assertPresent( '[data-test-card-pay]' );
 }
 
 it( 'adds to the cart from the catalog', function (): void {
@@ -131,8 +132,9 @@ it( 'checks out as a guest in the multi-step layout and shows the confirmation',
         ->click( '[data-checkout-contact-submit]' )
         ->assertPresent( '[data-checkout-address-form]' );
 
-    checkoutToReview( $page )
-        ->click( '[data-checkout-place-order]' )
+    // Confirming the payment places the order.
+    checkoutToPayment( $page )
+        ->click( '[data-test-card-pay]' )
         ->assertPresent( '[data-order-confirmation]' )
         ->assertSee( 'Guest lamp' )
         ->assertPresent( '[data-order-guest-hints]' )
@@ -163,8 +165,9 @@ it( 'checks out signed in on the single-page layout', function (): void {
         $page->click( '[data-checkout-contact-submit]' );
     }
 
-    checkoutToReview( $page )
-        ->click( '[data-checkout-place-order]' )
+    // Confirming the payment places the order.
+    checkoutToPayment( $page )
+        ->click( '[data-test-card-pay]' )
         ->assertPresent( '[data-order-confirmation]' )
         ->assertSee( 'Member blanket' )
         ->assertPresent( '[data-order-account-link]' )
@@ -210,4 +213,23 @@ it( 'opens an order from the account order history', function (): void {
         ->assertSee( 'Account teapot' )
         ->assertSee( '$45.00' )
         ->assertNoJavaScriptErrors();
+} );
+
+it( 'unchecks a swatch the server clears when an earlier choice rules it out', function (): void {
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2500, 'stock' => 4 ],
+        'red/xl' => [ 'price' => 2500, 'stock' => 4 ],
+        'blue/m' => [ 'price' => 2900, 'stock' => 4 ],
+    ], [ 'slug' => 'clearing-shirt' ], 'CLEAR' );
+
+    $xl   = 'document.querySelector( \'input[data-swatch-value="' . $made['values']['xl']->id . '"]\' )';
+    $blue = 'document.querySelector( \'input[data-swatch-value="' . $made['values']['blue']->id . '"]\' )';
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'clearing-shirt' ] ) )
+        ->keys( Locators::label( 'XL' ), 'Space' )
+        ->assertScript( $xl . '.checked' )
+        ->assertScript( $blue . '.disabled', false )
+        ->keys( Locators::label( 'Blue' ), 'Space' )
+        ->assertSeeIn( '[data-selection-notice]', 'cleared' )
+        ->assertScript( $xl . '.checked', false );
 } );

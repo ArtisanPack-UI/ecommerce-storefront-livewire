@@ -29,8 +29,8 @@ final class Accessibility
         [ 'select-name', 'fieldset' ],
         // ArtisanPack-UI/livewire-ui-components#117: the open drawer's
         // `drawer-toggle` checkbox is unlabelled and outside any landmark.
-        [ 'label', '.drawer' ],
-        [ 'region', '.drawer' ],
+        [ 'label', '.drawer > input.drawer-toggle' ],
+        [ 'region', '.drawer > input.drawer-toggle' ],
         // ArtisanPack-UI/livewire-ui-components#129:
         // `x-artisanpack-breadcrumbs` puts the separator <span>s straight
         // into its <ul>.

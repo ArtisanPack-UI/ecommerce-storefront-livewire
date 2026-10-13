@@ -19,9 +19,11 @@ use ArtisanPackUI\Ecommerce\Models\Cart;
  * The checkout's steps, in order (spec §7.4, §8.4).
  *
  * The core steps are `contact`, `address`, `shipping` (only for carts that
- * ship), `payment`, and `review`. A satellite adds a step through the
- * `ap.ecommerceStorefrontLivewire.checkout.steps` filter, which receives
- * the steps (key => definition) and the cart:
+ * ship), `review`, and `payment`. Payment comes last, so confirming the
+ * payment places the order: the shopper checks the order, leaves a note,
+ * accepts the terms, and asks for an account before paying. A satellite
+ * adds a step through the `ap.ecommerceStorefrontLivewire.checkout.steps`
+ * filter, which receives the steps (key => definition) and the cart:
  *
  * ```php
  * addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $steps, Cart $cart ): array {
@@ -29,6 +31,7 @@ use ArtisanPackUI\Ecommerce\Models\Cart;
  *         'label'     => __( 'Date of birth' ),
  *         'component' => 'age-check-checkout-step',
  *         'before'    => 'payment', // optional; `review` by default
+ *         'complete'  => fn ( Cart $cart ): bool => AgeChecks::passed( $cart ), // optional
  *     ];
  *
  *     return $steps;
@@ -39,15 +42,17 @@ use ArtisanPackUI\Ecommerce\Models\Cart;
  * key). When the shopper has completed it, it dispatches
  * `ecommerce-checkout-step-completed` with `step: <key>` and the checkout
  * moves on. That event comes from the browser, so a step that must hold
- * the shopper back (an age check) also refuses the engine's next state
- * through `ap.ecommerce.checkout.canTransitionTo`; the checkout shows the
- * refusal.
+ * the shopper back (an age check) gives a `complete` callable: the
+ * checkout then asks it, on the server, whether the step is done — the
+ * event alone no longer counts — and asks again just before the order is
+ * placed. A step without one counts as done once it reports done (and
+ * only when the shopper could reach it).
  *
  * Core steps can't be removed, relabelled, or reordered. Added steps sit
- * before `before` (`address`, `shipping`, `payment`, or `review`; a
+ * before `before` (`address`, `shipping`, `review`, or `payment`; a
  * skipped `shipping` means the next core step), in the order they were
- * added; an entry without a label or component, or with an invalid key, is
- * ignored.
+ * added; an entry without a label or component, with an invalid key, or
+ * with a `complete` that isn't callable, is ignored.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -63,7 +68,7 @@ final class CheckoutSteps
      *
      * @var array<int, string>
      */
-    public const CORE = [ 'contact', 'address', 'shipping', 'payment', 'review' ];
+    public const CORE = [ 'contact', 'address', 'shipping', 'review', 'payment' ];
 
     /**
      * The core steps an added step may be placed before.
@@ -72,7 +77,7 @@ final class CheckoutSteps
      *
      * @var array<int, string>
      */
-    public const INSERTABLE_BEFORE = [ 'address', 'shipping', 'payment', 'review' ];
+    public const INSERTABLE_BEFORE = [ 'address', 'shipping', 'review', 'payment' ];
 
     /**
      * The steps for `$cart`, keyed by step key.
@@ -82,7 +87,7 @@ final class CheckoutSteps
      * @param  Cart  $cart              The cart.
      * @param  bool  $requiresShipping  Whether the cart ships (the shipping step is skipped otherwise).
      *
-     * @return array<string, array{key: string, label: string, component: string|null}>
+     * @return array<string, array{key: string, label: string, component: string|null, complete?: callable(Cart): bool}>
      */
     public static function for( Cart $cart, bool $requiresShipping ): array
     {
@@ -104,10 +109,14 @@ final class CheckoutSteps
             $before = is_string( $step['before'] ?? null ) && in_array( $step['before'], self::INSERTABLE_BEFORE, true ) ? $step['before'] : 'review';
 
             if ( ! isset( $core[ $before ] ) ) {
-                $before = 'payment';
+                $before = 'review';
             }
 
             $added[ $before ][ $key ] = [ 'key' => $key, 'label' => trim( $step['label'] ), 'component' => trim( $step['component'] ) ];
+
+            if ( isset( $step['complete'] ) ) {
+                $added[ $before ][ $key ]['complete'] = $step['complete'];
+            }
         }
 
         $steps = [];
@@ -139,8 +148,8 @@ final class CheckoutSteps
             'contact'  => __( 'Contact' ),
             'address'  => $requiresShipping ? __( 'Address' ) : __( 'Billing address' ),
             'shipping' => __( 'Shipping' ),
-            'payment'  => __( 'Payment' ),
             'review'   => __( 'Review order' ),
+            'payment'  => __( 'Payment' ),
         ];
 
         if ( ! $requiresShipping ) {
@@ -172,6 +181,7 @@ final class CheckoutSteps
             && 1 === preg_match( '/^[a-z0-9][a-z0-9_-]{0,63}$/', $key )
             && is_array( $step )
             && is_string( $step['label'] ?? null ) && '' !== trim( $step['label'] )
-            && is_string( $step['component'] ?? null ) && '' !== trim( $step['component'] );
+            && is_string( $step['component'] ?? null ) && '' !== trim( $step['component'] )
+            && ( ! isset( $step['complete'] ) || is_callable( $step['complete'] ) );
     }
 }

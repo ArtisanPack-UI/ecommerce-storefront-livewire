@@ -53,7 +53,7 @@
             </div>
         @endif
 
-        <{{ $ecommerceHeading }} class="text-base font-semibold leading-snug">
+        <{{ $ecommerceHeading }} class="text-base font-semibold leading-snug wrap-anywhere">
             @if ( null !== $card['url'] )
                 <a href="{{ $card['url'] }}" class="link-hover after:absolute after:inset-0 after:content-['']" data-product-link>{{ $card['name'] }}</a>
             @else
@@ -73,18 +73,17 @@
 
         @if ( $card['quick_add'] )
             <div class="relative z-10 mt-auto pt-2">
+                {{-- The visible text starts the name (WCAG 2.5.3); the product is added for screen readers. --}}
                 <x-artisanpack-button
-                    :label="__( 'Add to cart' )"
                     icon="o-shopping-cart"
                     class="btn-sm w-full"
                     color="primary"
-                    :aria-label="__( 'Add :name to cart', [ 'name' => $card['name'] ] )"
                     wire:click="quickAdd( {{ $card['id'] }} )"
                     wire:loading.attr="disabled"
                     wire:target="quickAdd( {{ $card['id'] }} )"
                     spinner="quickAdd( {{ $card['id'] }} )"
                     data-quick-add="{{ $card['id'] }}"
-                />
+                >{{ __( 'Add to cart' ) }}<span class="sr-only">: {{ $card['name'] }}</span></x-artisanpack-button>
             </div>
         @endif
     </div>

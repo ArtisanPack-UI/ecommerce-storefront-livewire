@@ -481,6 +481,8 @@ class StorefrontSeo
         ], static fn ( mixed $value ): bool => null !== $value );
 
         try {
+            // Always the anonymous price: crawlers read this, so it must not
+            // carry a signed-in customer's group price.
             $price = app( PriceDisplayResolver::class )->for( $product, $currency );
             $stock = StockStatus::for( $product );
         } catch ( Throwable $exception ) {
@@ -587,7 +589,7 @@ class StorefrontSeo
 
     /**
      * `$url` with only `$keep` of the request's query parameters (a page
-     * number only after the first page).
+     * number only after the first page, a category only when it exists).
      *
      * @since 1.0.0
      *
@@ -609,6 +611,12 @@ class StorefrontSeo
             $value = $request->query( $key );
 
             if ( ! is_string( $value ) || '' === $value || ( 'page' === $key && ( ! ctype_digit( $value ) || (int) $value <= 1 ) ) ) {
+                continue;
+            }
+
+            // An unknown category filter lists nothing extra: it isn't a
+            // page of its own.
+            if ( 'category' === $key && null === app( CategoryPaths::class )->bySlug( $value ) ) {
                 continue;
             }
 

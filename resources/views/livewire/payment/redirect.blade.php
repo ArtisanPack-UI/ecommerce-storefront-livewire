@@ -8,7 +8,7 @@
 --}}
 <div class="flex flex-col gap-3" data-payment-driver="redirect">
     @if ( $available )
-        <p class="text-sm text-base-content/70">{{ __( 'You\'ll go to :gateway to pay, then come back here to review your order.', [ 'gateway' => $label ] ) }}</p>
+        <p class="text-sm text-base-content/70">{{ __( 'You\'ll go to :gateway to pay, then come back here to finish your order.', [ 'gateway' => $label ] ) }}</p>
 
         <div>
             <x-artisanpack-button

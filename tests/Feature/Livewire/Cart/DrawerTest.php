@@ -6,10 +6,12 @@ use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\HeaderButton;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Support\Facades\View;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Tests\Fixtures\Media\FakeMedia;
 
 /**
  * The shopper's cart with `$quantity` of a product called `$name`.
@@ -26,6 +28,7 @@ it( 'renders the drawer, opened and closed by browser events', function (): void
     drawerCartWith( 'Mug', 2, 1250 );
 
     Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
         ->assertOk()
         ->assertSeeHtml( 'x-on:ecommerce-cart-open.window="open = true"' )
         ->assertSeeHtml( 'x-on:ecommerce-cart-close.window="close()"' )
@@ -56,6 +59,7 @@ it( 'changes a quantity and removes a line from the drawer', function (): void {
     $line = drawerCartWith()->items()->sole();
 
     Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
         ->set( 'quantities.' . $line->id, 3 )
         ->assertDispatched( 'ecommerce-cart-updated', count: 3 )
         ->assertSee( '$30.00' )
@@ -73,13 +77,14 @@ it( 'shows the engine\'s refusal on the line', function (): void {
     setStock( $line->product, 1 );
 
     Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
         ->set( 'quantities.' . $line->id, 9 )
         ->assertHasErrors( 'quantities.' . $line->id )
         ->assertSet( 'quantities.' . $line->id, 1 );
 } );
 
 it( 'refreshes its lines when the cart changes elsewhere', function (): void {
-    $component = Livewire::test( Drawer::class )->assertSee( 'Your cart is empty' );
+    $component = Livewire::test( Drawer::class )->dispatch( 'ecommerce-cart-open' )->assertSee( 'Your cart is empty' );
 
     drawerCartWith( 'Teapot' );
 
@@ -92,8 +97,60 @@ it( 'hides checkout while a line can\'t be bought', function (): void {
     $cart->items()->sole()->product->forceFill( [ 'status' => 'draft' ] )->save();
 
     Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
         ->assertSee( 'This product is no longer available.' )
         ->assertDontSeeHtml( 'data-cart-drawer-checkout' );
+} );
+
+it( 'lists no lines until it first opens, keeping the item count in its title', function (): void {
+    drawerCartWith( 'Mug', 2, 1250 );
+
+    $component = Livewire::test( Drawer::class )
+        ->assertSet( 'loaded', false )
+        ->assertSet( 'quantities', [] )
+        ->assertSee( '2 items' )
+        ->assertSeeHtml( 'data-cart-loading' )
+        ->assertDontSee( 'Mug' )
+        ->assertDontSeeHtml( 'data-cart-empty' )
+        ->assertDontSeeHtml( 'data-cart-drawer-checkout' );
+
+    // The title count follows the cart before the drawer opens.
+    drawerCartWith( 'Teapot' );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 3 )
+        ->assertSee( '3 items' )
+        ->assertSet( 'loaded', false )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertSet( 'loaded', true )
+        ->assertDontSeeHtml( 'data-cart-loading' )
+        ->assertSee( 'Mug' )
+        ->assertSee( 'Teapot' )
+        ->assertSee( '3 items' );
+} );
+
+it( 'looks up no line images until it first opens', function (): void {
+    require_once dirname( __DIR__, 3 ) . '/Fixtures/Media/MediaLibraryStub.php';
+
+    ProductImages::fake( true );
+    FakeMedia::register( 41, new FakeMedia( 800, 800, 'A mug' ) );
+
+    $cart = app( StorefrontCart::class )->current( true );
+    app( StorefrontCartService::class )->addItem( $cart, makeProduct( 1000, [ 'name' => 'Mug', 'featured_image_media_id' => 41 ] )->id, null, 1 );
+
+    try {
+        Livewire::test( Drawer::class )
+            ->assertDontSeeHtml( 'https://media.example.test/' )
+            ->dispatch( 'ecommerce-cart-open' )
+            ->assertSeeHtml( 'https://media.example.test/' );
+    } finally {
+        FakeMedia::$items = [];
+        ProductImages::fake( null );
+    }
+} );
+
+it( 'keeps the loaded flag out of the browser\'s reach', function (): void {
+    expect( fn () => Livewire::test( Drawer::class )->set( 'loaded', true ) )
+        ->toThrow( CannotUpdateLockedPropertyException::class );
 } );
 
 it( 'keeps the undo line out of the browser\'s reach', function (): void {
@@ -152,4 +209,46 @@ it( 'renders the header button in the package layout', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->assertSeeLivewire( HeaderButton::class )
         ->assertSee( 'data-header-action="cart"', false );
+} );
+
+it( 'hands focus on after a removal and an undo', function (): void {
+    $line = drawerCartWith( 'Mug' )->items()->sole();
+
+    $component = Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertDontSeeHtml( 'data-cart-focus-after-change' )
+        ->call( 'removeLine', $line->id )
+        ->assertSet( 'lineChanges', 1 )
+        ->assertSet( 'restoredLineId', null )
+        ->assertSeeHtml( 'wire:key="cart-focus-1"' )
+        ->call( 'undoRemove' )
+        ->assertSet( 'lineChanges', 2 )
+        ->assertSeeHtml( 'wire:key="cart-focus-2"' );
+
+    expect( $component->get( 'restoredLineId' ) )->toBe( app( StorefrontCart::class )->current()->items()->sole()->id );
+} );
+
+it( 'skips its own cart event and follows everyone else\'s', function (): void {
+    $line = drawerCartWith( 'Mug', 1 )->items()->sole();
+
+    $component = Livewire::test( Drawer::class )->dispatch( 'ecommerce-cart-open' )->assertSet( "quantities.{$line->id}", 1 );
+
+    $line->update( [ 'quantity' => 3 ] );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 3, source: Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 1 )
+        ->dispatch( 'ecommerce-cart-updated', count: 3, source: HeaderButton::class )
+        ->assertSet( "quantities.{$line->id}", 3 )
+        ->dispatch( 'ecommerce-cart-updated', count: 3 )
+        ->assertSet( "quantities.{$line->id}", 3 );
+} );
+
+it( 'tags its cart event with its class and keeps its lines current itself', function (): void {
+    $line = drawerCartWith( 'Mug', 1 )->items()->sole();
+
+    Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->set( "quantities.{$line->id}", 2 )
+        ->assertDispatched( 'ecommerce-cart-updated', count: 2, source: Drawer::class )
+        ->assertSet( "quantities.{$line->id}", 2 );
 } );

@@ -18,7 +18,8 @@
     </ul>
 
     @if ( [] !== $licenseTypes )
-        <x-artisanpack-select
+        <x-artisanpack-ec-field
+            control="select"
             :id="$ecommerceFormId . '-license'"
             :label="__( 'Licence' )"
             :options="collect( $licenseTypes )->map( fn ( string $label, string $value ): array => [ 'id' => $value, 'name' => $label ] )->values()->all()"

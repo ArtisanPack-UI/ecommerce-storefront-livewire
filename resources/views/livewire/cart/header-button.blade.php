@@ -23,7 +23,7 @@
             data-header-action="cart"
         >
             <x-artisanpack-icon name="o-shopping-cart" class="h-5 w-5" aria-hidden="true" />
-            <span aria-hidden="true">{{ __( 'Cart' ) }}</span>
+            <span class="hidden sm:inline" aria-hidden="true">{{ __( 'Cart' ) }}</span>
             @if ( $count > 0 )
                 <x-artisanpack-badge :value="(string) $count" class="badge-primary badge-sm" aria-hidden="true" data-cart-count />
             @endif

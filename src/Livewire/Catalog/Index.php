@@ -24,16 +24,18 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithSto
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Money\Currencies\ISOCurrencies;
+use Money\Currency;
 use Throwable;
 
 /**
@@ -85,6 +87,11 @@ use Throwable;
  *
  * A custom group's value is in the query string under `f[{key}]`; `apply`
  * gets the chosen option values (or true for a toggle).
+ *
+ * The query-string properties are declared `mixed`, since a crawler or a
+ * mangled link can send anything (`per_page=abc`, `sort[]=x`), and Livewire 3
+ * fails on a value that doesn't fit a typed property. They are normalised
+ * to the types their `@var` tags give before anything reads them.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -152,22 +159,28 @@ class Index extends Component
     /**
      * The sort key.
      *
+     * Untyped because the query string can hold anything (`sort[]=x`);
+     * {@see self::mount()} and the `updated*()` hooks turn it into a string.
+     *
      * @since 1.0.0
      *
-     * @var string
+     * @var mixed
      */
     #[Url( history: true )]
-    public string $sort = '';
+    public mixed $sort = '';
 
     /**
      * Products per page.
      *
+     * Untyped because the query string can hold anything (`per_page=abc`);
+     * {@see self::mount()} and the `updated*()` hooks turn it into an int.
+     *
      * @since 1.0.0
      *
-     * @var int
+     * @var mixed
      */
     #[Url( as: 'per_page', history: true )]
-    public int $perPage = 0;
+    public mixed $perPage = 0;
 
     /**
      * Show the filter sidebar and drawer.
@@ -187,7 +200,7 @@ class Index extends Component
      * @var string
      */
     #[Url( as: 'category', history: true )]
-    public string $categoryFilter = '';
+    public mixed $categoryFilter = '';
 
     /**
      * The chosen tag's slug.
@@ -197,7 +210,7 @@ class Index extends Component
      * @var string
      */
     #[Url( as: 'tag', history: true )]
-    public string $tagFilter = '';
+    public mixed $tagFilter = '';
 
     /**
      * The lowest price, in minor units of the shopper's currency.
@@ -207,7 +220,7 @@ class Index extends Component
      * @var int|null
      */
     #[Url( as: 'price_min', history: true )]
-    public ?int $priceMin = null;
+    public mixed $priceMin = null;
 
     /**
      * The highest price, in minor units of the shopper's currency.
@@ -217,7 +230,7 @@ class Index extends Component
      * @var int|null
      */
     #[Url( as: 'price_max', history: true )]
-    public ?int $priceMax = null;
+    public mixed $priceMax = null;
 
     /**
      * The chosen attribute values, attribute key => values.
@@ -227,7 +240,7 @@ class Index extends Component
      * @var array<string, array<int, string>>
      */
     #[Url( as: 'attr', history: true )]
-    public array $attributeFilters = [];
+    public mixed $attributeFilters = [];
 
     /**
      * Only products that can be bought now.
@@ -237,7 +250,7 @@ class Index extends Component
      * @var bool
      */
     #[Url( as: 'in_stock', history: true )]
-    public bool $inStock = false;
+    public mixed $inStock = false;
 
     /**
      * Only products on sale.
@@ -247,7 +260,7 @@ class Index extends Component
      * @var bool
      */
     #[Url( as: 'on_sale', history: true )]
-    public bool $onSale = false;
+    public mixed $onSale = false;
 
     /**
      * The minimum average rating (0 for any).
@@ -257,7 +270,7 @@ class Index extends Component
      * @var int
      */
     #[Url( as: 'rating', history: true )]
-    public int $minRating = 0;
+    public mixed $minRating = 0;
 
     /**
      * The values of filter groups added through the `catalog.filters` hook,
@@ -268,7 +281,7 @@ class Index extends Component
      * @var array<string, array<int, string>|string>
      */
     #[Url( as: 'f', history: true )]
-    public array $extraFilters = [];
+    public mixed $extraFilters = [];
 
     /**
      * The filter group definitions after the hook, for this request.
@@ -299,8 +312,8 @@ class Index extends Component
     public function mount(): void
     {
         $this->ids     = array_values( array_unique( array_filter( array_map( 'intval', $this->ids ), static fn ( int $id ): bool => $id > 0 ) ) );
-        $this->sort    = $this->validSort( $this->sort );
-        $this->perPage = $this->validPerPage( $this->perPage );
+        $this->sort    = $this->validSort( is_string( $this->sort ) ? $this->sort : '' );
+        $this->perPage = $this->validPerPage( self::queryInt( $this->perPage ) ?? 0 );
 
         $this->sanitizeFilters();
     }
@@ -389,7 +402,7 @@ class Index extends Component
      */
     public function updatedSort(): void
     {
-        $this->sort = $this->validSort( $this->sort );
+        $this->sort = $this->validSort( is_string( $this->sort ) ? $this->sort : '' );
         $this->resetPage();
     }
 
@@ -402,7 +415,7 @@ class Index extends Component
      */
     public function updatedPerPage(): void
     {
-        $this->perPage = $this->validPerPage( $this->perPage );
+        $this->perPage = $this->validPerPage( self::queryInt( $this->perPage ) ?? 0 );
         $this->resetPage();
     }
 
@@ -492,7 +505,8 @@ class Index extends Component
     }
 
     /**
-     * The current page of products.
+     * The current page of products; a page number past the last page
+     * moves to the last page.
      *
      * @since 1.0.0
      *
@@ -500,11 +514,23 @@ class Index extends Component
      */
     protected function products(): LengthAwarePaginator
     {
-        return $this->catalogQuery()
+        $page     = fn (): LengthAwarePaginator => $this->catalogQuery()
             ->sort( $this->sort )
             ->builder()
             ->with( ProductCard::relations() )
             ->paginate( $this->perPage );
+        $products = $page();
+
+        // A page past the end (a stale or made-up link) shows the last one.
+        if ( $products->currentPage() > $products->lastPage() ) {
+            $this->setPage( $products->lastPage() );
+
+            $products = $page();
+        }
+
+        ProductImages::preloadCards( $products->items() );
+
+        return $products;
     }
 
     /**
@@ -770,6 +796,8 @@ class Index extends Component
      */
     protected function sanitizeFilters(): void
     {
+        $this->normalizeFilterTypes();
+
         $definitions = $this->filterDefinitions();
 
         if ( '' !== $this->categoryFilter ) {
@@ -809,7 +837,7 @@ class Index extends Component
             }
         }
 
-        $this->attributeFilters = $attributes;
+        $this->attributeFilters = $this->knownAttributeValues( $attributes );
         $this->minRating        = $this->minRating >= 1 && $this->minRating <= 4 ? $this->minRating : 0;
 
         $extra = [];
@@ -837,6 +865,115 @@ class Index extends Component
         }
 
         $this->extraFilters = $extra;
+    }
+
+    /**
+     * Keeps only the attribute values the scope's products have, so made-up
+     * values (`attr[size][]=nope`) neither filter nor create cache entries.
+     * Keeps them all when the scope's values can't be read.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, array<int, string>>  $attributes  Chosen values per attribute key.
+     *
+     * @return array<string, array<int, string>>
+     */
+    protected function knownAttributeValues( array $attributes ): array
+    {
+        if ( [] === $attributes ) {
+            return [];
+        }
+
+        try {
+            $universe = $this->attributeUniverse();
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $attributes;
+        }
+
+        if ( null === $universe ) {
+            return $attributes;
+        }
+
+        $known = [];
+
+        foreach ( $attributes as $key => $values ) {
+            $values = array_values( array_intersect( $values, array_map( static fn ( array $row ): string => (string) $row['value'], (array) ( $universe[ $key ] ?? [] ) ) ) );
+
+            if ( [] !== $values ) {
+                $known[ $key ] = $values;
+            }
+        }
+
+        return $known;
+    }
+
+    /**
+     * The attribute values the scope's products have (the scope's facet),
+     * or null when they can't be known.
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array<int, array{value: string, label: string, count: int}>>|null
+     */
+    protected function attributeUniverse(): ?array
+    {
+        return (array) ( $this->facets( [ '*' ] )['attributes'] ?? [] );
+    }
+
+    /**
+     * Gives each filter property the type its `@var` tag declares,
+     * whatever the query string or the browser sent: a non-string slug
+     * becomes empty, a non-numeric price null, a non-array filter map
+     * empty, and an unknown toggle value off.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function normalizeFilterTypes(): void
+    {
+        $this->categoryFilter   = is_string( $this->categoryFilter ) ? $this->categoryFilter : '';
+        $this->tagFilter        = is_string( $this->tagFilter ) ? $this->tagFilter : '';
+        $this->priceMin         = self::queryInt( $this->priceMin );
+        $this->priceMax         = self::queryInt( $this->priceMax );
+        $this->attributeFilters = is_array( $this->attributeFilters ) ? $this->attributeFilters : [];
+        $this->inStock          = self::queryBool( $this->inStock );
+        $this->onSale           = self::queryBool( $this->onSale );
+        $this->minRating        = self::queryInt( $this->minRating ) ?? 0;
+        $this->extraFilters     = is_array( $this->extraFilters ) ? $this->extraFilters : [];
+    }
+
+    /**
+     * A query-string value as an int, or null when it isn't a whole number.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return int|null
+     */
+    protected static function queryInt( mixed $value ): ?int
+    {
+        $int = is_int( $value ) || is_string( $value ) ? filter_var( $value, FILTER_VALIDATE_INT ) : false;
+
+        return false === $int ? null : $int;
+    }
+
+    /**
+     * A query-string value as a toggle: on for `true`, `1`, `'1'`, `'true'`,
+     * or `'on'`; off for anything else.
+     *
+     * @since 1.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return bool
+     */
+    protected static function queryBool( mixed $value ): bool
+    {
+        return in_array( $value, [ true, 1, '1', 'true', 'on' ], true );
     }
 
     /**
@@ -893,10 +1030,17 @@ class Index extends Component
      */
     protected function facets( array $except = [] ): array
     {
-        $key = implode( '|', $except );
+        $key   = implode( '|', $except );
+        $scope = $this->facetScope();
+
+        // The scope's own facets don't depend on the shopper's filters, so
+        // every filter set shares one entry.
+        if ( in_array( '*', $except, true ) ) {
+            unset( $scope['filters'] );
+        }
 
         return $this->facetCache[ $key ] ??= StorefrontCache::remember(
-            StorefrontCache::key( 'facets', [ $this->facetScope(), $except ] ),
+            StorefrontCache::key( 'facets', [ $scope, $except ] ),
             fn (): array => $this->catalogQuery( $except )->facets(),
         );
     }
@@ -1029,14 +1173,10 @@ class Index extends Component
         }
 
         $options = [];
+        $totals  = $paths->subtreeTotals( $counts );
 
         foreach ( $nodes as $node ) {
-            $count = 0;
-
-            foreach ( [ $node, ...$paths->descendants( $node['id'] ) ] as $member ) {
-                $count += (int) ( $counts[ $member['id'] ] ?? 0 );
-            }
-
+            $count     = $totals[ $node['id'] ] ?? 0;
             $selected  = $node['slug'] === $this->categoryFilter;
             $options[] = [
                 'value'    => $node['slug'],
@@ -1104,8 +1244,8 @@ class Index extends Component
             return null;
         }
 
-        // Whole currency units for 2-decimal currencies.
-        $step = 100;
+        $currency = (string) ( $price['currency'] ?? $this->currency() );
+        $step     = self::priceStep( $currency );
 
         return [
             'key'      => 'price',
@@ -1114,10 +1254,29 @@ class Index extends Component
             'min'      => intdiv( (int) $min, $step ) * $step,
             'max'      => (int) ( ceil( (int) $max / $step ) * $step ),
             'step'     => $step,
-            'currency' => (string) ( $price['currency'] ?? $this->currency() ),
+            'currency' => $currency,
             'from'     => $this->priceMin,
             'to'       => $this->priceMax,
         ];
+    }
+
+    /**
+     * The price slider's step: one whole unit of the currency, in minor
+     * units (100 for USD, 1 for JPY, 1000 for KWD).
+     *
+     * @since 1.0.0
+     *
+     * @param  string  $currency  ISO 4217 code.
+     *
+     * @return int
+     */
+    protected static function priceStep( string $currency ): int
+    {
+        try {
+            return 10 ** ( new ISOCurrencies() )->subunitFor( new Currency( strtoupper( $currency ) ) );
+        } catch ( Throwable ) {
+            return 100;
+        }
     }
 
     /**
@@ -1140,25 +1299,12 @@ class Index extends Component
             return [];
         }
 
-        $attributes = ( new ProductAttribute() )->getTable();
-        $values     = ( new ProductAttributeValue() )->getTable();
-        $labels     = [];
-        $swatches   = [];
+        sort( $keys );
 
-        foreach ( DB::table( $attributes )->whereIn( "{$attributes}.key", $keys )->groupBy( "{$attributes}.key" )->selectRaw( "{$attributes}.key as attribute_key, MIN({$attributes}.label) as label" )->get() as $row ) {
-            $labels[ (string) $row->attribute_key ] = (string) $row->label;
-        }
-
-        DB::table( $values )
-            ->join( $attributes, "{$attributes}.id", '=', "{$values}.product_attribute_id" )
-            ->whereIn( "{$attributes}.key", $keys )
-            ->whereNotNull( "{$values}.swatch" )
-            ->groupBy( "{$attributes}.key", "{$values}.value" )
-            ->selectRaw( "{$attributes}.key as attribute_key, {$values}.value as value, MIN({$values}.swatch) as swatch" )
-            ->get()
-            ->each( static function ( object $row ) use ( &$swatches ): void {
-                $swatches[ (string) $row->attribute_key ][ (string) $row->value ] = (string) $row->swatch;
-            } );
+        [ $labels, $swatches ] = StorefrontCache::remember(
+            StorefrontCache::key( 'attribute-labels', $keys ),
+            static fn (): array => self::attributeLabels( $keys ),
+        );
 
         $groups = [];
 
@@ -1195,6 +1341,51 @@ class Index extends Component
         }
 
         return $groups;
+    }
+
+    /**
+     * Each attribute's label and its values' swatches, for the attribute
+     * keys given. Identifiers in the raw SQL go through the grammar, so a
+     * table prefix applies.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, string>  $keys  Attribute keys.
+     *
+     * @return array{0: array<string, string>, 1: array<string, array<string, string>>}
+     */
+    protected static function attributeLabels( array $keys ): array
+    {
+        $attribute  = new ProductAttribute();
+        $attributes = $attribute->getTable();
+        $values     = ( new ProductAttributeValue() )->getTable();
+        $grammar    = $attribute->getConnection()->getQueryGrammar();
+        $key        = $grammar->wrap( "{$attributes}.key" );
+        $labels     = [];
+        $swatches   = [];
+
+        $rows = ProductAttribute::query()->toBase()
+            ->whereIn( "{$attributes}.key", $keys )
+            ->groupBy( "{$attributes}.key" )
+            ->selectRaw( "{$key} as attribute_key, MIN({$grammar->wrap( "{$attributes}.label" )}) as label" )
+            ->get();
+
+        foreach ( $rows as $row ) {
+            $labels[ (string) $row->attribute_key ] = (string) $row->label;
+        }
+
+        ProductAttribute::query()->toBase()
+            ->join( $values, "{$attributes}.id", '=', "{$values}.product_attribute_id" )
+            ->whereIn( "{$attributes}.key", $keys )
+            ->whereNotNull( "{$values}.swatch" )
+            ->groupBy( "{$attributes}.key", "{$values}.value" )
+            ->selectRaw( "{$key} as attribute_key, {$grammar->wrap( "{$values}.value" )} as value, MIN({$grammar->wrap( "{$values}.swatch" )}) as swatch" )
+            ->get()
+            ->each( static function ( object $row ) use ( &$swatches ): void {
+                $swatches[ (string) $row->attribute_key ][ (string) $row->value ] = (string) $row->swatch;
+            } );
+
+        return [ $labels, $swatches ];
     }
 
     /**
@@ -1241,8 +1432,9 @@ class Index extends Component
      */
     protected function ratingGroup( array $definition ): array
     {
-        $column = ( new Product() )->qualifyColumn( 'avg_rating' );
-        $row    = $this->catalogQuery( [ 'rating' ] )->builder( false )->toBase()
+        $query  = $this->catalogQuery( [ 'rating' ] )->builder( false )->toBase();
+        $column = $query->getGrammar()->wrap( ( new Product() )->qualifyColumn( 'avg_rating' ) );
+        $row    = $query
             ->selectRaw( "SUM(CASE WHEN {$column} >= 4 THEN 1 ELSE 0 END) as r4, SUM(CASE WHEN {$column} >= 3 THEN 1 ELSE 0 END) as r3, SUM(CASE WHEN {$column} >= 2 THEN 1 ELSE 0 END) as r2, SUM(CASE WHEN {$column} >= 1 THEN 1 ELSE 0 END) as r1" )
             ->first();
 

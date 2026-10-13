@@ -47,7 +47,9 @@ it( 'asks for at least one quantity', function (): void {
     Livewire::test( GroupedForm::class, [ 'product' => $this->group ] )
         ->call( 'addToCart' )
         ->assertHasErrors( 'quantities' )
-        ->assertSee( 'Choose a quantity for at least one product.' );
+        ->assertSee( 'Choose a quantity for at least one product.' )
+        ->assertSee( 'Not added to your cart: Choose a quantity for at least one product.' )
+        ->assertSeeHtml( 'aria-describedby="ec-product-' . $this->group->id . '-quantities-error"' );
 } );
 
 it( 'rejects a bad quantity', function (): void {
@@ -65,7 +67,10 @@ it( 'shows the engine\'s reason next to the product it refused and adds the rest
         ->set( "quantities.{$this->cupRow->id}", 1 )
         ->call( 'addToCart' )
         ->assertHasErrors( "quantities.{$this->potRow->id}" )
-        ->assertDispatched( 'ecommerce-cart-updated', count: 1 );
+        ->assertDispatched( 'ecommerce-cart-updated', count: 1 )
+        // The refused quantity stays beside its error; the added one is cleared.
+        ->assertSet( "quantities.{$this->potRow->id}", 5 )
+        ->assertSet( "quantities.{$this->cupRow->id}", null );
 
     expect( Cart::query()->sole()->items()->sole()->product_id )->toBe( $this->cup->id );
 } );

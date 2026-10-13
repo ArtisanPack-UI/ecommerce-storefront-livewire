@@ -6,12 +6,19 @@ use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
+use ArtisanPackUI\Ecommerce\Models\ProductPrice;
+use ArtisanPackUI\Ecommerce\Services\CustomerService;
+use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
+use ArtisanPackUI\Ecommerce\Support\GuestCartCookie;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\SimpleForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\VariableForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Show;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 afterEach( function (): void {
@@ -127,6 +134,41 @@ it( 'follows the variant the purchase form matches', function (): void {
         ->assertSet( 'variantId', null );
 } );
 
+it( 'does not re-query the gallery or attributes when the variant changes', function (): void {
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2000, 'stock' => 4 ],
+        'blue/l' => [ 'price' => 2600, 'stock' => 4 ],
+    ] );
+
+    ProductImage::factory()->create( [ 'product_id' => $made['product']->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/shirt.jpg', 'alt_text' => 'Shirt front', 'position' => 0 ] );
+    $made['product']->forceFill( [ 'description' => '<p>Woven in Portugal.</p>' ] )->save();
+
+    $component = Livewire::test( Show::class, [ 'product' => $made['product'] ] );
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $component->call( 'variantSelected', $made['product']->id, $made['variants']['blue/l']->id );
+
+    $tables = collect( DB::getQueryLog() )->pluck( 'query' )->implode( "\n" );
+
+    DB::disableQueryLog();
+
+    expect( $tables )->not->toContain( 'product_images' )
+        ->not->toContain( 'product_attributes' );
+
+    $component->assertSee( 'SKU: SHIRT-BLUE-L' )
+        ->assertSeeHtml( 'src="https://cdn.example.test/shirt.jpg"' )
+        ->assertSeeHtml( 'alt="Shirt front"' )
+        ->assertSee( 'Woven in Portugal.' )
+        ->assertSee( 'Colour' );
+} );
+
+it( 'keeps the precomputed content out of the browser\'s reach', function (): void {
+    expect( fn () => Livewire::test( Show::class, [ 'product' => makeProduct() ] )->set( 'content.description', '<script>alert(1)</script>' ) )
+        ->toThrow( CannotUpdateLockedPropertyException::class );
+} );
+
 it( 'opens on the variant from the query string', function (): void {
     $made = makeVariableProduct( [ 'red/m' => [ 'price' => 2000 ], 'blue/l' => [ 'price' => 2600 ] ] );
 
@@ -134,6 +176,34 @@ it( 'opens on the variant from the query string', function (): void {
         ->test( Show::class, [ 'product' => $made['product'] ] )
         ->assertSet( 'variantId', $made['variants']['blue/l']->id )
         ->assertSee( 'SKU: SHIRT-BLUE-L' );
+} );
+
+it( 'shows prices in the currency of the shopper\'s open cart', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    $user    = makeUser();
+    $product = makeProduct( 2000, [ 'name' => 'Linen shirt' ] );
+    ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'EUR', 'price_amount' => 1800, 'compare_at_amount' => null ] );
+
+    $customer = app( CustomerService::class )->customerForUser( $user, true );
+    app( StorefrontCartService::class )->create( 'EUR', $customer->email, $customer );
+
+    $this->actingAs( $user );
+
+    Livewire::test( Show::class, [ 'product' => $product ] )
+        ->assertSee( '€18.00' )
+        ->assertDontSee( '$20.00' );
+} );
+
+it( 'ignores an open cart in a currency the store no longer sells', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    $cart = app( StorefrontCartService::class )->create( 'EUR' );
+    app( 'request' )->cookies->set( GuestCartCookie::name(), $cart->token );
+
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD' ] );
+
+    expect( app( StorefrontCart::class )->currency() )->toBe( 'USD' );
 } );
 
 it( 'renders extra sections from the filter, in position order', function (): void {

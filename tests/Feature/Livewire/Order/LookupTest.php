@@ -73,7 +73,13 @@ it( 'opens a short-lived signed page for the order when the email and number mat
 it( 'requires a valid email and the order number', function (): void {
     Livewire::test( Lookup::class )
         ->call( 'find' )
-        ->assertHasErrors( [ 'email' => 'Enter the email address you used for the order.', 'orderNumber' => 'Enter the order number.' ] );
+        ->assertHasErrors( [ 'email' => 'Enter the email address you used for the order.', 'orderNumber' => 'Enter the order number.' ] )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-email-error"' )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-orderNumber-error"' )
+        ->assertSeeHtml( 'data-error-summary' )
+        ->assertSeeHtml( 'wire:key="ec-order-lookup-errors-1"' )
+        ->assertSeeHtml( 'data-error-summary-link="email"' )
+        ->assertSee( 'There are 2 problems to fix:' );
 
     Livewire::test( Lookup::class )
         ->set( 'email', 'not-an-email' )

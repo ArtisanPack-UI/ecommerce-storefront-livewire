@@ -119,3 +119,100 @@ it( 'shows where focus is on a product card link', function (): void {
         ->assertScript( 'document.activeElement?.matches( ' . json_encode( $link . ':focus-visible' ) . ' )' )
         ->assertScript( 'getComputedStyle( document.activeElement ).outlineStyle !== "none"' );
 } );
+
+it( 'announces why an item could not be added', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Refused mug', 'slug' => 'refused-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->type( '[data-quantity] input', '0' )
+        ->keys( '[data-add-to-cart]', 'Enter' )
+        ->assertScript( 'document.querySelector( "[data-cart-error-announcement]" )?.getAttribute( "role" )', 'alert' )
+        ->assertSeeIn( '[data-cart-error-announcement]', 'Not added to your cart: Add at least 1.' )
+        ->assertScript( 'document.getElementById( document.querySelector( "[data-quantity] input" ).getAttribute( "aria-describedby" ) )?.textContent.trim()', 'Add at least 1.' );
+} );
+
+it( 'focuses the error summary after an empty review submit', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Reviewed mug', 'slug' => 'reviewed-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->click( '[data-review-open]' )
+        ->click( '[data-review-submit]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-error-summary" )' )
+        ->assertSeeIn( '[data-error-summary]', 'Choose a rating.' )
+        ->click( '[data-error-summary-link="rating"]' )
+        ->assertScript( focusIsIn( '[data-field-key="rating"]' ) );
+} );
+
+it( 'names the quick-add button starting with its visible text', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Quick mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
+        ->assertPresent( '[data-quick-add="' . $product->id . '"]' )
+        ->assertScript( 'document.querySelector( \'[data-quick-add="' . $product->id . '"]\' ).textContent.replace( /\\s+/g, " " ).trim()', 'Add to cart: Quick mug' )
+        ->assertPresent( 'internal:role=button[name=/^Add to cart\\s*:\\s*Quick mug$/]' );
+} );
+
+it( 'keeps focus in the drawer when a line is removed, then on the restored line after undo', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Removable mug', 'slug' => 'removable-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->keys( '[data-add-to-cart]', 'Enter' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Removable mug' )
+        ->keys( '#ecommerce-cart-drawer-panel [data-cart-line-remove]', 'Enter' )
+        ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-undo-button]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-undo-button" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' )
+        ->keys( '#ecommerce-cart-drawer-panel [data-cart-undo-button]', 'Enter' )
+        ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-line-remove]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-line-remove" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' );
+} );
+
+it( 'moves focus into the review form and back to its toggle on cancel', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Toggle mug', 'slug' => 'toggle-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'false' )
+        ->keys( '[data-review-open]', 'Enter' )
+        ->assertScript( 'document.activeElement?.id', 'ec-review-form-' . $product->id . '-heading' )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'true' )
+        ->keys( '[data-review-cancel]', 'Enter' )
+        ->assertNotPresent( '[data-review-form]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-review-open" )' )
+        ->assertAttribute( '[data-review-open]', 'aria-expanded', 'false' );
+} );
+
+it( 'moves focus to "Add an address" after deleting one', function (): void {
+    [ , $customer ] = shopper();
+
+    $customer->addresses()->create( [ 'first_name' => 'Ada', 'last_name' => 'Lovelace', 'address1' => '1 Main Street', 'city' => 'Springfield', 'region_code' => 'IL', 'postal_code' => '62701', 'country_code' => 'US' ] );
+
+    visit( route( 'artisanpack.ecommerce.account.addresses' ) )
+        ->click( '[data-account-address-delete]' )
+        ->click( '[data-account-address-delete-confirm]' )
+        ->assertNotPresent( '[data-account-address]' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-account-address-add" )' );
+} );
+
+it( 'names the zoom button from the image and announces an image change', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Gallery mug', 'slug' => 'gallery-mug' ] );
+
+    ArtisanPackUI\Ecommerce\Models\ProductImage::factory()->create( [ 'product_id' => $product->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/front.jpg', 'alt_text' => 'Mug from the front', 'position' => 0 ] );
+    ArtisanPackUI\Ecommerce\Models\ProductImage::factory()->create( [ 'product_id' => $product->id, 'media_id' => null, 'image_url' => 'https://cdn.example.test/side.jpg', 'alt_text' => 'Mug from the side', 'position' => 1 ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->assertAttribute( '[data-gallery-zoom]', 'aria-label', 'Zoom image: Mug from the front' )
+        ->keys( '[data-gallery-thumbnail="1"]', 'Enter' )
+        ->assertSeeIn( '[data-gallery-announcement]', 'Image 2 of 2: Mug from the side' )
+        ->assertAttribute( '[data-gallery-zoom]', 'aria-label', 'Zoom image: Mug from the side' );
+} );
+
+it( 'shows where focus is in the rating input and the chosen rating in words', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Rated mug', 'slug' => 'rated-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
+        ->click( '[data-review-open]' )
+        ->keys( '#ec-review-form-' . $product->id . '-heading', 'Tab' )
+        ->assertScript( 'document.activeElement?.closest( "[data-rating-input]" ) !== null' )
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( ".rating" ) ).outlineStyle !== "none"' )
+        ->keys( '#ec-review-form-' . $product->id . '-rating-1', 'ArrowRight' )
+        ->assertSeeIn( '[data-rating-input-value]', '2 out of 5' );
+} );

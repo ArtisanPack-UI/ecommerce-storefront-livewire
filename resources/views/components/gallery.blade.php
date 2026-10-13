@@ -20,9 +20,16 @@
             active: {{ $active }},
             zoomed: false,
             origin: '50% 50%',
+            announcement: '',
             show( index ) {
-                this.active = ( index + this.images.length ) % this.images.length;
-                this.zoomed = false;
+                this.active       = ( index + this.images.length ) % this.images.length;
+                this.zoomed       = false;
+                this.announcement = @js( __( 'Image :number of :total: :alt' ) ).replace( ':number', this.active + 1 ).replace( ':total', this.images.length ).replace( ':alt', this.images[ this.active ].alt );
+            },
+            zoomLabel() {
+                const alt = this.images[ this.active ].alt;
+
+                return alt ? @js( __( 'Zoom image: :alt' ) ).replace( ':alt', alt ) : @js( __( 'Zoom image' ) );
             },
             showUrl( url ) {
                 const index = this.images.findIndex( ( image ) => image.url === url || image.full === url );
@@ -55,7 +62,9 @@
                     x-on:click="zoomed = ! zoomed"
                     x-on:mousemove="zoomed && pan( $event )"
                     x-bind:aria-pressed="zoomed.toString()"
-                    aria-label="{{ __( 'Zoom image' ) }}"
+                    {{-- Named from the image it shows, since its own name hides the image's alt text. --}}
+                    aria-label="{{ '' !== (string) ( $items[ $active ]['alt'] ?? '' ) ? __( 'Zoom image: :alt', [ 'alt' => $items[ $active ]['alt'] ] ) : __( 'Zoom image' ) }}"
+                    x-bind:aria-label="zoomLabel()"
                     data-gallery-zoom
                 >
                     @foreach ( $items as $index => $item )
@@ -104,6 +113,9 @@
             />
         </div>
 
+        {{-- Announces the image a thumbnail, arrow key, or variant change brings up. --}}
+        <p class="sr-only" aria-live="polite" aria-atomic="true" x-text="announcement" data-gallery-announcement></p>
+
         @if ( count( $items ) > 1 && 'none' !== $thumbnails )
             <ul role="list" @class( [ 'flex flex-wrap gap-2', 'sm:w-16 sm:shrink-0 sm:flex-col sm:flex-nowrap' => $ecommerceBeside ] ) aria-label="{{ __( 'Thumbnails' ) }}">
                 @foreach ( $items as $index => $item )
@@ -128,8 +140,8 @@
             x-ref="lightbox"
             class="modal"
             aria-label="{{ __( ':name images', [ 'name' => $name ] ) }}"
-            x-on:keydown.arrow-right.prevent="show( active + 1 )"
-            x-on:keydown.arrow-left.prevent="show( active - 1 )"
+            x-on:keydown.arrow-right.prevent="show( active + ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
+            x-on:keydown.arrow-left.prevent="show( active - ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
             data-gallery-lightbox
         >
             <div class="modal-box flex max-w-5xl flex-col gap-3">
@@ -147,8 +159,8 @@
 
                 @if ( count( $items ) > 1 )
                     <div class="flex justify-between gap-2">
-                        <x-artisanpack-button icon="o-chevron-left" :label="__( 'Previous' )" class="btn-sm" x-on:click="show( active - 1 )" />
-                        <x-artisanpack-button icon-right="o-chevron-right" :label="__( 'Next' )" class="btn-sm" x-on:click="show( active + 1 )" />
+                        <x-artisanpack-button icon="o-chevron-left" :label="__( 'Previous' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active - 1 )" />
+                        <x-artisanpack-button icon-right="o-chevron-right" :label="__( 'Next' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active + 1 )" />
                     </div>
                 @endif
             </div>

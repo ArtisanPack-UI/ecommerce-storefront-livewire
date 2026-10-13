@@ -85,7 +85,7 @@ class OptionsForm extends PurchaseForm
      */
     public function addToCart(): void
     {
-        $this->announcement = '';
+        $this->startAdding();
 
         $fields     = $this->fields();
         $separately = array_values( array_filter( $fields, static fn ( array $field ): bool => (bool) ( $field['meta']['add_separately'] ?? false ) ) );
@@ -131,8 +131,11 @@ class OptionsForm extends PurchaseForm
         }
 
         if ( [] !== $this->addLines( $lines ) ) {
+            // Keep the quantities the engine refused, next to their errors.
             foreach ( $separately as $field ) {
-                data_set( $this->options, $field['name'], 0 );
+                if ( ! $this->getErrorBag()->has( 'options.' . $field['name'] ) ) {
+                    data_set( $this->options, $field['name'], 0 );
+                }
             }
         }
     }

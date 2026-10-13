@@ -18,6 +18,7 @@ use ArtisanPackUI\Ecommerce\Models\CustomerNotificationPreference;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\NotificationPreferenceService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -53,6 +54,7 @@ use Throwable;
 class Profile extends Component
 {
     use SendsToasts;
+    use SummarizesErrors;
 
     /**
      * The profile fields: `first_name`, `last_name`, `phone`, and
@@ -111,6 +113,7 @@ class Profile extends Component
      */
     public function saveProfile(): void
     {
+        $this->newErrorSummary();
         $this->resetErrorBag();
 
         $validated = Validator::make( [ 'profile' => $this->profile ], [

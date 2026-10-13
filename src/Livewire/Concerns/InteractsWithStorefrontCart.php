@@ -21,8 +21,10 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
  *
  * After any change, call {@see self::cartChanged()}: it dispatches
  * `ecommerce-cart-updated` (a browser and Livewire event) with the new item
- * count, which the header cart button, drawer, and any host listener pick
- * up (spec §5.1).
+ * count and `source` (the class of the component that made the change),
+ * which the header cart button, drawer, and any host listener pick up
+ * (spec §5.1). A listener that already followed its own change can ignore
+ * the event when `source` is its own class.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -64,7 +66,7 @@ trait InteractsWithStorefrontCart
             $carts->refresh();
         }
 
-        $this->dispatch( 'ecommerce-cart-updated', count: $carts->count() );
+        $this->dispatch( 'ecommerce-cart-updated', count: $carts->count(), source: static::class );
     }
 
     /**

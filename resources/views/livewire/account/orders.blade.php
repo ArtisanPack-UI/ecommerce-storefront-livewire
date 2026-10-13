@@ -27,7 +27,7 @@
         @else
             <x-artisanpack-ec-empty-state icon="o-shopping-bag" :title="__( 'No orders yet' )" :description="__( 'Orders you place will appear here.' )" data-account-orders-empty="none">
                 @if ( null !== $catalogUrl )
-                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" color="primary" />
+                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
                 @endif
             </x-artisanpack-ec-empty-state>
         @endif

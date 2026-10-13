@@ -1,15 +1,16 @@
 {{--
-    Checkout step: review. What the shopper is buying and where it goes,
-    an optional note, the terms checkbox (when a terms page is set), the
-    optional account for guests, and "Place order". The button carries a
-    one-time action token, so a double click places one order.
+    Checkout step: review, before payment. What the shopper is buying and
+    where it goes, an optional note, the terms checkbox (when a terms page
+    is set), the optional account for guests, and "Continue to payment".
+    Confirming the payment on the next step places the order with what was
+    reviewed here.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<form wire:submit="placeOrder( '{{ $placeOrderToken }}' )" novalidate class="flex flex-col gap-6" data-checkout-review-form>
+<form wire:submit="saveReview" novalidate class="flex flex-col gap-6" data-checkout-review-form>
     <dl class="grid gap-4 text-sm sm:grid-cols-2" data-checkout-review>
         <div>
             <dt class="font-semibold">{{ __( 'Contact' ) }}</dt>
@@ -40,11 +41,6 @@
                 <dd>{{ $chosenRate['label'] ?? '' }}</dd>
             </div>
         @endif
-
-        <div>
-            <dt class="font-semibold">{{ __( 'Payment' ) }}</dt>
-            <dd>{{ $paymentRequired ? ( $gatewayLabel ?? '' ) : __( 'No payment needed' ) }}</dd>
-        </div>
     </dl>
 
     <section class="flex flex-col gap-3" aria-labelledby="ec-checkout-review-items" data-checkout-review-lines>
@@ -75,7 +71,9 @@
     </section>
 
     <div data-field="orderNote">
-        <x-artisanpack-textarea
+        <x-artisanpack-ec-field
+            control="textarea"
+            id="ec-checkout-order-note"
             :label="__( 'Order note (optional)' )"
             :hint="__( 'Anything the store should know about your order. Up to :max characters.', [ 'max' => $noteMaxLength ] )"
             rows="3"
@@ -91,7 +89,7 @@
 
             @if ( $createAccount )
                 <div data-field="password">
-                    <x-artisanpack-password :label="__( 'Password' )" autocomplete="new-password" wire:model="password" data-checkout-password />
+                    <x-artisanpack-ec-field control="password" id="ec-checkout-password" :label="__( 'Password' )" autocomplete="new-password" wire:model="password" data-checkout-password />
                 </div>
             @endif
         </div>
@@ -99,7 +97,7 @@
 
     @if ( null !== $termsUrl )
         <div class="flex flex-col gap-1" data-field="acceptTerms">
-            <x-artisanpack-checkbox :label="__( 'I accept the terms and conditions' )" wire:model="acceptTerms" data-checkout-terms />
+            <x-artisanpack-ec-field control="checkbox" id="ec-checkout-terms" :label="__( 'I accept the terms and conditions' )" wire:model="acceptTerms" data-checkout-terms />
             <a href="{{ $termsUrl }}" class="link text-sm" target="_blank" rel="noopener" data-checkout-terms-link>
                 {{ __( 'Read the terms and conditions' ) }}<span class="sr-only"> {{ __( '(opens in a new tab)' ) }}</span>
             </a>
@@ -109,13 +107,13 @@
     <div class="flex flex-col gap-2">
         <x-artisanpack-button
             type="submit"
-            :label="__( 'Place order' )"
+            :label="__( 'Continue to payment' )"
             color="primary"
             class="btn-lg w-full sm:w-auto"
-            spinner="placeOrder"
+            spinner="saveReview"
             wire:loading.attr="disabled"
-            wire:target="placeOrder"
-            data-checkout-place-order
+            wire:target="saveReview"
+            data-checkout-review-submit
         />
 
         @if ( null !== $totals && $paymentRequired )

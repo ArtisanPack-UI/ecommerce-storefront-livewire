@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Services\GuestOrderLookupService;
 use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,7 @@ class Lookup extends Component
 {
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
 
     /**
      * The email the order was placed with.
@@ -87,6 +89,7 @@ class Lookup extends Component
      */
     public function find(): void
     {
+        $this->newErrorSummary();
         $this->resetErrorBag();
         $this->failure = null;
 

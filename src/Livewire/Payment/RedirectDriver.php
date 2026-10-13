@@ -22,8 +22,8 @@ use Illuminate\Contracts\View\View;
  * Shows "Continue to {gateway}"; {@see self::confirm()} sends the shopper
  * to the session's `redirect_url`. The provider sends them back to
  * `/shop/checkout/return`, which checks the session with the gateway and
- * resumes the checkout at the next step (or back at payment, with the
- * reason, when the payment didn't go through).
+ * places the order (or goes back to payment, with the reason, when the
+ * payment didn't go through).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire

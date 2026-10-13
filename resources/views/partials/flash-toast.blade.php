@@ -1,16 +1,20 @@
 {{--
     Shows a toast left for the next page by an action that reloaded it (see
     SendsToasts::flashToastSuccess()), once Livewire and Alpine are ready,
-    and removes it from the session.
+    and removes it from the session. The inline script carries the CSP
+    nonce Vite was given (`Vite::useCspNonce()`), if any.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-@php( $ecommerceFlashedToast = app()->bound( 'session' ) ? session()->pull( \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload::SESSION_KEY ) : null )
+@php
+    $ecommerceFlashedToast = app()->bound( 'session' ) ? session()->pull( \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload::SESSION_KEY ) : null;
+    $ecommerceCspNonce     = \Illuminate\Support\Facades\Vite::cspNonce();
+@endphp
 @if ( is_array( $ecommerceFlashedToast ) )
-    <script data-ecommerce-flash-toast>
+    <script @if ( null !== $ecommerceCspNonce && '' !== $ecommerceCspNonce ) nonce="{{ $ecommerceCspNonce }}" @endif data-ecommerce-flash-toast>
         document.addEventListener( 'livewire:initialized', () => {
             setTimeout( () => {
                 if ( typeof toast === 'function' ) {

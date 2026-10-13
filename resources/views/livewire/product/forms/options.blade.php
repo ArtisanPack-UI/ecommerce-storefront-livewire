@@ -43,11 +43,12 @@
                     @break
 
                 @case( 'textarea' )
-                    <x-artisanpack-textarea :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :required="$field['required']" :error-field="$ecommerceModel" />
+                    <x-artisanpack-ec-field control="textarea" :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :required="$field['required']" :error-field="$ecommerceModel" />
                     @break
 
                 @case( 'select' )
-                    <x-artisanpack-select
+                    <x-artisanpack-ec-field
+                        control="select"
                         :id="$field['id']"
                         :label="$field['label']"
                         :hint="$field['help']"
@@ -71,11 +72,11 @@
                     @break
 
                 @case( 'checkbox' )
-                    <x-artisanpack-checkbox :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :error-field="$ecommerceModel" />
+                    <x-artisanpack-ec-field control="checkbox" :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :error-field="$ecommerceModel" />
                     @break
 
                 @default
-                    <x-artisanpack-input
+                    <x-artisanpack-ec-field
                         :id="$field['id']"
                         :label="$field['label']"
                         :hint="$field['help']"
@@ -89,7 +90,7 @@
     @endforeach
 
     @error( 'options' )
-        <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
+        <p id="{{ $ecommerceFormId }}-options-error" class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
     @enderror
 
     @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [

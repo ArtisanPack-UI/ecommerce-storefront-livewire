@@ -20,6 +20,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithSto
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\View\View;
@@ -249,6 +250,8 @@ class ProductGrid extends Component
 
             return new Collection();
         }
+
+        ProductImages::preloadCards( $products );
 
         if ( 'hand_picked' !== $this->source ) {
             return $products;

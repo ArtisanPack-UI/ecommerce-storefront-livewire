@@ -34,11 +34,11 @@
 
         <div class="flex flex-wrap gap-2">
             @if ( null !== $accountUrl )
-                <x-artisanpack-button :label="__( 'View in your account' )" :link="$accountUrl" color="primary" class="btn-sm" data-order-account-link />
+                <x-artisanpack-button :label="__( 'View in your account' )" :link="$accountUrl" no-wire-navigate color="primary" class="btn-sm" data-order-account-link />
             @endif
 
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-sm" data-order-continue />
+                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-sm" data-order-continue />
             @endif
         </div>
     </div>
@@ -48,7 +48,7 @@
             @if ( null !== $registerUrl )
                 <x-artisanpack-alert icon="o-user-plus" class="alert-info alert-soft text-base-content!" :title="__( 'Create an account to track orders' )" :description="__( 'Use :email to see this order and your future orders in one place.', [ 'email' => $order->email ] )" data-order-hint="register">
                     <x-slot:actions>
-                        <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" class="btn-sm" />
+                        <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate class="btn-sm" />
                     </x-slot:actions>
                 </x-artisanpack-alert>
             @endif
@@ -56,7 +56,7 @@
             @if ( null !== $lookupUrl )
                 <x-artisanpack-alert icon="o-magnifying-glass" class="alert-soft text-base-content!" :title="__( 'Look up this order later' )" :description="__( 'Find it any time with your email and order number :number.', [ 'number' => $order->order_number ] )" data-order-hint="lookup">
                     <x-slot:actions>
-                        <x-artisanpack-button :label="__( 'Order lookup' )" :link="$lookupUrl" class="btn-sm" />
+                        <x-artisanpack-button :label="__( 'Order lookup' )" :link="$lookupUrl" no-wire-navigate class="btn-sm" />
                     </x-slot:actions>
                 </x-artisanpack-alert>
             @endif

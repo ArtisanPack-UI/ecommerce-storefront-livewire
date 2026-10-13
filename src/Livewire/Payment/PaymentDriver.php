@@ -15,6 +15,8 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
@@ -34,7 +36,10 @@ use Throwable;
  *   `options`, `gateway`). It only holds values the provider means to be
  *   public;
  * - `gateway` / `gatewayLabel` — the gateway's key and name;
- * - `reference` — the payment session reference on the cart.
+ * - `reference` — the payment session reference on the cart;
+ * - `token` — the one-time action token that places the order, handed
+ *   back with `payment-confirmed` (empty when the driver pays for an order
+ *   already placed).
  *
  * All are locked: the browser can't change them.
  *
@@ -43,8 +48,9 @@ use Throwable;
  * provider's client SDK reported. The driver then reports the outcome to
  * the checkout with a Livewire event:
  *
- * - `payment-confirmed` with `reference` — the provider confirmed the
- *   payment; the checkout moves on to the next step;
+ * - `payment-confirmed` with `reference` and `token` — the provider
+ *   confirmed the payment; the checkout checks it with the gateway and
+ *   places the order (payment is the last step);
  * - `payment-failed` with `message` — it didn't; the shopper stays on the
  *   payment step. Show the message in the driver (inline, in a live
  *   region): the checkout doesn't repeat it.
@@ -54,6 +60,9 @@ use Throwable;
  * to check a session with the gateway before reporting it confirmed. The
  * checkout checks the reference against the cart again, and the engine's
  * `finalize()` checks the session with the provider before capturing it.
+ * {@see self::session()} counts against the shopper's
+ * `ecommerce.cart.mutate` limit, so a looping script can't spend the
+ * store's provider API quota.
  *
  * **PCI.** Card data never enters the component's state or a Livewire
  * request: client code sends it straight to the provider (parent plan
@@ -66,6 +75,9 @@ use Throwable;
  */
 abstract class PaymentDriver extends Component
 {
+    use RateLimitsStorefront;
+    use SendsToasts;
+
     /**
      * The gateway's client config for the session.
      *
@@ -107,6 +119,17 @@ abstract class PaymentDriver extends Component
     public string $reference = '';
 
     /**
+     * The action token that places the order, from the checkout's payment
+     * step.
+     *
+     * @since 1.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $token = '';
+
+    /**
      * Starts (or completes) the payment confirmation and reports the
      * outcome with {@see self::confirmed()} or {@see self::failed()}.
      *
@@ -139,7 +162,7 @@ abstract class PaymentDriver extends Component
      */
     protected function confirmed(): void
     {
-        $this->dispatch( 'payment-confirmed', reference: $this->reference, gateway: $this->gateway );
+        $this->dispatch( 'payment-confirmed', reference: $this->reference, gateway: $this->gateway, token: $this->token );
     }
 
     /**
@@ -158,7 +181,8 @@ abstract class PaymentDriver extends Component
 
     /**
      * The session as the gateway sees it now, or null when it can't be
-     * loaded.
+     * loaded or the shopper is over the `ecommerce.cart.mutate` limit
+     * (they get a "slow down" toast).
      *
      * @since 1.0.0
      *
@@ -172,13 +196,15 @@ abstract class PaymentDriver extends Component
             return null;
         }
 
-        try {
-            return $gateway->retrievePaymentSession( $this->reference );
-        } catch ( Throwable $exception ) {
-            report( $exception );
+        return $this->rateLimited( 'ecommerce.cart.mutate', function () use ( $gateway ): ?PaymentSession {
+            try {
+                return $gateway->retrievePaymentSession( $this->reference );
+            } catch ( Throwable $exception ) {
+                report( $exception );
 
-            return null;
-        }
+                return null;
+            }
+        } );
     }
 
     /**

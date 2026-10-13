@@ -26,7 +26,10 @@ it( 'renders pages inside the standalone layout by default', function (): void {
         ->assertSee( 'data-header-action="cart"', false )
         ->assertSee( 'Find an order' )
         ->assertSee( 'window.toast', false )
-        ->assertSee( 'data-ecommerce-cart-merge-prompt', false );
+        ->assertSee( 'data-ecommerce-cart-merge-prompt', false )
+        ->assertSee( 'data-header-search-link', false )
+        ->assertSee( '<main', false )
+        ->assertDontSee( 'drawer lg:drawer-open', false );
 } );
 
 it( 'links a guest to the host\'s sign-in route and a signed-in shopper to their account', function (): void {
@@ -119,4 +122,21 @@ it( 'shows the cart count in the header', function (): void {
 it( 'ignores a search term that isn\'t a string', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q[]=lamp' )->assertOk()->assertSee( '&quot;q&quot;:&quot;&quot;', false );
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) . '?q=lamp' )->assertSee( '&quot;q&quot;:&quot;lamp&quot;', false );
+} );
+
+it( 'sets the text direction from the locale', function (): void {
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="ltr"', false );
+
+    app()->setLocale( 'ar' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( '<html lang="ar" dir="rtl">', false );
+
+    app()->setLocale( 'he_IL' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="rtl"', false );
+
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.storefront.rtl_locales', [ 'en' ] );
+    app()->setLocale( 'en' );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="rtl"', false );
 } );

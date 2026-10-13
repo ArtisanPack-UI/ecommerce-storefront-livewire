@@ -188,20 +188,27 @@ class HeaderSearch extends Component
     {
         $carts    = app( StorefrontCart::class );
         $currency = $carts->currency();
+        $customer = $carts->customer();
         $prices   = app( PriceDisplayResolver::class );
         $hasRoute = Route::has( 'artisanpack.ecommerce.storefront.product' );
 
         $result = app( SearchProviderRegistry::class )->active()->search( new SearchQuery( $this->q, [], 'relevance', 1, self::LIMIT, $currency, ProductCard::relations() ) );
 
-        return $result->items
-            ->filter( static fn ( mixed $product ): bool => $product instanceof Product )
-            ->take( self::LIMIT )
+        // A provider's index may still hold products whose type package is
+        // uninstalled; their pages 404.
+        $products = $result->items
+            ->filter( static fn ( mixed $product ): bool => $product instanceof Product && ! $product->typeIsMissing() )
+            ->take( self::LIMIT );
+
+        ProductImages::preloadCards( $products );
+
+        return $products
             ->map( static fn ( Product $product ): array => [
                 'id'    => (int) $product->id,
                 'name'  => (string) $product->name,
                 'url'   => $hasRoute ? route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) : null,
                 'image' => ProductImages::card( $product ),
-                'price' => $prices->for( $product, $currency ),
+                'price' => $prices->for( $product, $currency, null, $customer ),
             ] )
             ->values()
             ->all();

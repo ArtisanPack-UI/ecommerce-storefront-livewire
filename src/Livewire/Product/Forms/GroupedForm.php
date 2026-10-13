@@ -65,7 +65,7 @@ class GroupedForm extends PurchaseForm
      */
     public function addToCart(): void
     {
-        $this->announcement = '';
+        $this->startAdding();
         $children           = $this->children()->keyBy( 'id' );
 
         $this->validate(
@@ -102,7 +102,9 @@ class GroupedForm extends PurchaseForm
         }
 
         if ( [] !== $this->addLines( $lines ) ) {
-            $this->quantities = [];
+            // Keep the quantities the engine refused, next to their errors.
+            $errors           = $this->getErrorBag();
+            $this->quantities = array_filter( $this->quantities, static fn ( mixed $quantity, int|string $childId ): bool => $errors->has( 'quantities.' . $childId ), ARRAY_FILTER_USE_BOTH );
         }
     }
 

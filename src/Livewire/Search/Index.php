@@ -13,11 +13,16 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Search;
 
-use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
+use ArtisanPackUI\Ecommerce\Exceptions\RateLimitExceededException;
+use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\Ecommerce\RateLimiting\EcommerceRateLimiter;
 use ArtisanPackUI\Ecommerce\Registries\SearchProviderRegistry;
 use ArtisanPackUI\Ecommerce\Search\SearchQuery;
 use ArtisanPackUI\Ecommerce\Search\SearchResult;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index as CatalogIndex;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginatorContract;
 use Illuminate\Contracts\View\View;
@@ -41,6 +46,12 @@ use Throwable;
  * search instead); a term over 200 characters is a validation error. When
  * the provider fails, the page says search is unavailable rather than
  * erroring.
+ *
+ * Each search counts against the engine's `ecommerce.catalog.read` rate
+ * limit (as the header search and the REST API do); over it, the page
+ * asks the shopper to slow down. The filter counts are further searches
+ * (one per filter group), cached ({@see StorefrontCache}) by term and
+ * filters, and only run once the search itself was allowed.
  *
  * Filter groups added through `ap.ecommerceStorefrontLivewire.catalog.filters`
  * with an `apply` callback are left out here: a provider only understands
@@ -76,12 +87,15 @@ class Index extends CatalogIndex
     /**
      * The search term.
      *
+     * Untyped because the query string can hold anything (`q[]=x`);
+     * {@see self::mount()} and {@see self::updatedQ()} turn it into a string.
+     *
      * @since 1.0.0
      *
      * @var string
      */
     #[Url( as: 'q', history: true, except: '' )]
-    public string $q = '';
+    public mixed $q = '';
 
     /**
      * The search for this request (memoised; null before it runs).
@@ -102,6 +116,15 @@ class Index extends CatalogIndex
     protected bool $failed = false;
 
     /**
+     * Whether the rate limit stopped the search this request.
+     *
+     * @since 1.0.0
+     *
+     * @var bool
+     */
+    protected bool $throttled = false;
+
+    /**
      * Cleans the term from the query string, then sets up the catalog.
      *
      * @since 1.0.0
@@ -110,7 +133,7 @@ class Index extends CatalogIndex
      */
     public function mount(): void
     {
-        $this->q = self::normalizeTerm( $this->q );
+        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
 
         parent::mount();
         $this->checkTerm();
@@ -125,7 +148,7 @@ class Index extends CatalogIndex
      */
     public function updatedQ(): void
     {
-        $this->q = self::normalizeTerm( $this->q );
+        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
 
         $this->checkTerm();
         $this->resetPage();
@@ -183,7 +206,7 @@ class Index extends CatalogIndex
     public function render(): View
     {
         $data     = $this->viewData();
-        $searched = $this->searchable() && ! $this->failed;
+        $searched = $this->searchable() && ! $this->failed && ! $this->throttled;
         $total    = $data['products']->total();
 
         return view( 'ecommerce-storefront::livewire.search.index', [
@@ -229,34 +252,20 @@ class Index extends CatalogIndex
      *
      * @since 1.0.0
      *
-     * @return LengthAwarePaginatorContract<int, \ArtisanPackUI\Ecommerce\Models\Product>
+     * @return LengthAwarePaginatorContract<int, Product>
      */
     protected function products(): LengthAwarePaginatorContract
     {
         $result = $this->result();
 
+        // No page links past the deepest page a shopper can reach.
         return new LengthAwarePaginator(
             $result?->items ?? new Collection(),
-            $result?->total ?? 0,
+            min( $result?->total ?? 0, self::MAX_RESULTS ),
             $this->perPage,
             $this->currentPage(),
             [ 'path' => LengthAwarePaginator::resolveCurrentPath(), 'pageName' => 'page' ],
         );
-    }
-
-    /**
-     * The catalog query with the term, for the counts the provider's facets
-     * don't carry (on sale, rating).
-     *
-     * @since 1.0.0
-     *
-     * @param  array<int, string>  $except  Filters to leave out.
-     *
-     * @return CatalogQuery
-     */
-    protected function catalogQuery( array $except = [] ): CatalogQuery
-    {
-        return parent::catalogQuery( $except )->search( $this->q );
     }
 
     /**
@@ -281,7 +290,46 @@ class Index extends CatalogIndex
             return $this->facetCache[ $key ] = $this->result()?->facets ?? [];
         }
 
-        return $this->facetCache[ $key ] = $this->runSearch( $this->searchFilters( $except ), 1, 1 )->facets;
+        $filters = $this->searchFilters( $except );
+
+        return $this->facetCache[ $key ] = StorefrontCache::remember(
+            StorefrontCache::key( 'search-facets', [ $this->q, $this->currency(), $filters ] ),
+            fn (): array => $this->runSearch( $filters, 1, 1 )->facets,
+        );
+    }
+
+    /**
+     * How many results the search has with `$filters`, from the provider
+     * (cached like the facets).
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>  $filters  `CatalogQuery::fromParameters()` filters.
+     *
+     * @return int
+     */
+    protected function searchTotal( array $filters ): int
+    {
+        return StorefrontCache::remember(
+            StorefrontCache::key( 'search-total', [ $this->q, $this->currency(), $filters ] ),
+            fn (): int => $this->runSearch( $filters, 1, 1 )->total,
+        );
+    }
+
+    /**
+     * None: the search page leaves unknown attribute values to the
+     * provider (they match nothing).
+     *
+     * @since 1.0.0
+     *
+     * @return array<string, array<int, array{value: string, label: string, count: int}>>|null
+     */
+    protected function attributeUniverse(): ?array
+    {
+        // Every provider call here happens behind the rate-limited search,
+        // so unknown values are left to the provider rather than looked up
+        // before the limit is checked.
+        return null;
     }
 
     /**
@@ -313,21 +361,55 @@ class Index extends CatalogIndex
      */
     protected function toggleGroup( string $key, array $definition ): ?array
     {
-        if ( 'in_stock' !== $key || isset( $definition['apply'] ) ) {
+        if ( isset( $definition['apply'] ) ) {
             return parent::toggleGroup( $key, $definition );
         }
 
-        $count = (int) ( $this->facets( [ 'in_stock' ] )['stock']['in_stock'] ?? 0 );
+        $selected = 'in_stock' === $key ? $this->inStock : $this->onSale;
+        $count    = 'in_stock' === $key
+            ? (int) ( $this->facets( [ 'in_stock' ] )['stock']['in_stock'] ?? 0 )
+            : $this->searchTotal( [ ...$this->searchFilters( [ $key ] ), $key => '1' ] );
 
         return [
             'key'      => $key,
             'type'     => 'toggle',
             'label'    => $definition['label'],
-            'model'    => 'inStock',
+            'model'    => 'in_stock' === $key ? 'inStock' : 'onSale',
             'count'    => $count,
-            'selected' => $this->inStock,
-            'disabled' => 0 === $count && ! $this->inStock,
+            'selected' => $selected,
+            'disabled' => 0 === $count && ! $selected,
         ];
+    }
+
+    /**
+     * The minimum-rating group, counted by the active provider, so a
+     * search satellite's matches (typo tolerance, synonyms) are counted
+     * the same way they are listed.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<string, mixed>  $definition  Definition.
+     *
+     * @return array<string, mixed>
+     */
+    protected function ratingGroup( array $definition ): array
+    {
+        $filters = $this->searchFilters( [ 'rating' ] );
+        $options = [];
+
+        foreach ( [ 4, 3, 2, 1 ] as $stars ) {
+            $count     = $this->searchTotal( [ ...$filters, 'min_rating' => $stars ] );
+            $selected  = $stars === $this->minRating;
+            $options[] = [
+                'value'    => (string) $stars,
+                'label'    => trans_choice( ':count star & up|:count stars & up', $stars, [ 'count' => $stars ] ),
+                'count'    => $count,
+                'selected' => $selected,
+                'disabled' => 0 === $count && ! $selected,
+            ];
+        }
+
+        return [ 'key' => 'rating', 'type' => 'rating', 'label' => $definition['label'], 'options' => $options ];
     }
 
     /**
@@ -396,12 +478,35 @@ class Index extends CatalogIndex
      */
     protected function result(): ?SearchResult
     {
-        if ( null !== $this->result || $this->failed || ! $this->searchable() ) {
+        if ( null !== $this->result || $this->failed || $this->throttled || ! $this->searchable() ) {
             return $this->result;
         }
 
         try {
-            return $this->result = $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() );
+            $result = app( EcommerceRateLimiter::class )->attempt(
+                'ecommerce.catalog.read',
+                app( StorefrontCart::class )->subject(),
+                fn (): SearchResult => $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() ),
+            );
+
+            // A provider's index may still hold products whose type package
+            // is uninstalled; their pages 404.
+            $this->result = new SearchResult(
+                $result->items->reject( static fn ( mixed $product ): bool => ! $product instanceof Product || $product->typeIsMissing() )->values(),
+                $result->total,
+                $result->facets,
+                $result->suggestions,
+                $result->page,
+                $result->perPage,
+            );
+
+            ProductImages::preloadCards( $this->result->items );
+
+            return $this->result;
+        } catch ( RateLimitExceededException ) {
+            $this->throttled = true;
+
+            return null;
         } catch ( Throwable $exception ) {
             report( $exception );
 
@@ -500,7 +605,7 @@ class Index extends CatalogIndex
      */
     protected function currentPage(): int
     {
-        return max( 1, min( (int) $this->getPage(), intdiv( self::MAX_RESULTS, max( 1, $this->perPage ) ) ) );
+        return max( 1, min( (int) $this->getPage(), (int) ceil( self::MAX_RESULTS / max( 1, $this->perPage ) ) ) );
     }
 
     /**
@@ -543,6 +648,16 @@ class Index extends CatalogIndex
                 'icon'        => 'o-exclamation-triangle',
                 'title'       => __( 'Search isn\'t available right now' ),
                 'description' => __( 'Please try again in a moment, or browse the shop instead.' ),
+                'tips'        => [],
+            ];
+        }
+
+        if ( $this->throttled ) {
+            return [
+                'key'         => 'throttled',
+                'icon'        => 'o-clock',
+                'title'       => __( 'Slow down' ),
+                'description' => __( 'You\'re searching faster than we can keep up. Try again in a moment.' ),
                 'tips'        => [],
             ];
         }

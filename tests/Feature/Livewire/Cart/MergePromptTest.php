@@ -14,6 +14,7 @@ use ArtisanPackUI\Ecommerce\ValueObjects\PendingCartMerge;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\MergePrompt;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\Fixtures\User;
@@ -140,6 +141,49 @@ it( 'applies each choice to the pending merge', function ( string $resolution, s
     'switch to the account\'s'           => [ 'switch_to_account_currency', 'EUR', 2 ],
     'don\'t merge (keep the saved cart)' => [ 'cancel_merge', 'EUR', 1 ],
 ] );
+
+it( 'shows prices in the merged cart\'s currency', function ( string $resolution, string $currency ): void {
+    $user = makeUser();
+
+    accountCartWith( $user, dualPricedProduct( 'Tea' ), 'EUR' );
+    signInWithGuestCart( $user, guestCartWith( dualPricedProduct( 'Mug' ), 'USD' ) );
+
+    Livewire::actingAs( $user )
+        ->test( MergePrompt::class )
+        ->call( 'resolve', $resolution );
+
+    expect( app( StorefrontCart::class )->currency() )->toBe( $currency )
+        ->and( Cookie::queued( 'ecommerce_currency' )?->getValue() )->toBe( $currency );
+} )->with( [
+    'switch to the account\'s'  => [ 'switch_to_account_currency', 'EUR' ],
+    'keep the guest currency'   => [ 'keep_guest_currency', 'USD' ],
+    'don\'t merge'              => [ 'cancel_merge', 'EUR' ],
+] );
+
+it( 'says the saved cart is unchanged when the guest cart expired before the choice', function (): void {
+    $user = makeUser();
+
+    $account = accountCartWith( $user, dualPricedProduct( 'Tea' ), 'EUR' );
+    $guest   = guestCartWith( dualPricedProduct( 'Mug' ), 'USD' );
+
+    signInWithGuestCart( $user, $guest );
+
+    $component = Livewire::actingAs( $user )->test( MergePrompt::class )->assertSet( 'open', true );
+
+    $guest->forceFill( [ 'expires_at' => now()->subMinute() ] )->save();
+
+    $component->call( 'resolve', 'switch_to_account_currency' )->assertSet( 'open', false );
+
+    $toasts = json_encode( $component->effects['xjs'] ?? [] );
+
+    expect( $toasts )
+        ->toContain( 'Your guest cart has expired.' )
+        ->toContain( 'Your saved cart is unchanged.' )
+        ->toContain( 'warning' )
+        ->not->toContain( 'Your carts are combined' )
+        ->and( $account->fresh()->items()->count() )->toBe( 1 )
+        ->and( $account->fresh()->currency )->toBe( 'EUR' );
+} );
 
 it( 'ignores an unknown choice and stays open', function (): void {
     $user = makeUser();

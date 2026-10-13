@@ -96,7 +96,7 @@ it( 'has no accessibility violations when showing errors', function (): void {
         ->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )
         ->type( Locators::field( 'ec-cart-coupon' ), 'NOT-A-CODE' )
         ->click( '[data-cart-coupon] button[type="submit"]' )
-        ->assertPresent( '[data-cart-coupon] .text-error, [data-cart-coupon] [role="alert"], [data-cart-coupon] .alert' );
+        ->assertPresent( '[data-cart-coupon] [data-field-error]' );
 
     Accessibility::assertAccessible( $page );
 
@@ -113,4 +113,30 @@ it( 'has no accessibility violations when showing errors', function (): void {
         ->assertPresent( '[data-order-lookup-failure]' );
 
     Accessibility::assertAccessible( $page );
+} );
+
+it( 'still reports a missing label inside the page content (the drawer exclusion is narrow)', function (): void {
+    $page = visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertPresent( '#ecommerce-storefront-content' );
+
+    $page->script( 'document.getElementById( "ecommerce-storefront-content" ).insertAdjacentHTML( "afterbegin", "<input type=\"text\" data-probe>" )' );
+
+    expect( fn () => Accessibility::assertAccessible( $page ) )
+        ->toThrow( PHPUnit\Framework\AssertionFailedError::class, '(label)' );
+} );
+
+it( 'links a field to its error and hint, so a screen reader reads both', function (): void {
+    checkoutCart();
+
+    visit( route( 'artisanpack.ecommerce.storefront.checkout' ) )
+        ->click( '[data-checkout-contact-submit]' )
+        ->assertPresent( '[data-checkout-errors]' )
+        ->assertAttribute( '[data-field="email"] input', 'aria-invalid', 'true' )
+        ->assertScript( <<<'JS'
+            ( () => {
+                const input = document.querySelector( '[data-field="email"] input' );
+                const [ error, hint ] = input.getAttribute( 'aria-describedby' ).split( ' ' ).map( ( id ) => document.getElementById( id )?.textContent.trim() );
+
+                return error?.length > 0 && document.querySelector( '[data-checkout-error="email"]' ).textContent.includes( error ) && hint === "We'll send your order confirmation here.";
+            } )()
+            JS );
 } );

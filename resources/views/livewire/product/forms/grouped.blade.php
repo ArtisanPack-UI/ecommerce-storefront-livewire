@@ -11,7 +11,7 @@
     @if ( [] === $rows )
         <p class="text-base-content/70">{{ __( 'None of the products in this group are available right now.' ) }}</p>
     @else
-        <ul role="list" class="divide-y divide-base-content/10" aria-label="{{ __( 'Products in this group' ) }}">
+        <ul role="list" class="divide-y divide-base-content/10" aria-label="{{ __( 'Products in this group' ) }}" @if ( $errors->has( 'quantities' ) ) aria-describedby="{{ $ecommerceFormId }}-quantities-error" @endif>
             @foreach ( $rows as $row )
                 <li class="flex flex-wrap items-center justify-between gap-3 py-3" wire:key="grouped-child-{{ $row['id'] }}" data-grouped-child="{{ $row['id'] }}">
                     <div class="flex flex-col gap-1">
@@ -35,7 +35,7 @@
         </ul>
 
         @error( 'quantities' )
-            <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
+            <p id="{{ $ecommerceFormId }}-quantities-error" class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-form-error>{{ $message }}</p>
         @enderror
 
         @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [

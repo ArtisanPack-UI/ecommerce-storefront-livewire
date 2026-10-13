@@ -94,6 +94,20 @@ it( 'saves the shipping address, billing the same, and moves on to shipping', fu
         ] );
 } );
 
+it( 'marks invalid address fields and links each to its error and hint', function (): void {
+    checkoutCart();
+
+    checkoutAtAddress()
+        ->set( 'shipping', checkoutAddress( [ 'city' => '', 'postal_code' => 'nope' ] ) )
+        ->call( 'saveAddress' )
+        ->assertHasErrors( [ 'shipping.city', 'shipping.postal_code' ] )
+        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-shipping-city-error"' )
+        ->assertSeeHtml( '<p id="ec-field-shipping-city-error"' )
+        ->assertSeeHtml( 'aria-describedby="ec-field-shipping-postal_code-error ec-field-shipping-postal_code-hint"' )
+        ->assertSeeHtml( '<p id="ec-field-shipping-postal_code-hint"' )
+        ->assertSeeHtml( 'data-field="shipping.city"' );
+} );
+
 it( 'takes a Canadian address with a province', function (): void {
     $cart = checkoutCart();
 
@@ -236,8 +250,8 @@ it( 'asks only for a billing address when nothing ships', function (): void {
         ->set( 'billing', checkoutAddress() )
         ->call( 'saveAddress' )
         ->assertHasNoErrors()
-        ->assertSet( 'step', 'payment' )
-        ->assertSet( 'announcement', 'Step 3 of 4: Payment' );
+        ->assertSet( 'step', 'review' )
+        ->assertSet( 'announcement', 'Step 3 of 4: Review order' );
 
     expect( $cart->refresh() )
         ->shipping_address->toBeNull()
@@ -330,4 +344,28 @@ it( 'resumes with the address already on the cart', function (): void {
         ->assertSet( 'step', 'address' )
         ->assertSet( 'shipping.address1', '7 Saved Street' )
         ->assertSet( 'billingSameAsShipping', true );
+} );
+
+it( 'refuses a field sent as an array instead of failing', function ( string $field ): void {
+    checkoutShipping();
+    checkoutCart();
+
+    checkoutAtAddress()
+        ->set( 'shipping', checkoutAddress() )
+        ->set( 'shipping.' . $field, [ 'x' ] )
+        ->call( 'saveAddress' )
+        ->assertHasErrors( 'shipping.' . $field )
+        ->assertSet( 'step', 'address' );
+} )->with( [ 'city', 'country_code' ] );
+
+it( 'refuses an address with array values without failing', function (): void {
+    checkoutShipping();
+    checkoutCart();
+
+    $component = checkoutAtAddress();
+    $instance  = $component->instance();
+
+    $instance->shipping = checkoutAddress( [ 'city' => [ 'x' ] ] );
+
+    expect( fn () => $instance->saveAddress() )->not->toThrow( Throwable::class );
 } );

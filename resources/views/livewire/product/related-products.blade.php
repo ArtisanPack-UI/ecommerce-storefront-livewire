@@ -18,7 +18,9 @@
             x-data="{
                 scrollBy( direction ) {
                     const list = this.$refs.list;
-                    list.scrollBy( { left: direction * list.clientWidth * 0.8, behavior: window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ? 'auto' : 'smooth' } );
+                    const sign = 'rtl' === getComputedStyle( list ).direction ? -1 : 1;
+
+                    list.scrollBy( { left: sign * direction * list.clientWidth * 0.8, behavior: window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ? 'auto' : 'smooth' } );
                 },
             }"
         >
@@ -29,7 +31,7 @@
                     <div class="flex gap-2 md:hidden">
                         <x-artisanpack-button
                             icon="o-chevron-left"
-                            class="btn-circle btn-sm"
+                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
                             :aria-label="__( 'Previous products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( -1 )"
@@ -37,7 +39,7 @@
                         />
                         <x-artisanpack-button
                             icon="o-chevron-right"
-                            class="btn-circle btn-sm"
+                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
                             :aria-label="__( 'Next products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( 1 )"

@@ -138,20 +138,56 @@
     </div>
 
     @if ( $ecommerceHasFilters )
-        <div class="lg:hidden" x-data x-on:close="$dispatch( 'ecommerce-filters-closed' )">
+        {{--
+            As in the cart drawer, the library drawer's unnamed `drawer-toggle`
+            checkbox is taken out of the tab order and the accessibility tree
+            (livewire-ui-components#117), and focus moves to the title on
+            open. The close button is our own: the library's has no name.
+        --}}
+        <div
+            class="lg:hidden"
+            x-data="{
+                focusTitle( tries = 20 ) {
+                    const title  = document.getElementById( 'ecommerce-catalog-filters-title' );
+                    const active = document.activeElement;
+
+                    if ( ! title || active === title || ( active?.closest( '[data-filters-drawer]' ) && ! active.hasAttribute( 'data-filters-close' ) ) ) {
+                        return;
+                    }
+
+                    title.focus();
+
+                    if ( document.activeElement !== title && tries > 0 ) {
+                        setTimeout( () => this.focusTitle( tries - 1 ), 25 );
+                    }
+                },
+            }"
+            x-on:open="$el.querySelector( '.drawer-toggle' )?.setAttribute( 'tabindex', '-1' ); $el.querySelector( '.drawer-toggle' )?.setAttribute( 'aria-hidden', 'true' ); focusTitle()"
+            x-on:close="$dispatch( 'ecommerce-filters-closed' )"
+        >
             <x-artisanpack-drawer
                 id="ecommerce-catalog-filters-drawer"
-                :title="__( 'Filters' )"
                 open-on="ecommerce-filters-open"
                 close-on="ecommerce-filters-close"
                 close-on-escape
-                with-close-button
                 class="w-80 max-w-full"
                 role="dialog"
                 aria-modal="true"
-                :aria-label="__( 'Filters' )"
+                aria-labelledby="ecommerce-catalog-filters-title"
                 data-filters-drawer
             >
+                <div class="mb-4 flex items-center justify-between gap-2">
+                    <h2 id="ecommerce-catalog-filters-title" tabindex="-1" class="text-xl font-bold focus:outline-none">{{ __( 'Filters' ) }}</h2>
+
+                    <x-artisanpack-button
+                        icon="o-x-mark"
+                        class="btn-ghost btn-sm btn-circle"
+                        :aria-label="__( 'Close filters' )"
+                        x-on:click="$dispatch( 'ecommerce-filters-close' )"
+                        data-filters-close
+                    />
+                </div>
+
                 @include( 'ecommerce-storefront::livewire.catalog.partials.filters', [ 'idPrefix' => 'ecommerce-filters-drawer' ] )
 
                 <x-slot:actions>

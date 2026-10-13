@@ -297,8 +297,73 @@ it( 'lets a satellite add a step before review', function (): void {
 
     $html = $component->html();
 
-    expect( strpos( $html, 'data-checkout-step="payment"' ) )->toBeLessThan( strpos( $html, 'data-checkout-step="age-check"' ) )
-        ->and( strpos( $html, 'data-checkout-step="age-check"' ) )->toBeLessThan( strpos( $html, 'data-checkout-step="review"' ) );
+    expect( strpos( $html, 'data-checkout-step="address"' ) )->toBeLessThan( strpos( $html, 'data-checkout-step="age-check"' ) )
+        ->and( strpos( $html, 'data-checkout-step="age-check"' ) )->toBeLessThan( strpos( $html, 'data-checkout-step="review"' ) )
+        ->and( strpos( $html, 'data-checkout-step="review"' ) )->toBeLessThan( strpos( $html, 'data-checkout-step="payment"' ) );
+} );
+
+it( 'ignores a satellite step reported done before the shopper can reach it', function (): void {
+    Livewire::component( 'age-check-step', AgeCheckStep::class );
+
+    addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', static function ( array $steps ): array {
+        $steps['age-check'] = [ 'label' => 'Date of birth', 'component' => 'age-check-step' ];
+
+        return $steps;
+    } );
+
+    checkoutCart();
+
+    Livewire::test( Index::class )
+        ->assertSet( 'step', 'contact' )
+        ->call( 'stepCompleted', 'age-check' )
+        ->assertSet( 'completedSteps', [] );
+} );
+
+it( 'lets a satellite step decide on the server whether it is done', function (): void {
+    checkoutShipping();
+    $gateway = checkoutGateway();
+
+    Livewire::component( 'age-check-step', AgeCheckStep::class );
+
+    $this->passed = false;
+
+    addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', function ( array $steps ): array {
+        $steps['age-check'] = [ 'label' => 'Date of birth', 'component' => 'age-check-step', 'before' => 'payment', 'complete' => fn ( Cart $cart ): bool => $this->passed ];
+
+        return $steps;
+    } );
+
+    checkoutCart();
+
+    $component = checkoutAtReview( $gateway )
+        ->call( 'saveReview' )
+        ->assertSet( 'step', 'age-check' )
+        ->call( 'stepCompleted', 'age-check' )
+        ->assertSet( 'step', 'age-check' )
+        ->call( 'goTo', 'payment' )
+        ->assertSet( 'step', 'age-check' );
+
+    $this->passed = true;
+
+    $component->call( 'stepCompleted', 'age-check' )->assertSet( 'step', 'payment' );
+
+    // Checked again just before the order is placed.
+    $this->passed = false;
+
+    payAtCheckout( $component, $gateway );
+
+    expect( ArtisanPackUI\Ecommerce\Models\Order::query()->count() )->toBe( 0 )
+        ->and( $component->get( 'step' ) )->toBe( 'age-check' );
+} );
+
+it( 'ignores a satellite step whose "complete" isn\'t callable', function (): void {
+    addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', static function ( array $steps ): array {
+        $steps['age-check'] = [ 'label' => 'Date of birth', 'component' => 'age-check-step', 'complete' => 'not a function' ];
+
+        return $steps;
+    } );
+
+    expect( ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutSteps::for( checkoutCart(), true ) )->not->toHaveKey( 'age-check' );
 } );
 
 it( 'mounts a satellite step and moves on when it reports done', function (): void {

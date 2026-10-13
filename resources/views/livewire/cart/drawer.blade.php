@@ -18,12 +18,18 @@
     x-data="{
         returnTo: null,
         focusTitle( tries = 20 ) {
-            const title = document.getElementById( 'ecommerce-cart-drawer-title' );
+            const title  = document.getElementById( 'ecommerce-cart-drawer-title' );
+            const active = document.activeElement;
 
-            title?.focus();
+            {{-- Stop once the shopper has moved on inside the panel (the focus trap's own first stop is the close button). --}}
+            if ( ! title || active === title || ( active?.closest( '#ecommerce-cart-drawer-panel' ) && ! active.hasAttribute( 'data-cart-drawer-close' ) ) ) {
+                return;
+            }
+
+            title.focus();
 
             {{-- The panel can't take focus until it has slid in. --}}
-            if ( title && document.activeElement !== title && tries > 0 ) {
+            if ( document.activeElement !== title && tries > 0 ) {
                 setTimeout( () => this.focusTitle( tries - 1 ), 25 );
             }
         },
@@ -61,6 +67,8 @@
 
             <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ $announcement }}</p>
 
+            @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '#ecommerce-cart-drawer-panel', 'fallback' => '#ecommerce-cart-drawer-title' ] )
+
             @if ( null !== $removedLine )
                 <div class="flex items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-sm" data-cart-undo>
                     <span>{{ __( ':name was removed from your cart.', [ 'name' => $removedLine['name'] ] ) }}</span>
@@ -68,12 +76,17 @@
                 </div>
             @endif
 
-            @if ( [] === $lines )
+            @if ( ! $loaded && $count > 0 )
+                {{-- The lines are listed once the drawer first opens. --}}
+                <div class="flex grow items-center justify-center py-10 text-sm text-base-content/70" aria-busy="true" data-cart-loading>
+                    <p>{{ __( 'Loading…' ) }}</p>
+                </div>
+            @elseif ( [] === $lines )
                 <div class="flex grow flex-col items-center justify-center gap-4 py-10 text-center" data-cart-empty>
                     <x-artisanpack-icon name="o-shopping-cart" class="h-10 w-10 opacity-40" aria-hidden="true" />
                     <p>{{ __( 'Your cart is empty' ) }}</p>
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" class="btn-sm" />
+                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-sm" />
                     @endif
                 </div>
             @else
@@ -104,14 +117,14 @@
                                 @endforeach
 
                                 @if ( null !== $line['unsellable'] )
-                                    <p class="font-semibold" data-cart-line-unsellable>{{ $line['unsellable'] }}</p>
+                                    <p class="font-semibold" data-cart-line-unsellable @if ( $line['short'] ) data-cart-line-short @endif>{{ $line['unsellable'] }}</p>
                                 @endif
 
                                 @if ( $line['free'] )
                                     <x-artisanpack-badge :value="__( 'Free gift' )" class="badge-success badge-sm" />
                                 @else
                                     <div class="flex flex-wrap items-end gap-2">
-                                        @if ( null === $line['unsellable'] )
+                                        @if ( null === $line['unsellable'] || $line['short'] )
                                             <x-artisanpack-ec-quantity
                                                 :id="'ec-drawer-quantity-' . $line['id']"
                                                 :item-name="$line['name']"
@@ -146,13 +159,13 @@
                     <p class="text-sm text-base-content/70">{{ __( 'Shipping and tax are calculated at checkout.' ) }}</p>
 
                     @if ( null !== $cartUrl )
-                        <x-artisanpack-button :label="__( 'View cart' )" :link="$cartUrl" class="w-full" data-cart-drawer-view />
+                        <x-artisanpack-button :label="__( 'View cart' )" :link="$cartUrl" no-wire-navigate class="w-full" data-cart-drawer-view />
                     @endif
 
                     @if ( $hasUnsellable )
-                        <p class="text-sm font-semibold">{{ __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
+                        <p class="text-sm font-semibold">{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" color="primary" class="w-full" data-cart-drawer-checkout />
+                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-drawer-checkout />
                     @endif
                 </div>
             @endif

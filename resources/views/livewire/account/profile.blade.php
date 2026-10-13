@@ -11,11 +11,13 @@
         <h2 id="ec-account-profile-details" class="text-xl font-bold">{{ __( 'Your details' ) }}</h2>
 
         <form wire:submit="saveProfile" class="grid max-w-2xl gap-4 sm:grid-cols-2" novalidate data-account-profile-form>
-            <x-artisanpack-input id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
-            <x-artisanpack-input id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-profile', 'summaryClass' => 'sm:col-span-2' ] )
+
+            <x-artisanpack-ec-field id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
+            <x-artisanpack-ec-field id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
 
             <div class="sm:col-span-2">
-                <x-artisanpack-input id="profile.phone" type="tel" :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
+                <x-artisanpack-ec-field id="profile.phone" type="tel" :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
             </div>
 
             <div class="sm:col-span-2">
@@ -38,11 +40,11 @@
         @if ( null !== $profileUrl || null !== $passwordUrl )
             <div class="flex flex-wrap gap-2">
                 @if ( null !== $profileUrl )
-                    <x-artisanpack-button :label="__( 'Change your email' )" :link="$profileUrl" icon="o-envelope" class="btn-sm" data-account-host-link="profile" />
+                    <x-artisanpack-button :label="__( 'Change your email' )" :link="$profileUrl" no-wire-navigate icon="o-envelope" class="btn-sm" data-account-host-link="profile" />
                 @endif
 
                 @if ( null !== $passwordUrl )
-                    <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" icon="o-key" class="btn-sm" data-account-host-link="password" />
+                    <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" no-wire-navigate icon="o-key" class="btn-sm" data-account-host-link="password" />
                 @endif
             </div>
         @endif

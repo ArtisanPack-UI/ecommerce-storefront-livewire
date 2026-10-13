@@ -15,6 +15,8 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
+use ArtisanPackUI\Ecommerce\Models\Product as ProductModel;
+use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
@@ -32,12 +34,14 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\PaymentDriverRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutMarketingConsent;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCache;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -109,6 +113,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'address-form'    => Components\AddressForm::class,
         'category-grid'   => Components\CategoryGrid::class,
         'empty-state'     => Components\EmptyState::class,
+        'field'           => Components\Field::class,
         'gallery'         => Components\Gallery::class,
         'money'           => Components\Money::class,
         'price'           => Components\Price::class,
@@ -243,6 +248,8 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerOrderViewUrl();
         $this->registerVisualEditorBlocks();
         $this->registerCacheInvalidation();
+        $this->registerMarketingConsent();
+        $this->registerListingFilter();
     }
 
     /**
@@ -271,8 +278,10 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     }
 
     /**
-     * The middleware classes behind `account.middleware`, without groups
-     * (`web`), which Livewire's update route already has.
+     * The middleware classes behind `account.middleware`. Groups are
+     * expanded (recursively, guarding against cycles), except `web` and
+     * any group on Livewire's update route, which every update request
+     * already runs.
      *
      * @since 1.0.0
      *
@@ -283,25 +292,17 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $router  = app( 'router' );
         $aliases = $router->getMiddleware();
         $groups  = $router->getMiddlewareGroups();
-        $classes = [];
+        $skip    = [ 'web' => true ];
 
-        foreach ( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ) as $entry ) {
-            if ( ! is_string( $entry ) || '' === $entry ) {
-                continue;
-            }
-
-            $name = explode( ':', $entry, 2 )[0];
-
-            if ( isset( $groups[ $name ] ) ) {
-                continue;
-            }
-
-            $class = $aliases[ $name ] ?? $name;
-
-            if ( is_string( $class ) && class_exists( $class ) ) {
-                $classes[] = $class;
+        foreach ( [ 'livewire.update', 'default-livewire.update' ] as $updateRoute ) {
+            foreach ( (array) $router->getRoutes()->getByName( $updateRoute )?->middleware() as $routeMiddleware ) {
+                if ( is_string( $routeMiddleware ) && isset( $groups[ $routeMiddleware ] ) ) {
+                    $skip[ $routeMiddleware ] = true;
+                }
             }
         }
+
+        $classes = self::expandMiddleware( (array) config( 'artisanpack.ecommerce-storefront-livewire.account.middleware', [] ), $aliases, $groups, $skip );
 
         return array_values( array_unique( $classes ) );
     }
@@ -322,6 +323,49 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         if ( [] !== $middleware ) {
             Livewire::addPersistentMiddleware( $middleware );
         }
+    }
+
+    /**
+     * The middleware classes behind `$entries`, expanding groups not in
+     * `$skip`. A group being expanded is added to `$skip` so a group that
+     * (directly or indirectly) contains itself ends.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, mixed>                $entries  Middleware aliases, classes, or group names.
+     * @param  array<string, mixed>             $aliases  The router's middleware aliases.
+     * @param  array<string, array<int, mixed>> $groups   The router's middleware groups.
+     * @param  array<string, true>              $skip     Groups to leave out.
+     *
+     * @return array<int, class-string>
+     */
+    protected static function expandMiddleware( array $entries, array $aliases, array $groups, array $skip ): array
+    {
+        $classes = [];
+
+        foreach ( $entries as $entry ) {
+            if ( ! is_string( $entry ) || '' === $entry ) {
+                continue;
+            }
+
+            $name = explode( ':', $entry, 2 )[0];
+
+            if ( isset( $groups[ $name ] ) ) {
+                if ( ! isset( $skip[ $name ] ) ) {
+                    $classes = array_merge( $classes, self::expandMiddleware( (array) $groups[ $name ], $aliases, $groups, $skip + [ $name => true ] ) );
+                }
+
+                continue;
+            }
+
+            $class = $aliases[ $name ] ?? $name;
+
+            if ( is_string( $class ) && class_exists( $class ) ) {
+                $classes[] = $class;
+            }
+        }
+
+        return $classes;
     }
 
     /**
@@ -573,10 +617,29 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     }
 
     /**
+     * Leaves products whose type package is uninstalled out of every
+     * catalog listing (`ap.ecommerce.product.listQuery`), since their pages
+     * 404. Covers the catalog, product grids, and database search.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerListingFilter(): void
+    {
+        addFilter( 'ap.ecommerce.product.listQuery', static function ( mixed $query ): mixed {
+            return $query instanceof Builder
+                ? $query->whereIn( ( new ProductModel() )->qualifyColumn( 'type' ), app( ProductTypeRegistry::class )->keys() )
+                : $query;
+        } );
+    }
+
+    /**
      * Points the engine's guest order links (confirmation emails,
      * `checkout.order_view_url`) at the storefront's signed order page
      * (spec §7.6), unless the host set its own. Skipped when the storefront
-     * doesn't register its routes.
+     * doesn't register its routes. The base is `app.url` (the current
+     * request's only when that's empty).
      *
      * @since 1.0.0
      *
@@ -592,6 +655,26 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $prefix = trim( (string) config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix', 'shop' ), '/' );
 
-        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => url( ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}' ) ] );
+        $path = ( '' === $prefix ? '' : $prefix . '/' ) . 'order/{token}';
+        $base = rtrim( trim( (string) config( 'app.url', '' ) ), '/' );
+
+        // Built from `app.url`, not the booting request: the engine bakes
+        // this into queued emails, and a webhook can boot the app on an
+        // internal host or plain http.
+        config( [ 'artisanpack.ecommerce.checkout.order_view_url' => '' === $base ? url( $path ) : $base . '/' . $path ] );
+    }
+
+    /**
+     * Keeps the marketing consent given at checkout on the placed order
+     * and the customer, including for orders the provider's webhook
+     * places ({@see CheckoutMarketingConsent}).
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function registerMarketingConsent(): void
+    {
+        CheckoutMarketingConsent::boot();
     }
 }

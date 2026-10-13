@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
@@ -34,7 +35,8 @@ use Livewire\Component;
  * It holds the product and quantity and adds lines to the shopper's cart
  * through the engine's `StorefrontCartService`: the batch counts once
  * against the `ecommerce.cart.mutate` limit, an engine
- * `CartOperationException` is shown on the line's field, and on success it
+ * `CartOperationException` is shown on the line's field (and any refusal
+ * is announced in an alert: "Not added to your cart: …"), and on success it
  * dispatches `ecommerce-cart-updated`, announces the addition in a live
  * region, and then (per `cart.after_add`) dispatches `ecommerce-cart-open`
  * for the cart drawer or shows a toast.
@@ -54,6 +56,7 @@ abstract class PurchaseForm extends Component
     use InteractsWithStorefrontCart;
     use RateLimitsStorefront;
     use SendsToasts;
+    use SummarizesErrors;
 
     /**
      * The product being bought.
@@ -136,7 +139,7 @@ abstract class PurchaseForm extends Component
      */
     public function addToCart(): void
     {
-        $this->announcement = '';
+        $this->startAdding();
         $this->validateQuantity();
 
         if ( ! $this->readyToAdd() ) {
@@ -173,6 +176,21 @@ abstract class PurchaseForm extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Starts an "Add to cart": clears the last announcement and keys a new
+     * failure alert, so a refusal is announced even when it repeats.
+     * Forms that override {@see self::addToCart()} call this first.
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
+    protected function startAdding(): void
+    {
+        $this->announcement = '';
+        $this->newErrorSummary();
     }
 
     /**

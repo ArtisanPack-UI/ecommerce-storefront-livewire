@@ -22,6 +22,7 @@ use ArtisanPackUI\Ecommerce\Services\LicenseService;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Throwable;
@@ -36,7 +37,8 @@ use Throwable;
  * Each entitlement shows its product, file, version, downloads left, and
  * expiry, with a download button to the account's owner route (which
  * spends a download) — or, for a streaming-only file, a button that opens
- * it in the browser's player. An expired or used-up entitlement says why
+ * it in the browser's player. Both are temporary signed URLs
+ * (`DOWNLOAD_LINK_MINUTES`, `STREAM_LINK_MINUTES`). An expired or used-up entitlement says why
  * instead. Licence keys show in full with a copy button, their activation
  * count, and whether they are expired or revoked.
  *
@@ -60,6 +62,28 @@ class Downloads extends Component
      * @var int
      */
     public const PER_PAGE = 20;
+
+    /**
+     * How long a rendered download link works, in minutes. Links are
+     * temporary signed URLs, so a cross-site GET or a link prefetcher
+     * can't spend the shopper's downloads.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const DOWNLOAD_LINK_MINUTES = 10;
+
+    /**
+     * How long a rendered stream link works, in minutes. Longer than a
+     * download link, since the browser's player keeps requesting byte
+     * ranges from the same URL while the shopper listens or watches.
+     *
+     * @since 1.0.0
+     *
+     * @var int
+     */
+    public const STREAM_LINK_MINUTES = 240;
 
     /**
      * Renders the component.
@@ -105,7 +129,7 @@ class Downloads extends Component
      * An entitlement as a row: `id`, `product`, `file`, `version`,
      * `remaining` (null for unlimited), `expires` (a date, or null),
      * `state` (`available`, `expired`, `exhausted`), `streaming`, and
-     * `url` (download or stream, when available).
+     * `url` (a signed download or stream link, when available).
      *
      * @since 1.0.0
      *
@@ -135,7 +159,9 @@ class Downloads extends Component
             'expires'   => null === $download->expires_at ? null : LocalizedDate::format( $download->expires_at ),
             'state'     => $state,
             'streaming' => $streaming,
-            'url'       => 'available' === $state && Route::has( $route ) ? route( $route, [ 'download' => $download->id ] ) : null,
+            'url'       => 'available' === $state && Route::has( $route )
+                ? URL::temporarySignedRoute( $route, now()->addMinutes( $streaming ? self::STREAM_LINK_MINUTES : self::DOWNLOAD_LINK_MINUTES ), [ 'download' => $download->id ] )
+                : null,
         ];
     }
 

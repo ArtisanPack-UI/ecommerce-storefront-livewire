@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Route;
  * canonical slug chains (`clothing/shirts`), breadcrumbs, sub-categories,
  * and a scope's sub-tree for the category filter.
  *
- * Bound per request (`scoped`), so the tree is flattened once.
+ * Bound per request (`scoped`), so the tree is flattened once. The engine
+ * caches the tree itself (and drops it whenever a category changes, a
+ * reorder included), so this class keeps no cache of its own.
  *
  * ```php
  * $paths = app( CategoryPaths::class );
@@ -44,6 +46,15 @@ class CategoryPaths
      * @var array<int, array{id: int, parent_id: int|null, name: string, slug: string, description: string|null, image_media_id: int|null, depth: int}>|null
      */
     protected ?array $nodes = null;
+
+    /**
+     * Child ids per parent id (0 for the roots), in display order.
+     *
+     * @since 1.0.0
+     *
+     * @var array<int, array<int, int>>|null
+     */
+    protected ?array $childIds = null;
 
     /**
      * @since 1.0.0
@@ -92,11 +103,9 @@ class CategoryPaths
             }
         };
 
-        return $this->nodes = StorefrontCache::remember( 'category-nodes', function () use ( $walk, &$nodes ): array {
-            $walk( $this->tree->tree(), 0 );
+        $walk( $this->tree->tree(), 0 );
 
-            return $nodes;
-        } );
+        return $this->nodes = $nodes;
     }
 
     /**
@@ -200,7 +209,9 @@ class CategoryPaths
      */
     public function children( ?int $id ): array
     {
-        return array_values( array_filter( $this->nodes(), static fn ( array $node ): bool => $id === $node['parent_id'] ) );
+        $nodes = $this->nodes();
+
+        return array_map( static fn ( int $child ): array => $nodes[ $child ], $this->childIds()[ $id ?? 0 ] ?? [] );
     }
 
     /**
@@ -225,17 +236,82 @@ class CategoryPaths
             return [];
         }
 
-        $ids = array_flip( $this->tree->withDescendants( $id ) );
-        unset( $ids[ $id ] );
+        $all      = $this->nodes();
+        $children = $this->childIds();
+        $nodes    = [];
+        $seen     = [ $id => true ];
 
-        $nodes = [];
+        // Depth-first, children in display order: the same tree order as
+        // nodes(). The seen list stops a cycle in bad data.
+        $walk = static function ( int $parent ) use ( &$walk, &$nodes, &$seen, $all, $children, $root ): void {
+            foreach ( $children[ $parent ] ?? [] as $child ) {
+                if ( isset( $seen[ $child ] ) ) {
+                    continue;
+                }
 
-        foreach ( $this->nodes() as $node ) {
-            if ( isset( $ids[ $node['id'] ] ) ) {
-                $nodes[] = [ 'depth' => $node['depth'] - $root['depth'] - 1 ] + $node;
+                $seen[ $child ] = true;
+                $nodes[]        = [ 'depth' => $all[ $child ]['depth'] - $root['depth'] - 1 ] + $all[ $child ];
+
+                $walk( $child );
+            }
+        };
+
+        $walk( $id );
+
+        return $nodes;
+    }
+
+    /**
+     * Each category's count plus the counts of every category under it,
+     * in one pass over the tree, from per-category counts (as in
+     * `CatalogQuery::facets()['categories']`). A product filed under a
+     * category and its child is counted under the parent twice.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, int>  $counts  Count per category id.
+     *
+     * @return array<int, int> Subtree count per category id.
+     */
+    public function subtreeTotals( array $counts ): array
+    {
+        $nodes  = $this->nodes();
+        $totals = [];
+
+        foreach ( $nodes as $id => $node ) {
+            $totals[ $id ] = (int) ( $counts[ $id ] ?? 0 );
+        }
+
+        // Children come after their parent in tree order, so walking it
+        // backwards adds each finished subtree to its parent.
+        foreach ( array_reverse( $nodes, true ) as $id => $node ) {
+            if ( null !== $node['parent_id'] && isset( $totals[ $node['parent_id'] ] ) ) {
+                $totals[ $node['parent_id'] ] += $totals[ $id ];
             }
         }
 
-        return $nodes;
+        return $totals;
+    }
+
+    /**
+     * Child ids per parent id (0 for the roots), in display order.
+     *
+     * @since 1.0.0
+     *
+     * @return array<int, array<int, int>>
+     */
+    protected function childIds(): array
+    {
+        if ( null !== $this->childIds ) {
+            return $this->childIds;
+        }
+
+        $children = [];
+
+        foreach ( $this->nodes() as $id => $node ) {
+            $children[ $node['parent_id'] ?? 0 ][] = $id;
+        }
+
+        return $this->childIds = $children;
     }
 }

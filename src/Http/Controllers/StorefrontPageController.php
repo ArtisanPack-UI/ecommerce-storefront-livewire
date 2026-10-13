@@ -16,10 +16,12 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Http\Controllers;
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
 use ArtisanPackUI\Ecommerce\Digital\DigitalFileStreamer;
 use ArtisanPackUI\Ecommerce\Exceptions\DigitalDownloadException;
+use ArtisanPackUI\Ecommerce\Exceptions\RateLimitExceededException;
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
+use ArtisanPackUI\Ecommerce\RateLimiting\EcommerceRateLimiter;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\Ecommerce\Support\OrderViewToken;
@@ -224,16 +226,22 @@ class StorefrontPageController extends Controller
      *
      * The cart's payment session is checked with its gateway: confirmed
      * (authorized, succeeded, processing) for the cart's current total
-     * resumes checkout at the next step; anything else goes back to the
-     * payment step with the reason.
+     * goes back to checkout, which places the order (payment is the last
+     * step); anything else goes back to the payment step with the reason.
      * A `reference` (or Stripe's `payment_intent`) in the query string
      * must be the cart's session. Without a session there's nothing to
      * resume, so the shopper lands on checkout as it is.
      *
      * When the order was already placed and its payment needed confirming
      * ({@see CheckoutPlacement}), the order's own session is checked the
-     * same way: a paid order goes to its confirmation, a confirmed payment
-     * back to checkout to finish the order.
+     * same way: a paid (or held for review) order goes to its
+     * confirmation, a confirmed payment back to checkout to finish the
+     * order. That order wins over an open cart when the returned reference
+     * is its payment, so a shopper who started a new cart can still finish
+     * it.
+     *
+     * Each return counts against the shopper's `ecommerce.cart.mutate`
+     * limit, since it asks the provider about the session.
      *
      * @since 1.0.0
      *
@@ -245,47 +253,15 @@ class StorefrontPageController extends Controller
      */
     public function checkoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
     {
-        $cart = $carts->current();
-
-        if ( null === $cart && null !== ( $placement = CheckoutPlacement::current() ) ) {
-            return $this->placedOrderReturn( $request, $placement['order'], $gateways );
-        }
-
-        $reference = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
-        $gateway   = null === $cart || null === $cart->payment_gateway_key ? null : $gateways->find( (string) $cart->payment_gateway_key );
-
-        if ( '' === $reference || null === $gateway ) {
-            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
-        }
-
-        $given = $request->query( 'reference', $request->query( 'payment_intent' ) );
-
-        if ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) {
-            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
-        }
-
         try {
-            $session = $gateway->retrievePaymentSession( $reference );
-        } catch ( Throwable $exception ) {
-            report( $exception );
-
-            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
-        }
-
-        if ( ! $session->isConfirmed() ) {
-            return $this->backToPayment(
-                __( 'Your payment wasn\'t completed.' ),
-                $session->requiresAction() ? __( 'Your bank needs you to confirm this payment. Try again.' ) : __( 'Try again or use another payment method.' ),
+            return app( EcommerceRateLimiter::class )->attempt(
+                'ecommerce.cart.mutate',
+                $carts->subject(),
+                fn (): RedirectResponse => $this->resolveCheckoutReturn( $request, $carts, $gateways ),
             );
+        } catch ( RateLimitExceededException ) {
+            return $this->backToPayment( __( 'Slow down' ), __( 'Too many attempts. Try again in a moment.' ) );
         }
-
-        if ( ! PaymentSessions::confirmedFor( $session, $cart ) ) {
-            return $this->backToPayment( __( 'Your order total has changed.' ), __( 'Pay again for the new total.' ) );
-        }
-
-        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );
-
-        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'review' ] ) );
     }
 
     /**
@@ -415,7 +391,9 @@ class StorefrontPageController extends Controller
      * Sends one of the shopper's files as an attachment, spending a
      * download (engine `DigitalDownloadService::redeemOwned()`). Another
      * customer's entitlement is a 404; one that is expired, used up, or
-     * streaming-only goes back to the downloads page saying why.
+     * streaming-only goes back to the downloads page saying why. The route
+     * only accepts the downloads page's temporary signed links (403
+     * otherwise).
      *
      * @since 1.0.0
      *
@@ -441,7 +419,7 @@ class StorefrontPageController extends Controller
      * Streams one of the shopper's files for the browser's player
      * (byte-range aware); the first request of a stream spends a download.
      * A refusal answers with its status, since a media player can't follow
-     * a redirect to a page.
+     * a redirect to a page. Like downloads, the link must be signed.
      *
      * @since 1.0.0
      *
@@ -484,10 +462,69 @@ class StorefrontPageController extends Controller
     }
 
     /**
-     * The payment return for an order already placed: a paid order goes
-     * to its confirmation; a session the gateway confirms goes back to
-     * checkout, which finishes the order; anything else back to the
-     * order's payment.
+     * Works out where a payment return goes (see
+     * {@see self::checkoutReturn()}).
+     *
+     * @since 1.0.0
+     *
+     * @param  Request                 $request   The request.
+     * @param  StorefrontCart          $carts     The shopper's cart.
+     * @param  PaymentGatewayRegistry  $gateways  The engine's gateways.
+     *
+     * @return RedirectResponse
+     */
+    protected function resolveCheckoutReturn( Request $request, StorefrontCart $carts, PaymentGatewayRegistry $gateways ): RedirectResponse
+    {
+        $cart      = $carts->current();
+        $placement = CheckoutPlacement::current();
+        $given     = $request->query( 'reference', $request->query( 'payment_intent' ) );
+        $placed    = null === $placement ? '' : (string) ( $placement['order']->payment_reference ?? '' );
+
+        if ( null !== $placement && ( null === $cart || ( is_string( $given ) && '' !== $placed && hash_equals( $placed, $given ) ) ) ) {
+            return $this->placedOrderReturn( $request, $placement['order'], $gateways );
+        }
+
+        $reference = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
+        $gateway   = null === $cart || null === $cart->payment_gateway_key ? null : $gateways->find( (string) $cart->payment_gateway_key );
+
+        if ( '' === $reference || null === $gateway ) {
+            return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout' ) );
+        }
+
+        if ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) {
+            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
+        }
+
+        try {
+            $session = $gateway->retrievePaymentSession( $reference );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return $this->backToPayment( __( 'We couldn\'t check your payment.' ), __( 'Try again in a moment.' ) );
+        }
+
+        if ( ! $session->isConfirmed() ) {
+            return $this->backToPayment(
+                __( 'Your payment wasn\'t completed.' ),
+                $session->requiresAction() ? __( 'Your bank needs you to confirm this payment. Try again.' ) : __( 'Try again or use another payment method.' ),
+            );
+        }
+
+        if ( ! PaymentSessions::confirmedFor( $session, $cart ) ) {
+            return $this->backToPayment( __( 'Your order total has changed.' ), __( 'Pay again for the new total.' ) );
+        }
+
+        $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );
+
+        return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+    }
+
+    /**
+     * The payment return for an order already placed: a paid order — or
+     * one fraud screening holds for the store's review, its payment
+     * confirmed — goes to its confirmation; a session the gateway confirms
+     * goes back to checkout, which finishes the order; anything else back
+     * to the order's payment.
      *
      * @since 1.0.0
      *
@@ -499,7 +536,13 @@ class StorefrontPageController extends Controller
      */
     protected function placedOrderReturn( Request $request, Order $order, PaymentGatewayRegistry $gateways ): RedirectResponse
     {
-        if ( CheckoutPlacement::isPaid( $order ) ) {
+        $held = ! CheckoutPlacement::isPaid( $order ) && CheckoutPlacement::isHeld( $order );
+
+        if ( $held ) {
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ), 'alert-success' ) );
+        }
+
+        if ( $held || CheckoutPlacement::isPaid( $order ) ) {
             CheckoutPlacement::forget();
 
             $url = CheckoutPlacement::confirmationUrl( $order );

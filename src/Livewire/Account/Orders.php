@@ -59,12 +59,16 @@ class Orders extends Component
      * The status group shown (a `CustomerOrderHistory::GROUPS` key), or
      * empty for every order.
      *
+     * Untyped because the query string can hold anything (`status[]=x`),
+     * which Livewire 3 can't put in a typed property; mount() and
+     * updatedStatus() make it a string.
+     *
      * @since 1.0.0
      *
      * @var string
      */
     #[Url( as: 'status', history: true, except: '' )]
-    public string $status = '';
+    public mixed $status = '';
 
     /**
      * Ignores an unknown status from the query string.
@@ -75,7 +79,7 @@ class Orders extends Component
      */
     public function mount(): void
     {
-        $this->status = $this->validStatus( $this->status );
+        $this->status = $this->validStatus( is_string( $this->status ) ? $this->status : '' );
     }
 
     /**
@@ -87,7 +91,7 @@ class Orders extends Component
      */
     public function updatedStatus(): void
     {
-        $this->status = $this->validStatus( $this->status );
+        $this->status = $this->validStatus( is_string( $this->status ) ? $this->status : '' );
         $this->resetPage();
     }
 

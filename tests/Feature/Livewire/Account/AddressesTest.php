@@ -48,6 +48,20 @@ it( 'lists the shopper\'s addresses with their default badges', function (): voi
         ->assertSeeHtml( 'data-account-address-default="billing"' );
 } );
 
+it( 'names each address in its buttons, so they differ for screen readers', function (): void {
+    [ , $customer ] = shopper();
+
+    bookAddress( $customer, [ 'label' => 'Home', 'address1' => '9 Ship Lane' ] );
+    bookAddress( $customer, [ 'label' => null, 'address1' => '4 Bill Road' ] );
+
+    $html = Livewire::test( Addresses::class )->html();
+
+    expect( $html )->toContain( 'Edit<span class="sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Edit<span class="sr-only">: 4 Bill Road' )
+        ->toContain( 'Delete<span class="sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Use for shipping<span class="sr-only">: 4 Bill Road' );
+} );
+
 it( 'shows an empty state when the shopper has no addresses, even without a customer record', function (): void {
     $this->actingAs( makeUser() );
 
@@ -133,7 +147,10 @@ it( 'validates the address before saving', function (): void {
         ->set( 'form', checkoutAddress( [ 'address1' => '', 'city' => '', 'postal_code' => 'nope', 'region_code' => '' ] ) + [ 'label' => str_repeat( 'x', 121 ) ] )
         ->call( 'save' )
         ->assertHasErrors( [ 'form.address1', 'form.city', 'form.postal_code', 'form.region_code', 'form.label' ] )
-        ->assertSet( 'editing', true );
+        ->assertSet( 'editing', true )
+        ->assertSeeHtml( 'wire:key="ec-account-address-errors-1"' )
+        ->assertSee( 'There are 5 problems to fix:' )
+        ->assertSeeHtml( 'data-field-key="form.city"' );
 
     expect( $customer->addresses()->count() )->toBe( 0 );
 } );
@@ -240,11 +257,11 @@ it( 'answers 404 for another customer\'s address', function ( string $method, ar
     'set default' => [ 'makeDefault', [ 'shipping' ] ],
 ] );
 
-it( 'rate limits saving addresses per user', function (): void {
-    config()->set( 'artisanpack.ecommerce.rate_limits.admin.mutate.per_user', 1 );
+it( 'rate limits saving addresses with the shopper write policy', function (): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+    config()->set( 'artisanpack.ecommerce.rate_limits.admin.mutate.per_user', 100 );
 
-    [ $user, $customer ] = shopper();
-    Illuminate\Support\Facades\RateLimiter::clear( 'ecommerce:admin:mutate:user:' . $user->id );
+    [ , $customer ] = shopper();
 
     foreach ( [ '1 First Street', '2 Second Street' ] as $street ) {
         $component = Livewire::test( Addresses::class )
@@ -258,3 +275,28 @@ it( 'rate limits saving addresses per user', function (): void {
     expect( $customer->addresses()->pluck( 'address1' )->all() )->toBe( [ '1 First Street' ] )
         ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Too many attempts' );
 } );
+
+it( 'rate limits deleting addresses and changing defaults', function ( string $action ): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+
+    [ , $customer ] = shopper();
+    $first          = CustomerAddress::factory()->create( [ 'customer_id' => $customer->id ] );
+    $second         = CustomerAddress::factory()->create( [ 'customer_id' => $customer->id ] );
+
+    $run = fn ( CustomerAddress $address ) => 'delete' === $action
+        ? Livewire::test( Addresses::class )->call( 'confirmDelete', $address->id )->call( 'delete' )
+        : Livewire::test( Addresses::class )->call( 'makeDefault', $address->id, 'billing' );
+
+    $run( $first );
+    $component = $run( $second );
+
+    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Too many attempts' );
+
+    if ( 'delete' === $action ) {
+        expect( CustomerAddress::query()->find( $first->id ) )->toBeNull()
+            ->and( CustomerAddress::query()->find( $second->id ) )->not->toBeNull();
+    } else {
+        expect( (bool) $first->refresh()->is_default_billing )->toBeTrue()
+            ->and( (bool) $second->refresh()->is_default_billing )->toBeFalse();
+    }
+} )->with( [ 'delete', 'makeDefault' ] );

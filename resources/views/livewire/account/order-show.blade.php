@@ -27,7 +27,7 @@
 
         <div class="flex flex-wrap gap-2">
             @if ( null !== $ordersUrl )
-                <x-artisanpack-button :label="__( 'All orders' )" :link="$ordersUrl" icon="o-arrow-left" class="btn-ghost btn-sm" data-account-order-back />
+                <x-artisanpack-button :label="__( 'All orders' )" :link="$ordersUrl" no-wire-navigate icon="o-arrow-left" class="btn-ghost btn-sm rtl:[&_svg]:rotate-180" data-account-order-back />
             @endif
 
             @if ( $canBuyAgain )

@@ -40,7 +40,7 @@
     $ecommerceHasLookup  = Route::has( 'artisanpack.ecommerce.storefront.lookup' );
 @endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}">
+<html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" dir="{{ \ArtisanPackUI\EcommerceStorefrontLivewire\Support\TextDirection::for() }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -61,8 +61,8 @@
 
     <header>
         <x-artisanpack-nav sticky>
-            <x-slot:brand class="gap-6">
-                <a href="{{ $ecommerceHasCatalog ? route( 'artisanpack.ecommerce.storefront.catalog' ) : url( '/' ) }}" class="text-lg font-bold">
+            <x-slot:brand class="min-w-0 gap-6">
+                <a href="{{ $ecommerceHasCatalog ? route( 'artisanpack.ecommerce.storefront.catalog' ) : url( '/' ) }}" class="truncate text-lg font-bold">
                     {{ config( 'app.name' ) }}
                 </a>
 
@@ -73,7 +73,8 @@
                 @endif
             </x-slot:brand>
 
-            <x-slot:actions>
+            {{-- Wraps rather than scrolling sideways on a 320px screen (WCAG 1.4.10); the action labels are icon-only below sm. --}}
+            <x-slot:actions class="shrink-0 flex-wrap justify-end">
                 @if ( $ecommerceHasSearch )
                     @include( 'ecommerce-storefront::partials.header.search' )
                 @endif
@@ -91,23 +92,28 @@
         </x-artisanpack-nav>
     </header>
 
-    <x-artisanpack-main>
-        <x-slot:content id="ecommerce-storefront-content" tabindex="-1">
+    {{--
+        The same markup as x-artisanpack-main without its sidebar drawer:
+        the storefront has no sidebar, and the drawer's unnamed toggle
+        checkbox was a tab stop below lg (livewire-ui-components#117).
+    --}}
+    <main class="mx-auto w-full max-w-screen-2xl">
+        <div id="ecommerce-storefront-content" tabindex="-1" class="mx-auto w-full p-5 lg:px-10 lg:py-5">
             @yield( 'content' )
-        </x-slot:content>
+        </div>
+    </main>
 
-        <x-slot:footer class="mt-auto border-t border-base-content/10">
-            <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm lg:px-10">
-                <p>&copy; {{ now()->year }} {{ config( 'app.name' ) }}</p>
+    <footer class="mx-auto mt-auto w-full max-w-screen-2xl border-t border-base-content/10">
+        <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-6 text-sm lg:px-10">
+            <p>&copy; {{ now()->year }} {{ config( 'app.name' ) }}</p>
 
-                @if ( $ecommerceHasLookup )
-                    <nav aria-label="{{ __( 'Customer service' ) }}">
-                        <a href="{{ route( 'artisanpack.ecommerce.storefront.lookup' ) }}" class="link link-hover">{{ __( 'Find an order' ) }}</a>
-                    </nav>
-                @endif
-            </div>
-        </x-slot:footer>
-    </x-artisanpack-main>
+            @if ( $ecommerceHasLookup )
+                <nav aria-label="{{ __( 'Customer service' ) }}">
+                    <a href="{{ route( 'artisanpack.ecommerce.storefront.lookup' ) }}" class="link link-hover">{{ __( 'Find an order' ) }}</a>
+                </nav>
+            @endif
+        </div>
+    </footer>
 
     @include( 'ecommerce-storefront::partials.global' )
 

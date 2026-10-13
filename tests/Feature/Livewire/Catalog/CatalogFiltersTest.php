@@ -4,13 +4,19 @@ declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
 use ArtisanPackUI\Ecommerce\Catalog\CategoryTree;
+use ArtisanPackUI\Ecommerce\Contracts\CurrencyResolver;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
+use ArtisanPackUI\Ecommerce\Models\ProductPrice;
 use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog\Index;
+use Illuminate\Cache\Events\CacheHit;
+use Illuminate\Cache\Events\CacheMissed;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 
 /**
@@ -356,4 +362,93 @@ it( 'keeps the number of filter queries independent of the catalog size', functi
 
     // Allow for pagination differences; per-product growth would be dozens.
     expect( $queries() )->toBeLessThanOrEqual( $few + 2 );
+} );
+
+it( 'drops attribute values the scope\'s products don\'t have', function (): void {
+    Livewire::withQueryParams( [ 'attr' => [ 'size' => [ 'nope' ], 'colour' => [ 'red', 'mauve' ], 'made-up' => [ 'x' ] ] ] )
+        ->test( Index::class )
+        ->assertSet( 'attributeFilters', [ 'colour' => [ 'red' ] ] );
+} );
+
+it( 'steps the price slider by one whole unit of the currency', function ( string $currency, int $step ): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', $currency ] );
+
+    foreach ( [ $this->runner, $this->hiker ] as $i => $product ) {
+        ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => $currency, 'price_amount' => 1234 + $i * 1000 ] );
+    }
+
+    $this->app->instance( CurrencyResolver::class, new class( $currency ) implements CurrencyResolver {
+        public function __construct( private string $currency )
+        {
+        }
+
+        public function resolve( Request $request ): string
+        {
+            return $this->currency;
+        }
+    } );
+
+    $price = collect( Livewire::test( Index::class )->viewData( 'groups' ) )->firstWhere( 'key', 'price' );
+
+    expect( $price['step'] )->toBe( $step )
+        ->and( $price['min'] % $step )->toBe( 0 )
+        ->and( $price['max'] % $step )->toBe( 0 );
+} )->with( [
+    'yen'    => [ 'JPY', 1 ],
+    'euro'   => [ 'EUR', 100 ],
+    'dinar'  => [ 'KWD', 1000 ],
+] );
+
+it( 'caches attribute labels and swatches across requests', function (): void {
+    $values = static function (): int {
+        app()->forgetScopedInstances();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        Livewire::test( Index::class )->html();
+
+        $table = ( new ProductAttributeValue() )->getTable();
+        $count = count( array_filter( array_column( DB::getQueryLog(), 'query' ), static fn ( string $sql ): bool => str_contains( $sql, 'MIN(' ) && str_contains( $sql, $table ) ) );
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    expect( $values() )->toBe( 1 )
+        ->and( $values() )->toBe( 0 );
+} );
+
+it( 'reads the category tree once per render, however big it is', function (): void {
+    foreach ( range( 1, 5 ) as $i ) {
+        $top = ProductCategory::factory()->create( [ 'name' => 'Dept ' . $i, 'slug' => 'dept-' . $i ] );
+
+        foreach ( range( 1, 3 ) as $j ) {
+            $mid = ProductCategory::factory()->create( [ 'name' => 'Aisle ' . $i . $j, 'slug' => 'aisle-' . $i . '-' . $j, 'parent_id' => $top->id ] );
+
+            foreach ( range( 1, 2 ) as $k ) {
+                ProductCategory::factory()->create( [ 'name' => 'Shelf ' . $i . $j . $k, 'slug' => 'shelf-' . $i . '-' . $j . '-' . $k, 'parent_id' => $mid->id ] );
+            }
+        }
+    }
+
+    CategoryTree::flush();
+    app()->forgetScopedInstances();
+
+    $reads = 0;
+    Event::listen( [ CacheHit::class, CacheMissed::class ], static function ( CacheHit|CacheMissed $event ) use ( &$reads ): void {
+        if ( CategoryTree::CACHE_KEY === $event->key ) {
+            $reads++;
+        }
+    } );
+
+    Livewire::test( Index::class )->assertSee( 'Shelf 532' );
+
+    expect( ProductCategory::query()->count() )->toBeGreaterThanOrEqual( 50 )
+        ->and( $reads )->toBeLessThanOrEqual( 2 );
+} );
+
+it( 'counts each category option with its sub-categories', function (): void {
+    $group = collect( Livewire::test( Index::class )->viewData( 'groups' ) )->firstWhere( 'key', 'category' );
+
+    expect( collect( $group['options'] )->pluck( 'count', 'value' )->all() )->toEqual( [ 'shoes' => 3, 'boots' => 1, 'hats' => 1 ] );
 } );

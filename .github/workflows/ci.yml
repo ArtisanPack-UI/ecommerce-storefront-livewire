@@ -15,12 +15,12 @@ jobs:
     name: Lint
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl
@@ -31,7 +31,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-lint-composer-${{ hashFiles('**/composer.json') }}
@@ -46,7 +46,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    name: Test (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }}, Livewire ${{ matrix.livewire }})
+    name: Test (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }}, Livewire ${{ matrix.livewire }}, ${{ matrix.dependencies }})
 
     strategy:
       fail-fast: false
@@ -54,7 +54,17 @@ jobs:
         php: ['8.3', '8.4']
         laravel: ['12', '13']
         livewire: ['3', '4']
+        dependencies: ['highest']
         include:
+          # The lowest versions composer.json allows, so a raised floor is
+          # caught. Listed in full: an added combination gets none of the
+          # entries below.
+          - php: '8.3'
+            laravel: '12'
+            livewire: '3'
+            dependencies: 'lowest'
+            testbench: '^10.2'
+            livewire-constraint: '^3.6'
           - laravel: '12'
             testbench: '^10.2'
           - laravel: '13'
@@ -65,12 +75,12 @@ jobs:
             livewire-constraint: '^4.0'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl
@@ -81,21 +91,27 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-php${{ matrix.php }}-l${{ matrix.laravel }}-lw${{ matrix.livewire }}-composer-${{ hashFiles('**/composer.json') }}
-          restore-keys: ${{ runner.os }}-php${{ matrix.php }}-l${{ matrix.laravel }}-lw${{ matrix.livewire }}-composer-
+          key: ${{ runner.os }}-php${{ matrix.php }}-l${{ matrix.laravel }}-lw${{ matrix.livewire }}-${{ matrix.dependencies }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-php${{ matrix.php }}-l${{ matrix.laravel }}-lw${{ matrix.livewire }}-${{ matrix.dependencies }}-composer-
 
       - name: Install dependencies
         env:
           LARAVEL: ${{ matrix.laravel }}
           TESTBENCH: ${{ matrix.testbench }}
           LIVEWIRE: ${{ matrix.livewire-constraint }}
+          DEPENDENCIES: ${{ matrix.dependencies }}
         run: |
           composer require "illuminate/support:^${LARAVEL}.0" "livewire/livewire:${LIVEWIRE}" --no-interaction --no-update
           composer require "orchestra/testbench:${TESTBENCH}" --dev --no-interaction --no-update
-          composer update --no-interaction --prefer-dist --with-all-dependencies
+
+          if [ "$DEPENDENCIES" = "lowest" ]; then
+            composer update --no-interaction --prefer-dist --with-all-dependencies --prefer-lowest --prefer-stable
+          else
+            composer update --no-interaction --prefer-dist --with-all-dependencies
+          fi
 
       - name: Run tests
         env:
@@ -110,12 +126,12 @@ jobs:
     # This package ships no migrations. The job guards against drift if one
     # is ever added.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl
@@ -126,7 +142,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-lint-composer-${{ hashFiles('**/composer.json') }}
@@ -147,12 +163,12 @@ jobs:
     # included), or a key missing from any of lang/{en,es,fr,de}.json.
     # `--no-engine` leaves the engine's own sources out of the run.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl
@@ -163,7 +179,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-lint-composer-${{ hashFiles('**/composer.json') }}
@@ -199,19 +215,19 @@ jobs:
             livewire-constraint: '^4.0'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, intl, sockets
           coverage: none
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
@@ -221,7 +237,7 @@ jobs:
         run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-browser-lw${{ matrix.livewire }}-composer-${{ hashFiles('**/composer.json') }}
