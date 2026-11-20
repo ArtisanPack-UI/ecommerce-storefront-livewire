@@ -12,19 +12,19 @@
     </p>
 
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Some of your account details couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-dashboard-failed />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'Some of your account details couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-dashboard-failed />
     @endif
 
     @if ( $claimable > 0 && null !== $claimUrl )
-        <x-artisanpack-alert
+        <x-artisanpack-alert color="info"
             icon="o-inbox-arrow-down"
-            class="alert-info alert-soft text-base-content!"
+           
             :title="trans_choice( 'We found :count order placed as a guest with your email|We found :count orders placed as a guest with your email', $claimable, [ 'count' => $claimable ] )"
             :description="__( 'Add them to your account to see them in your order history.' )"
             data-account-claim-prompt
         >
             <x-slot:actions>
-                <x-artisanpack-button :label="__( 'Claim your orders' )" :link="$claimUrl" no-wire-navigate class="btn-sm" />
+                <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$claimUrl">{{ __( 'Claim your orders' ) }}</x-artisanpack-button>
             </x-slot:actions>
         </x-artisanpack-alert>
     @endif
@@ -41,7 +41,7 @@
         @if ( [] === $orders )
             <x-artisanpack-ec-empty-state icon="o-shopping-bag" :title="__( 'No orders yet' )" :description="__( 'Orders you place will appear here.' )" data-account-no-orders>
                 @if ( null !== $catalogUrl )
-                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
+                    <x-artisanpack-button :href="$catalogUrl" color="primary">{{ __( 'Start shopping' ) }}</x-artisanpack-button>
                 @endif
             </x-artisanpack-ec-empty-state>
         @else
@@ -98,19 +98,19 @@
 
     <div class="flex flex-wrap gap-2" data-account-links>
         @if ( null !== $addressesUrl )
-            <x-artisanpack-button :label="__( 'Manage addresses' )" :link="$addressesUrl" no-wire-navigate icon="o-map-pin" class="btn-sm" />
+            <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$addressesUrl" leading-icon="o-map-pin">{{ __( 'Manage addresses' ) }}</x-artisanpack-button>
         @endif
 
         @if ( null !== $downloadsUrl )
-            <x-artisanpack-button :label="__( 'Go to your downloads' )" :link="$downloadsUrl" no-wire-navigate icon="o-arrow-down-tray" class="btn-sm" />
+            <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$downloadsUrl" leading-icon="o-arrow-down-tray">{{ __( 'Go to your downloads' ) }}</x-artisanpack-button>
         @endif
 
         @if ( null !== $profileUrl )
-            <x-artisanpack-button :label="__( 'Edit your profile' )" :link="$profileUrl" no-wire-navigate icon="o-user-circle" class="btn-sm" data-account-host-link="profile" />
+            <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$profileUrl" leading-icon="o-user-circle" data-account-host-link="profile">{{ __( 'Edit your profile' ) }}</x-artisanpack-button>
         @endif
 
         @if ( null !== $passwordUrl )
-            <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" no-wire-navigate icon="o-key" class="btn-sm" data-account-host-link="password" />
+            <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$passwordUrl" leading-icon="o-key" data-account-host-link="password">{{ __( 'Change your password' ) }}</x-artisanpack-button>
         @endif
     </div>
 </div>

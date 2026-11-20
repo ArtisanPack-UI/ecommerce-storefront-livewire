@@ -77,7 +77,7 @@ it( 'lists the shopper\'s entitlements with the file, version, downloads left, e
         ->assertSee( 'Version 2.1' )
         ->assertSee( '3 downloads left' )
         ->assertSee( 'Available until' )
-        ->assertSeeHtml( 'href="' . signedDownloadUrl( 'file', $download ) . '"' );
+        ->assertSeeHtml( 'href="' . e( signedDownloadUrl( 'file', $download ) ) . '"' );
 } );
 
 it( 'opens a streaming-only file in the player instead of downloading it', function (): void {
@@ -88,7 +88,7 @@ it( 'opens a streaming-only file in the player instead of downloading it', funct
     Livewire::test( Downloads::class )
         ->assertSeeHtml( 'data-account-download-play' )
         ->assertDontSeeHtml( 'data-account-download-button' )
-        ->assertSeeHtml( 'href="' . signedDownloadUrl( 'stream', $download ) . '"' );
+        ->assertSeeHtml( 'href="' . e( signedDownloadUrl( 'stream', $download ) ) . '"' );
 } );
 
 it( 'explains expired and used-up entitlements instead of offering them', function (): void {

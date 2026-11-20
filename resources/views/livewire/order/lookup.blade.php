@@ -11,7 +11,7 @@
 
     <div role="alert" aria-live="assertive">
         @if ( null !== $failure )
-            <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error alert-soft text-base-content!" :title="$failure" data-order-lookup-failure />
+            <x-artisanpack-alert color="error" icon="o-exclamation-triangle" :title="$failure" data-order-lookup-failure />
         @endif
     </div>
 
@@ -22,7 +22,7 @@
         <x-artisanpack-ec-field id="orderNumber" :label="__( 'Order number' )" autocomplete="off" required wire:model="orderNumber" />
 
         <div>
-            <x-artisanpack-button type="submit" :label="__( 'Find my order' )" color="primary" spinner="find" wire:loading.attr="disabled" wire:target="find" data-order-lookup-submit />
+            <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="find" data-order-lookup-submit>{{ __( 'Find my order' ) }}</x-artisanpack-button>
         </div>
     </form>
 

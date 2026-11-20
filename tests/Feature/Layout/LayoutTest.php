@@ -25,7 +25,7 @@ it( 'renders pages inside the standalone layout by default', function (): void {
         ->assertSee( 'role="search"', false )
         ->assertSee( 'data-header-action="cart"', false )
         ->assertSee( 'Find an order' )
-        ->assertSee( 'window.toast', false )
+        ->assertSee( 'apui-toaster-', false )
         ->assertSee( 'data-ecommerce-cart-merge-prompt', false )
         ->assertSee( 'data-header-search-link', false )
         ->assertSee( '<main', false )
@@ -139,4 +139,38 @@ it( 'sets the text direction from the locale', function (): void {
     app()->setLocale( 'en' );
 
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertSee( 'dir="rtl"', false );
+} );
+
+it( 'applies the stored theme before the first paint and inlines the storefront styles once', function (): void {
+    $html = (string) $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
+
+    expect( $html )->toContain( 'apui-theme' )
+        ->and( substr_count( $html, 'data-ecommerce-storefront-styles' ) )->toBe( 1 )
+        ->and( $html )->toContain( '.ec-product-card' )
+        ->and( strpos( $html, 'data-ecommerce-storefront-styles' ) )->toBeLessThan( strpos( $html, '</head>' ) );
+} );
+
+it( 'inlines the storefront styles in a host layout through the global partial', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.storefront.layout', 'host::layout' );
+
+    $html = (string) $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
+
+    expect( substr_count( $html, 'data-ecommerce-storefront-styles' ) )->toBe( 1 );
+} );
+
+it( 'gives the inline styles the CSP nonce', function (): void {
+    Vite::useCspNonce( 'n0nce' );
+
+    expect( $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->getContent() )
+        ->toMatch( '/<style data-ecommerce-storefront-styles\s+nonce="n0nce"\s*>/' );
+} );
+
+it( 'keeps a closing style tag in the stylesheet from ending the element', function (): void {
+    expect( ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontStyles::css() )->not->toContain( '</style' )->toContain( '@layer apui.components' );
+} );
+
+it( 'has one banner landmark: the navbar\'s own header', function (): void {
+    $html = (string) $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
+
+    expect( substr_count( $html, '<header' ) )->toBe( 1 );
 } );

@@ -101,10 +101,11 @@ it( 'marks invalid address fields and links each to its error and hint', functio
         ->set( 'shipping', checkoutAddress( [ 'city' => '', 'postal_code' => 'nope' ] ) )
         ->call( 'saveAddress' )
         ->assertHasErrors( [ 'shipping.city', 'shipping.postal_code' ] )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-shipping-city-error"' )
-        ->assertSeeHtml( '<p id="ec-field-shipping-city-error"' )
-        ->assertSeeHtml( 'aria-describedby="ec-field-shipping-postal_code-error ec-field-shipping-postal_code-hint"' )
-        ->assertSeeHtml( '<p id="ec-field-shipping-postal_code-hint"' )
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="shipping.city-error"' )
+        ->assertSeeHtml( 'id="shipping.city-error"' )
+        ->assertSeeHtml( 'aria-describedby="shipping.postal_code-hint shipping.postal_code-error"' )
+        ->assertSeeHtml( 'id="shipping.postal_code-hint"' )
         ->assertSeeHtml( 'data-field="shipping.city"' );
 } );
 

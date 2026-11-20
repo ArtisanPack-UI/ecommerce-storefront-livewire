@@ -74,8 +74,9 @@ it( 'requires a valid email and the order number', function (): void {
     Livewire::test( Lookup::class )
         ->call( 'find' )
         ->assertHasErrors( [ 'email' => 'Enter the email address you used for the order.', 'orderNumber' => 'Enter the order number.' ] )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-email-error"' )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-orderNumber-error"' )
+        ->assertSeeHtml( 'aria-describedby="email-error"' )
+        ->assertSeeHtml( 'aria-describedby="orderNumber-error"' )
+        ->assertSeeHtml( 'aria-invalid="true"' )
         ->assertSeeHtml( 'data-error-summary' )
         ->assertSeeHtml( 'wire:key="ec-order-lookup-errors-1"' )
         ->assertSeeHtml( 'data-error-summary-link="email"' )
@@ -189,4 +190,13 @@ it( 'ships a "find your order" link for the host\'s sign-in screen', function ()
     expect( view( 'ecommerce-storefront::partials.order-lookup-link' )->render() )
         ->toContain( 'data-order-lookup-link' )
         ->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.lookup' ) . '"' );
+} );
+
+it( 'announces a failed lookup assertively, as an error alert', function (): void {
+    Livewire::test( Lookup::class )
+        ->set( 'email', 'nobody@example.test' )
+        ->set( 'orderNumber', 'NOPE-1' )
+        ->call( 'find' )
+        ->assertSeeHtml( 'role="alert"' )
+        ->assertSeeHtml( 'data-color="error"' );
 } );

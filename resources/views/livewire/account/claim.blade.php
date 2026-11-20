@@ -11,7 +11,7 @@
 
     <div role="alert" aria-live="assertive">
         @if ( null !== $failure )
-            <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error alert-soft text-base-content!" :title="$failure" data-account-claim-failure />
+            <x-artisanpack-alert color="error" icon="o-exclamation-triangle" :title="$failure" data-account-claim-failure />
         @endif
     </div>
 
@@ -22,7 +22,7 @@
         <x-artisanpack-ec-field id="postalCode" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
 
         <div>
-            <x-artisanpack-button type="submit" :label="__( 'Claim orders' )" color="primary" spinner="claim" wire:loading.attr="disabled" wire:target="claim" data-account-claim-submit />
+            <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="claim" data-account-claim-submit>{{ __( 'Claim orders' ) }}</x-artisanpack-button>
         </div>
     </form>
 </div>

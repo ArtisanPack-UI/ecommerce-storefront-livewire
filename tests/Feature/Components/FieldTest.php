@@ -4,31 +4,32 @@ declare( strict_types=1 );
 
 /*
  * <x-artisanpack-ec-field>: library controls with their error and hint
- * linked by id (audit F3, livewire-ui-components#117).
+ * linked by id (audit F3). Since livewire-ui-components 3.0 the control
+ * prints and links both itself.
  */
 
 it( 'links the hint to an input and leaves it valid without an error', function (): void {
     $this->withViewErrors( [] )
         ->blade( '<x-artisanpack-ec-field id="email" type="email" label="Email" hint="For your receipt." wire:model="email" required />' )
-        ->assertSee( 'aria-describedby="ec-field-email-hint"', false )
-        ->assertSee( '<p id="ec-field-email-hint"', false )
+        ->assertSee( 'aria-describedby="email-hint"', false )
+        ->assertSee( 'id="email-hint"', false )
         ->assertSee( 'For your receipt.' )
         ->assertSee( 'type="email"', false )
         ->assertSee( 'wire:model="email"', false )
         ->assertDontSee( 'aria-invalid', false )
-        ->assertDontSee( 'data-field-error', false );
+        ->assertDontSee( 'data-part="error"', false );
 } );
 
-it( 'marks an input invalid and links its error before its hint', function (): void {
+it( 'marks an input invalid and links its hint and error', function (): void {
     $this->withViewErrors( [ 'email' => 'Enter a valid email.' ] )
         ->blade( '<x-artisanpack-ec-field id="email" label="Email" hint="For your receipt." wire:model="email" />' )
-        ->assertSee( 'aria-invalid="true" aria-describedby="ec-field-email-error ec-field-email-hint"', false )
-        ->assertSee( '<p id="ec-field-email-error"', false )
+        ->assertSeeInOrder( [ 'aria-invalid="true"', 'aria-describedby="email-hint email-error"' ], false )
+        ->assertSee( 'id="email-error"', false )
         ->assertSee( 'Enter a valid email.' )
-        ->assertSee( '!input-error', false );
+        ->assertSee( 'data-invalid', false );
 } );
 
-it( 'prints the error once, not also through the library', function (): void {
+it( 'prints the error once', function (): void {
     $html = (string) $this->withViewErrors( [ 'email' => 'Enter a valid email.' ] )
         ->blade( '<x-artisanpack-ec-field id="email" label="Email" wire:model="email" />' );
 
@@ -45,7 +46,7 @@ it( 'reads the error from error-field before wire:model', function (): void {
 it( 'keeps an aria-describedby the caller passes', function (): void {
     $this->withViewErrors( [ 'email' => 'Required.' ] )
         ->blade( '<x-artisanpack-ec-field id="email" label="Email" wire:model="email" aria-describedby="intro" />' )
-        ->assertSee( 'aria-describedby="intro ec-field-email-error"', false );
+        ->assertSee( 'aria-describedby="email-error intro"', false );
 } );
 
 it( 'wraps a select, a textarea, a password, and a checkbox', function (): void {
@@ -57,34 +58,39 @@ it( 'wraps a select, a textarea, a password, and a checkbox', function (): void 
             <x-artisanpack-ec-field control="checkbox" id="terms" label="I accept" hint="Required to order." wire:model="terms" />
             BLADE )
         ->assertSee( 'United States' )
-        ->assertSee( 'aria-describedby="ec-field-country-error"', false )
-        ->assertSee( '!select-error', false )
-        ->assertSee( 'aria-describedby="ec-field-note-error"', false )
-        ->assertSee( '!textarea-error', false )
-        ->assertSee( 'aria-describedby="ec-field-password-error"', false )
-        ->assertSee( 'aria-describedby="ec-field-terms-error"', false )
+        ->assertSee( '<option value="US"', false )
+        ->assertSee( 'aria-describedby="country-error"', false )
+        ->assertSee( 'aria-describedby="note-error"', false )
+        ->assertSee( 'aria-describedby="password-error"', false )
         ->assertSee( 'Required to order.' )
-        ->assertDontSee( 'ec-field-terms-hint', false );
+        ->assertSee( 'Accept the terms.' );
 } );
 
-it( 'makes ids safe from dotted model paths', function (): void {
+it( 'reads the error for a dotted model path and marks the wrapper for the error summary', function (): void {
     $this->withViewErrors( [ 'shipping.city' => 'Enter the city.' ] )
         ->blade( '<x-artisanpack-ec-field id="shipping.city" label="City" wire:model="shipping.city" />' )
-        ->assertSee( 'id="ec-field-shipping-city-error"', false );
+        ->assertSee( 'data-field-key="shipping.city"', false )
+        ->assertSee( 'Enter the city.' );
 } );
 
 it( 'refuses an unknown control', function (): void {
     $this->withViewErrors( [] )->blade( '<x-artisanpack-ec-field control="radio" id="x" label="X" />' );
 } )->throws( Illuminate\View\ViewException::class, 'Unknown field control "radio".' );
 
-it( 'names a select and a textarea, which the library labels with a legend', function (): void {
+it( 'labels a select and a textarea with a real label', function (): void {
     $this->withViewErrors( [] )
         ->blade( <<<'BLADE'
             <x-artisanpack-ec-field control="select" id="country" label="Country" :options="[]" wire:model="country" />
             <x-artisanpack-ec-field control="textarea" id="note" label="Order note" wire:model="note" />
-            <x-artisanpack-ec-field id="city" label="City" wire:model="city" />
             BLADE )
-        ->assertSee( 'aria-label="Country"', false )
-        ->assertSee( 'aria-label="Order note"', false )
-        ->assertDontSee( 'aria-label="City"', false );
+        ->assertSee( '<label data-scope="select" data-part="label" for="country">Country</label>', false )
+        ->assertSee( 'for="note">Order note</label>', false );
+} );
+
+it( 'maps select options to the library shape with custom keys', function (): void {
+    $this->withViewErrors( [] )
+        ->blade( '<x-artisanpack-ec-field control="select" id="size" label="Size" option-value="code" option-label="title" :options="[ [ \'code\' => \'m\', \'title\' => \'Medium\' ], [ \'code\' => \'l\', \'title\' => \'Large\', \'disabled\' => true ], \'junk\' ]" wire:model="size" />' )
+        ->assertSee( '<option value="m" >Medium</option>', false )
+        ->assertSee( 'Large' )
+        ->assertDontSee( 'junk' );
 } );

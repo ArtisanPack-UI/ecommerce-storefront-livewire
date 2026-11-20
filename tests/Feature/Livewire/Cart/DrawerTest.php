@@ -31,10 +31,9 @@ it( 'renders the drawer, opened and closed by browser events', function (): void
         ->dispatch( 'ecommerce-cart-open' )
         ->assertOk()
         ->assertSeeHtml( 'x-on:ecommerce-cart-open.window="open = true"' )
-        ->assertSeeHtml( 'x-on:ecommerce-cart-close.window="close()"' )
-        ->assertSeeHtml( '@keydown.window.escape="close()"' )
-        ->assertSeeHtml( 'x-trap="open"' )
-        ->assertSeeHtml( 'drawer-end' )
+        ->assertSeeHtml( 'x-on:ecommerce-cart-close.window="open = false"' )
+        ->assertSeeHtml( 'apuiDrawer(' )
+        ->assertSeeHtml( 'data-side="end"' )
         ->assertSeeHtml( 'role="dialog"' )
         ->assertSeeHtml( 'aria-modal="true"' )
         ->assertSeeHtml( 'aria-labelledby="ecommerce-cart-drawer-title"' )
@@ -171,7 +170,7 @@ it( 'is mounted once by the global partial, in the package layout and a host lay
         ->getContent();
 
     // The drawer's root; the header button's script also names the attribute.
-    expect( preg_match_all( '/data-ecommerce-cart-drawer\s+x-data/', $html ) )->toBe( 1 );
+    expect( preg_match_all( '/<div\b[^>]*\sdata-ecommerce-cart-drawer[\s>]/', $html ) )->toBe( 1 );
 } )->with( [
     'package layout' => [ null ],
     'host layout'    => [ 'host::layout' ],

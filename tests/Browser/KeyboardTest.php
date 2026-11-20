@@ -34,8 +34,8 @@ it( 'adds to the cart from the keyboard, moves focus into the drawer, and return
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
         ->keys( '[data-add-to-cart]', 'Enter' )
         ->assertScript( '[ ...document.querySelectorAll( "[data-cart-announcement]" ) ].some( ( el ) => el.textContent.includes( "Added to your cart." ) )' )
-        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-panel' ) )
-        ->keys( '#ecommerce-cart-drawer-panel [data-cart-drawer-close]', 'Escape' )
+        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-content' ) )
+        ->keys( '#ecommerce-cart-drawer-content', 'Escape' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-add-to-cart" )' );
 } );
 
@@ -44,9 +44,9 @@ it( 'opens the cart drawer from the header button and returns focus to it', func
 
     visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->keys( '[data-header-action="cart"]', 'Enter' )
-        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-panel' ) )
+        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-content' ) )
         ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Drawer mug' )
-        ->keys( '#ecommerce-cart-drawer-panel [data-cart-drawer-close]', 'Enter' )
+        ->keys( '#ecommerce-cart-drawer-close-trigger', 'Enter' )
         ->assertScript( 'document.activeElement?.dataset.headerAction', 'cart' );
 } );
 
@@ -109,7 +109,7 @@ it( 'moves through header search suggestions with the arrow keys and closes on E
         ->assertAttribute( 'input[role="combobox"]', 'aria-expanded', 'false' );
 } );
 
-it( 'shows where focus is on a product card link', function (): void {
+it( 'shows where focus is on a product card link, as a ring around the card', function (): void {
     $product = makeProduct( 1900, [ 'name' => 'Outline mug' ] );
     $link    = '[data-product-card="' . $product->id . '"] [data-product-link]';
 
@@ -117,7 +117,7 @@ it( 'shows where focus is on a product card link', function (): void {
         ->keys( 'html > body', 'Tab' )
         ->keys( $link, 'Shift' )
         ->assertScript( 'document.activeElement?.matches( ' . json_encode( $link . ':focus-visible' ) . ' )' )
-        ->assertScript( 'getComputedStyle( document.activeElement ).outlineStyle !== "none"' );
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( "[data-product-card]" ) ).boxShadow.includes( "0px 0px 0px" )' );
 } );
 
 it( 'announces why an item could not be added', function (): void {

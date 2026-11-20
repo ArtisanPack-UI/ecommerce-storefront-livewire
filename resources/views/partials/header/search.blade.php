@@ -14,10 +14,13 @@
 
 @if ( \Illuminate\Support\Facades\Route::has( 'artisanpack.ecommerce.storefront.search' ) )
     <x-artisanpack-button
-        icon="o-magnifying-glass"
-        :link="route( 'artisanpack.ecommerce.storefront.search' )"
-        no-wire-navigate
-        class="btn-ghost btn-sm btn-square md:hidden"
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon-only
+        leading-icon="o-magnifying-glass"
+        :href="route( 'artisanpack.ecommerce.storefront.search' )"
+        class="md:hidden"
         :aria-label="__( 'Search' )"
         data-header-search-link
     />

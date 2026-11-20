@@ -15,7 +15,7 @@
 
             <x-artisanpack-ec-rating-summary :rating="(float) $product->avg_rating" :count="(int) $product->reviews_count" :href="$reviewsUrl" />
 
-            <x-artisanpack-ec-price :price="$price" class="text-xl" data-product-price />
+            <x-artisanpack-ec-price :price="$price" size="lg" data-product-price />
 
             @if ( null !== $shortDescription )
                 <div class="prose max-w-none" data-product-short-description>{!! $shortDescription !!}</div>
@@ -45,40 +45,31 @@
 
             <x-artisanpack-accordion wire:model="openSection">
                 @if ( null !== $description )
-                    <x-artisanpack-collapse name="description" data-details-section="description">
-                        <x-slot:heading>{{ __( 'Description' ) }}</x-slot:heading>
-                        <x-slot:content>
-                            <div class="prose max-w-none">{!! $description !!}</div>
-                        </x-slot:content>
-                    </x-artisanpack-collapse>
+                    <x-artisanpack-accordion-item value="description" :title="__( 'Description' )" data-details-section="description">
+                        <div class="prose max-w-none">{!! $description !!}</div>
+                    </x-artisanpack-accordion-item>
                 @endif
 
                 @if ( [] !== $specifications )
-                    <x-artisanpack-collapse name="specifications" data-details-section="specifications">
-                        <x-slot:heading>{{ __( 'Specifications' ) }}</x-slot:heading>
-                        <x-slot:content>
-                            <table class="table table-sm">
-                                <caption class="sr-only">{{ __( 'Specifications' ) }}</caption>
-                                <tbody>
-                                    @foreach ( $specifications as $row )
-                                        <tr>
-                                            <th scope="row" class="w-1/3">{{ $row['label'] }}</th>
-                                            <td>{{ $row['value'] }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </x-slot:content>
-                    </x-artisanpack-collapse>
+                    <x-artisanpack-accordion-item value="specifications" :title="__( 'Specifications' )" data-details-section="specifications">
+                        <table class="table table-sm">
+                            <caption class="sr-only">{{ __( 'Specifications' ) }}</caption>
+                            <tbody>
+                                @foreach ( $specifications as $row )
+                                    <tr>
+                                        <th scope="row" class="w-1/3">{{ $row['label'] }}</th>
+                                        <td>{{ $row['value'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </x-artisanpack-accordion-item>
                 @endif
 
                 @if ( null !== $shippingReturns )
-                    <x-artisanpack-collapse name="shipping" data-details-section="shipping">
-                        <x-slot:heading>{{ __( 'Shipping & returns' ) }}</x-slot:heading>
-                        <x-slot:content>
-                            <div class="prose max-w-none">{!! $shippingReturns !!}</div>
-                        </x-slot:content>
-                    </x-artisanpack-collapse>
+                    <x-artisanpack-accordion-item value="shipping" :title="__( 'Shipping & returns' )" data-details-section="shipping">
+                        <div class="prose max-w-none">{!! $shippingReturns !!}</div>
+                    </x-artisanpack-accordion-item>
                 @endif
             </x-artisanpack-accordion>
         </section>

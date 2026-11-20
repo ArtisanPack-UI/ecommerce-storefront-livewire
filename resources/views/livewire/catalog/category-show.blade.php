@@ -8,9 +8,7 @@
 --}}
 <div class="flex flex-col gap-6" data-category-page="{{ $category->id }}">
     @if ( count( $breadcrumbs ) > 1 )
-        <nav aria-label="{{ __( 'Breadcrumb' ) }}">
-            <x-artisanpack-breadcrumbs :items="$breadcrumbs" no-wire-navigate />
-        </nav>
+        <x-artisanpack-breadcrumbs :items="$breadcrumbs" :label="__( 'Breadcrumb' )" :navigate="false" />
     @endif
 
     <header class="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -42,9 +40,9 @@
                 @foreach ( $subcategories as $subcategory )
                     <li wire:key="subcategory-{{ $subcategory['id'] }}">
                         @if ( null !== $subcategory['url'] )
-                            <a href="{{ $subcategory['url'] }}" class="btn btn-sm btn-outline rounded-full">{{ $subcategory['name'] }}</a>
+                            <a href="{{ $subcategory['url'] }}" class="apui-button" data-variant="outline" data-color="neutral" data-size="sm">{{ $subcategory['name'] }}</a>
                         @else
-                            <span class="badge badge-outline">{{ $subcategory['name'] }}</span>
+                            <x-artisanpack-badge variant="outline">{{ $subcategory['name'] }}</x-artisanpack-badge>
                         @endif
                     </li>
                 @endforeach

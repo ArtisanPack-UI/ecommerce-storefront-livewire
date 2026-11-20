@@ -13,7 +13,7 @@
     @if ( null !== $cartUrl )
         <a
             href="{{ $cartUrl }}"
-            class="btn btn-ghost btn-sm"
+            class="apui-button" data-variant="ghost" data-color="neutral" data-size="sm"
             aria-label="{{ trans_choice( 'Cart, :count item|Cart, :count items', $count, [ 'count' => $count ] ) }}"
             aria-haspopup="dialog"
             aria-controls="ecommerce-cart-drawer-panel"
@@ -25,7 +25,7 @@
             <x-artisanpack-icon name="o-shopping-cart" class="h-5 w-5" aria-hidden="true" />
             <span class="hidden sm:inline" aria-hidden="true">{{ __( 'Cart' ) }}</span>
             @if ( $count > 0 )
-                <x-artisanpack-badge :value="(string) $count" class="badge-primary badge-sm" aria-hidden="true" data-cart-count />
+                <x-artisanpack-badge variant="solid" color="primary" size="sm" aria-hidden="true" data-cart-count>{{ $count }}</x-artisanpack-badge>
             @endif
         </a>
     @endif

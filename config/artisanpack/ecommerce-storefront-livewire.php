@@ -60,15 +60,17 @@ return [
     | Customer authentication
     |--------------------------------------------------------------------------
     |
-    | The host owns sign-in, registration, and the profile and password
-    | screens. The storefront links to these route names (a missing route
-    | hides its link) and creates accounts at checkout through the action
+    | The host owns sign-in, registration, sign-out, and the profile and
+    | password screens. The storefront links to these route names (a missing
+    | route hides its link; the account's "Sign out" posts to
+    | `logout_route`) and creates accounts at checkout through the action
     | class, which implements Contracts\CreatesCustomerAccounts.
     |
     */
     'auth' => [
         'login_route'           => 'login',
         'register_route'        => 'register',
+        'logout_route'          => 'logout',
         'profile_route'         => 'settings.profile',
         'password_route'        => 'settings.password',
         'create_account_action' => 'ArtisanPackUI\\EcommerceStorefrontLivewire\\Actions\\CreateCustomerAccount',

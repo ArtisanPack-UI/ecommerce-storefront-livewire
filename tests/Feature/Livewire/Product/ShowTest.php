@@ -52,7 +52,7 @@ it( 'renders the gallery, summary, purchase form, and details', function (): voi
         ->assertSeeHtml( 'data-gallery-lightbox' )
         ->assertSeeHtml( 'href="#reviews"' )
         ->assertSee( '3 reviews' )
-        ->assertSee( 'Sale price: was $30.00, now $25.00' )
+        ->assertSeeInOrder( [ 'Sale price', '$25.00', 'Original price', '$30.00' ] )
         ->assertSeeHtml( '<em>crisp</em>' )
         ->assertSee( 'In stock' )
         ->assertSee( 'SKU: LIN-1' )

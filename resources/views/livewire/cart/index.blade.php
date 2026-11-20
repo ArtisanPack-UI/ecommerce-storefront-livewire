@@ -17,7 +17,7 @@
     @if ( null !== $removedLine )
         <x-artisanpack-alert icon="o-information-circle" :title="__( ':name was removed from your cart.', [ 'name' => $removedLine['name'] ] )" data-cart-undo>
             <x-slot:actions>
-                <x-artisanpack-button :label="__( 'Undo' )" class="btn-sm" wire:click="undoRemove" wire:loading.attr="disabled" wire:target="undoRemove" data-cart-undo-button />
+                <x-artisanpack-button variant="outline" color="neutral" size="sm" wire:click="undoRemove" wire:loading.attr="disabled" wire:target="undoRemove" data-cart-undo-button>{{ __( 'Undo' ) }}</x-artisanpack-button>
             </x-slot:actions>
         </x-artisanpack-alert>
     @endif
@@ -30,7 +30,7 @@
             data-cart-empty
         >
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
+                <x-artisanpack-button :href="$catalogUrl" color="primary">{{ __( 'Continue shopping' ) }}</x-artisanpack-button>
             @endif
         </x-artisanpack-ec-empty-state>
     @else
@@ -73,7 +73,7 @@
 
                                         <p class="text-sm">
                                             @if ( $line['free'] )
-                                                <x-artisanpack-badge :value="__( 'Free gift' )" class="badge-success badge-sm" />
+                                                <x-artisanpack-badge color="success" size="sm" :value="__( 'Free gift' )" />
                                             @else
                                                 <span class="sr-only">{{ __( 'Price each:' ) }}</span>
                                                 <x-artisanpack-ec-money :amount="$line['unit']" :currency="$line['currency']" />
@@ -89,22 +89,23 @@
                                 </div>
 
                                 @if ( null !== $line['unsellable'] && ! $line['short'] )
-                                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable>
+                                    <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" class="py-2" :title="$line['unsellable']" data-cart-line-unsellable>
                                         <x-slot:actions>
                                             <x-artisanpack-button
-                                                :label="__( 'Remove' )"
-                                                class="btn-sm"
+                                               variant="outline"
+                                               color="neutral"
+                                               size="sm"
+                                               
                                                 :aria-label="__( 'Remove :name', [ 'name' => $line['name'] ] )"
                                                 wire:click="removeLine( {{ $line['id'] }} )"
                                                 wire:loading.attr="disabled"
-                                                wire:target="removeLine( {{ $line['id'] }} )"
-                                            />
+                                                wire:target="removeLine( {{ $line['id'] }} )">{{ __( 'Remove' ) }}</x-artisanpack-button>
                                         </x-slot:actions>
                                     </x-artisanpack-alert>
                                 @elseif ( ! $line['free'] )
                                     @if ( $line['short'] )
                                         {{-- More than the stock left: the shopper can lower the quantity. --}}
-                                        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content! py-2" :title="$line['unsellable']" data-cart-line-unsellable data-cart-line-short />
+                                        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" class="py-2" :title="$line['unsellable']" data-cart-line-unsellable data-cart-line-short />
                                     @endif
 
                                     <div class="flex flex-wrap items-end gap-3">
@@ -118,15 +119,16 @@
                                         />
 
                                         <x-artisanpack-button
-                                            :label="__( 'Remove' )"
-                                            icon="o-trash"
-                                            class="btn-ghost btn-sm"
+                                            variant="ghost"
+                                            color="neutral"
+                                            size="sm"
+                                            leading-icon="o-trash"
+                                           
                                             :aria-label="__( 'Remove :name', [ 'name' => $line['name'] ] )"
                                             wire:click="removeLine( {{ $line['id'] }} )"
                                             wire:loading.attr="disabled"
                                             wire:target="removeLine( {{ $line['id'] }} )"
-                                            data-cart-line-remove
-                                        />
+                                            data-cart-line-remove>{{ __( 'Remove' ) }}</x-artisanpack-button>
                                     </div>
                                 @endif
                             </div>
@@ -143,14 +145,15 @@
                         @if ( null !== $coupon )
                             <div class="flex flex-wrap items-center gap-2 text-sm">
                                 <span>{{ __( 'Coupon applied:' ) }}</span>
-                                <x-artisanpack-badge :value="$coupon" class="badge-neutral" data-cart-coupon-code />
+                                <x-artisanpack-badge :value="$coupon" data-cart-coupon-code />
                                 <x-artisanpack-button
-                                    :label="__( 'Remove' )"
-                                    class="btn-ghost btn-xs"
+                                   variant="ghost"
+                                   color="neutral"
+                                   size="sm"
+                                   
                                     :aria-label="__( 'Remove coupon :code', [ 'code' => $coupon ] )"
                                     wire:click="removeCoupon( {{ \Illuminate\Support\Js::from( $coupon ) }} )"
-                                    data-cart-coupon-remove
-                                />
+                                    data-cart-coupon-remove>{{ __( 'Remove' ) }}</x-artisanpack-button>
                             </div>
                         @endif
 
@@ -166,7 +169,7 @@
                                     error-field="couponCode"
                                 />
                             </div>
-                            <x-artisanpack-button type="submit" :label="__( 'Apply' )" spinner="applyCoupon" wire:loading.attr="disabled" wire:target="applyCoupon" data-cart-coupon-apply />
+                            <x-artisanpack-button variant="outline" color="neutral" type="submit" wire:loading.attr="disabled" wire:target="applyCoupon" data-cart-coupon-apply>{{ __( 'Apply' ) }}</x-artisanpack-button>
                         </form>
                     </div>
                 @endif
@@ -207,16 +210,16 @@
                             maxlength="32"
                         />
 
-                        <x-artisanpack-button type="submit" :label="__( 'Get shipping rates' )" spinner="estimateShipping" wire:loading.attr="disabled" wire:target="estimateShipping" data-cart-estimate-submit />
+                        <x-artisanpack-button variant="outline" color="neutral" type="submit" wire:loading.attr="disabled" wire:target="estimateShipping" data-cart-estimate-submit>{{ __( 'Get shipping rates' ) }}</x-artisanpack-button>
 
                         @if ( null !== $rates )
                             @if ( [] === $rates )
                                 <p class="text-sm" data-cart-estimate-none>{{ __( 'No shipping options for this address.' ) }}</p>
                             @else
-                                <x-artisanpack-radio
+                                <x-artisanpack-radio-group
                                     id="ec-cart-estimate-rate"
                                     :label="__( 'Shipping option' )"
-                                    :options="collect( $rates )->map( fn ( array $rate ): array => [ 'id' => $rate['id'], 'name' => $rate['label'], 'hint' => MoneyFormatter::format( $rate['amount'], $rate['currency'] ) ] )->all()"
+                                    :options="collect( $rates )->map( fn ( array $rate ): array => [ 'value' => $rate['id'], 'label' => $rate['label'], 'description' => MoneyFormatter::format( $rate['amount'], $rate['currency'] ) ] )->all()"
                                     wire:model.live="selectedRate"
                                     data-cart-estimate-rates
                                 />
@@ -235,14 +238,14 @@
 
                 <div class="flex flex-col gap-2">
                     @if ( $hasUnsellable )
-                        <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout />
+                        <x-artisanpack-button color="primary" class="w-full" disabled aria-describedby="ec-cart-checkout-blocked" data-cart-checkout>{{ __( 'Checkout' ) }}</x-artisanpack-button>
                         <p id="ec-cart-checkout-blocked" class="text-sm font-semibold" data-cart-checkout-blocked>{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-checkout />
+                        <x-artisanpack-button :href="$checkoutUrl" color="primary" class="w-full" data-cart-checkout>{{ __( 'Checkout' ) }}</x-artisanpack-button>
                     @endif
 
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-ghost w-full" />
+                        <x-artisanpack-button variant="ghost" color="neutral" :href="$catalogUrl" class="w-full">{{ __( 'Continue shopping' ) }}</x-artisanpack-button>
                     @endif
                 </div>
             </section>

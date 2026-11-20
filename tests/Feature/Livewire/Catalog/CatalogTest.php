@@ -464,15 +464,15 @@ it( 'eager-loads what the cards need, so listing more products adds no image que
         ->and( $many )->toBe( $few );
 } );
 
-it( 'escapes product names in toasts, which the toast container renders as HTML', function (): void {
+it( 'keeps product names in toasts out of the markup: the toaster renders text, and the script JSON hides the tags', function (): void {
     config()->set( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'toast' );
 
     $product = makeProduct( 1200, [ 'name' => '<img src=x onerror=alert(1)>' ] );
 
     $toasts = json_encode( Livewire::test( Index::class )->call( 'quickAdd', $product->id )->effects['xjs'] ?? [] );
 
-    expect( $toasts )->toContain( 'u0026lt;img src=x onerror=alert(1)' )
-        ->not->toContain( 'u003Cimg' );
+    expect( $toasts )->toContain( 'u003Cimg src=x onerror=alert(1)' )
+        ->not->toContain( '<img' );
 } );
 
 it( 'adds to the cart in hosts that prevent lazy loading', function (): void {

@@ -20,6 +20,32 @@ describe( 'money', function (): void {
             ->assertSee( '&mdash;', false )
             ->assertSee( 'No amount' );
     } );
+
+    it( 'uses tabular figures isolated left to right', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="USD" />' )
+            ->assertSee( 'class="ec-money"', false )
+            ->assertSee( '<bdi dir="ltr">$28.00</bdi>', false );
+    } );
+
+    it( 'writes a negative amount with a true minus sign and reads it as "Minus"', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-money :amount="-1250" currency="USD" />' );
+
+        expect( $html )->toContain( '<span aria-hidden="true">' . "\u{2212}" . '</span>' )
+            ->toContain( '<span class="apui-sr-only">Minus </span>$12.50' )
+            ->not->toContain( '-$12.50' );
+    } );
+
+    it( 'shows a converted amount\'s store-currency equivalent after it', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2590" currency="EUR" :equivalent="2800" equivalent-currency="USD" />' )
+            ->assertSeeInOrder( [ '€25.90', 'data-money-equivalent', '&asymp;', 'approximately', '$28.00' ], false );
+    } );
+
+    it( 'leaves the equivalent out when it is in the same currency or missing', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="USD" :equivalent="2800" equivalent-currency="USD" />' )
+            ->assertDontSee( 'data-money-equivalent', false );
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="EUR" />' )
+            ->assertDontSee( 'data-money-equivalent', false );
+    } );
 } );
 
 describe( 'stock status', function (): void {
@@ -34,6 +60,28 @@ describe( 'stock status', function (): void {
         'backorder'    => [ StockStatus::BACKORDER, 'Available on backorder' ],
         'out of stock' => [ StockStatus::OUT_OF_STOCK, 'Out of stock' ],
     ] );
+
+    it( 'shows a soft badge in the state\'s color with its icon', function ( string $status, string $color ): void {
+        $this->blade( '<x-artisanpack-ec-stock-status :status="$status" />', [ 'status' => new StockStatus( $status ) ] )
+            ->assertSee( 'data-variant="soft"', false )
+            ->assertSee( 'data-color="' . $color . '"', false )
+            ->assertSee( 'data-part="icon"', false );
+    } )->with( [
+        'in stock'     => [ StockStatus::IN_STOCK, 'success' ],
+        'low stock'    => [ StockStatus::LOW_STOCK, 'warning' ],
+        'backorder'    => [ StockStatus::BACKORDER, 'info' ],
+        'out of stock' => [ StockStatus::OUT_OF_STOCK, 'error' ],
+    ] );
+
+    it( 'is a ghost badge with a dot when compact, and leaves out "In stock"', function (): void {
+        $this->blade( '<x-artisanpack-ec-stock-status :status="$status" compact />', [ 'status' => new StockStatus( StockStatus::BACKORDER ) ] )
+            ->assertSee( 'data-variant="ghost"', false )
+            ->assertSee( 'data-part="dot"', false )
+            ->assertDontSee( 'data-part="icon"', false )
+            ->assertSee( 'Available on backorder' );
+
+        expect( trim( (string) $this->blade( '<x-artisanpack-ec-stock-status :status="$status" compact />', [ 'status' => new StockStatus( StockStatus::IN_STOCK ) ] ) ) )->toBe( '' );
+    } );
 
     it( 'says how many are left when the store shows stock counts', function (): void {
         config()->set( 'artisanpack.ecommerce-storefront-livewire.catalog.show_stock_count', true );

@@ -1,0 +1,466 @@
+/*
+ * ecommerce-storefront-livewire: the styles the design system has no
+ * component for. Tokens only (--apui-*), logical properties throughout so
+ * the storefront mirrors in right-to-left layouts, and no Tailwind or
+ * DaisyUI.
+ *
+ * Inlined by resources/views/partials/styles.blade.php, so a host needs no
+ * build step for them.
+ */
+
+@layer apui.components {
+    /* Layout */
+    .ec-storefront {
+        margin: 0;
+        background: var(--apui-surface-page);
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-sans);
+    }
+
+    /*
+     * Header (until the layout rebuild, #129): the actions wrap rather than
+     * scroll the page sideways on a 320px screen (WCAG 1.4.10).
+     */
+    .ec-storefront [data-scope="navbar"][data-part="actions"] {
+        flex: 0 1 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-storefront [data-scope="navbar"][data-part="brand"] {
+        flex: 0 1 auto;
+        min-inline-size: 0;
+    }
+
+    /* Money (#75): tabular figures that never wrap, each isolated left to right. */
+    .ec-money {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-money[data-tone="muted"] {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-money__equivalent {
+        margin-inline-start: 4px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /* Price (#74): weight 500, tabular figures; the size follows the context. */
+    .ec-price {
+        --ec-price-size: 15px;
+        --ec-price-line: 22px;
+
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 2px 8px;
+        color: var(--apui-text-default);
+        font-size: var(--ec-price-size);
+        line-height: var(--ec-price-line);
+    }
+
+    .ec-price[data-size="sm"] {
+        --ec-price-size: var(--apui-type-body-sm-font-size);
+        --ec-price-line: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-price[data-size="lg"] {
+        --ec-price-size: 23px;
+        --ec-price-line: 30px;
+    }
+
+    .ec-price__amount {
+        font-weight: var(--apui-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+
+    /* A range may break after its dash on a narrow card. */
+    .ec-price__amount[aria-hidden="true"] {
+        white-space: normal;
+    }
+
+    .ec-price__amount[data-tone="sale"] {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-price__amount[data-tone="free"] {
+        color: var(--apui-color-success-text);
+    }
+
+    .ec-price__was {
+        color: var(--apui-text-muted);
+        font-size: max(0.8em, 13px);
+        font-weight: var(--apui-font-weight-regular);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        text-decoration: line-through;
+    }
+
+    .ec-price__from {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-price__from .ec-price__amount {
+        color: var(--apui-text-default);
+        font-size: var(--ec-price-size);
+    }
+
+    .ec-price__from .ec-price__amount[data-tone="sale"] {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-price__note,
+    .ec-price[data-price="unavailable"] {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /* Stock status (#76): the compact form for product cards. */
+    .ec-stock[data-variant="ghost"] {
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /*
+     * Interim styles for pieces rebuilt later (quantity stepper #79, error
+     * summary #85), so they keep working without DaisyUI.
+     */
+    .ec-quantity {
+        display: inline-flex;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .ec-quantity__input {
+        box-sizing: border-box;
+        inline-size: 5rem;
+        min-block-size: 40px;
+        padding-inline: 8px;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-field);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font: inherit;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+    }
+
+    .ec-quantity__input[aria-invalid="true"] {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-quantity__input:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-quantity__error {
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    /* The checkout's decorative progress bar (until #136) scrolls in its own box on a narrow screen. */
+    .ec-checkout-progress {
+        contain: inline-size;
+        overflow-x: auto;
+    }
+
+    .ec-error-summary {
+        padding: 16px;
+        border: var(--apui-border-width) solid var(--apui-color-error-border);
+        border-radius: var(--apui-radius-surface);
+        background: var(--apui-color-error-soft);
+        color: var(--apui-color-error-soft-foreground);
+    }
+
+    .ec-error-summary:focus {
+        outline: none;
+    }
+
+    .ec-error-summary:focus-visible {
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    /* Product card (#73) */
+    .ec-product-card {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-product-card:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-product-card:focus-within {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-product-card > .ec-product-card__media {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-product-card__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-product-card[data-sold-out] .ec-product-card__media > img {
+        opacity: 0.6;
+    }
+
+    .ec-product-card__placeholder {
+        display: grid;
+        place-items: center;
+        inline-size: 100%;
+        block-size: 100%;
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-product-card__placeholder svg {
+        inline-size: 40px;
+        block-size: 40px;
+    }
+
+    .ec-product-card__badges {
+        position: absolute;
+        inset-block-start: 12px;
+        inset-inline-start: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        pointer-events: none;
+    }
+
+    .ec-product-card__actions {
+        position: absolute;
+        z-index: 1;
+        inset-block-start: 10px;
+        inset-inline-end: 10px;
+        display: flex;
+        gap: 4px;
+    }
+
+    .ec-product-card__body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-product-card__category {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-product-card__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-product-card__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the card: one link per product. */
+    .ec-product-card__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    .ec-product-card__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 12px;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-product-card__meta :where(a, button) {
+        position: relative;
+        z-index: 1;
+    }
+
+    .ec-product-card__cta {
+        position: relative;
+        z-index: 1;
+        margin-block-start: auto;
+        padding-block-start: 8px;
+    }
+
+    /* "Choose options" leads to the product page through the card's link. */
+    .ec-product-card__cta[data-cta="options"] {
+        z-index: auto;
+        pointer-events: none;
+    }
+
+    .ec-product-card__cta .apui-button {
+        inline-size: 100%;
+    }
+
+    /* Account shell (#72): a 232px sidebar beside the content from 1024px. */
+    .ec-account {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__sidebar {
+        display: none;
+    }
+
+    .ec-account__content {
+        display: grid;
+        align-content: start;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__title [data-scope="page-header"][data-part="title"] {
+        font-size: var(--apui-type-heading-xl-font-size);
+        line-height: var(--apui-type-heading-xl-line-height);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-account__identity {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 8px 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__who {
+        min-inline-size: 0;
+    }
+
+    .ec-account__identity p {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ec-account__name {
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-account__email {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-account__signout {
+        margin: 0;
+        padding-block-start: 8px;
+    }
+
+    /* Below 1024px: a row of tabs that scrolls sideways, never the page. */
+    .ec-account__tabs {
+        min-inline-size: 0;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .ec-account__tabs ul {
+        display: flex;
+        gap: 8px;
+        margin: 0;
+        padding: 2px;
+        list-style: none;
+    }
+
+    .ec-account__tab {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        block-size: 32px;
+        padding-inline: 12px;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: 1;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .ec-account__tab:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-account__tab[aria-current="page"] {
+        border-color: var(--apui-selected-border, var(--apui-color-primary-border));
+        background: var(--apui-selected-bg);
+        color: var(--apui-color-primary-soft-foreground);
+    }
+
+    .ec-account__tab:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    @media (min-width: 64rem) {
+        .ec-account {
+            grid-template-columns: 232px minmax(0, 1fr);
+            gap: 32px;
+            align-items: start;
+        }
+
+        .ec-account__sidebar {
+            display: block;
+        }
+
+        .ec-account__tabs {
+            display: none;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .ec-account__tab[aria-current="page"] {
+            outline: var(--apui-border-width) solid Highlight;
+        }
+    }
+}

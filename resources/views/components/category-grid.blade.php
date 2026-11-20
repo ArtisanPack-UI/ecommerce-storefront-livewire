@@ -17,7 +17,7 @@
                 <li data-category-tile="{{ $tile['id'] }}">
                     <x-artisanpack-card class="relative h-full border border-base-content/10 transition-shadow hover:shadow-md focus-within:shadow-md">
                         @if ( $showImages )
-                            <x-slot:figure class="aspect-[4/3] bg-base-200">
+                            <x-slot:media class="aspect-[4/3] bg-base-200">
                                 @if ( null !== $tile['image'] )
                                     @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $tile['image'], 800, 600 ) )
                                     <img
@@ -35,7 +35,7 @@
                                         <x-artisanpack-icon name="o-squares-2x2" class="h-10 w-10 opacity-30" />
                                     </div>
                                 @endif
-                            </x-slot:figure>
+                            </x-slot:media>
                         @endif
 
                         <div class="flex flex-col gap-1">

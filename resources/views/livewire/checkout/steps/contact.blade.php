@@ -15,14 +15,14 @@
     @endif
 
     @if ( $needsAccount )
-        <x-artisanpack-alert icon="o-information-circle" class="alert-info alert-soft text-base-content!" :title="__( 'You\'ll need an account to pay' )" :description="__( 'Fill in your details now, then sign in or create an account before paying.' )" data-checkout-account-needed>
+        <x-artisanpack-alert color="info" icon="o-information-circle" :title="__( 'You\'ll need an account to pay' )" :description="__( 'Fill in your details now, then sign in or create an account before paying.' )" data-checkout-account-needed>
             <x-slot:actions>
                 @if ( null !== $loginUrl )
-                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" no-wire-navigate class="btn-sm" />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$loginUrl">{{ __( 'Sign in' ) }}</x-artisanpack-button>
                 @endif
 
                 @if ( null !== $registerUrl )
-                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate class="btn-sm" />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$registerUrl">{{ __( 'Create an account' ) }}</x-artisanpack-button>
                 @endif
             </x-slot:actions>
         </x-artisanpack-alert>
@@ -44,6 +44,6 @@
     <x-artisanpack-checkbox :label="__( 'Email me news and offers' )" wire:model="marketingConsent" data-checkout-marketing />
 
     <div>
-        <x-artisanpack-button type="submit" :label="__( 'Continue' )" color="primary" spinner="saveContact" wire:loading.attr="disabled" wire:target="saveContact" data-checkout-contact-submit />
+        <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="saveContact" data-checkout-contact-submit>{{ __( 'Continue' ) }}</x-artisanpack-button>
     </div>
 </form>

@@ -59,8 +59,9 @@ it( 'requires the order number and postcode', function (): void {
     Livewire::test( Claim::class )
         ->call( 'claim' )
         ->assertHasErrors( [ 'orderNumber' => 'Enter the order number.', 'postalCode' => 'Enter the postcode the order was shipped to.' ] )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-orderNumber-error"' )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-postalCode-error"' );
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="orderNumber-error"' )
+        ->assertSeeHtml( 'aria-describedby="postalCode-error"' );
 
     Livewire::test( Claim::class )
         ->set( 'orderNumber', str_repeat( '1', 51 ) )

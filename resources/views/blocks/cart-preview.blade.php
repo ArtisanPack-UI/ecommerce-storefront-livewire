@@ -47,7 +47,7 @@
                 <dd><x-artisanpack-ec-money :amount="$subtotal" :currency="$currency" /></dd>
             </dl>
 
-            <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled />
+            <x-artisanpack-button color="primary" class="w-full" disabled>{{ __( 'Checkout' ) }}</x-artisanpack-button>
         </section>
     </div>
 

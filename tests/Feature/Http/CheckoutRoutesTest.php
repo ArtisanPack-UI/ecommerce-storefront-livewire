@@ -123,7 +123,7 @@ it( 'sends the shopper back to payment when the payment didn\'t go through', fun
         ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
 
     expect( session( ToastPayload::SESSION_KEY )['toast'] )
-        ->title->toBe( e( 'Your payment wasn\'t completed.' ) )
+        ->title->toBe( 'Your payment wasn\'t completed.' )
         ->description->toBe( e( $description ) );
 } )->with( [
     'needs 3-D Secure' => [ PaymentSession::STATUS_REQUIRES_ACTION, 'Your bank needs you to confirm this payment. Try again.' ],
@@ -151,7 +151,7 @@ it( 'refuses a return for another payment', function (): void {
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
         ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
 
-    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( e( 'That payment doesn\'t belong to this checkout.' ) );
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'That payment doesn\'t belong to this checkout.' );
 } );
 
 it( 'says so when the provider can\'t be reached', function (): void {
@@ -161,7 +161,7 @@ it( 'says so when the provider can\'t be reached', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return' ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
 
-    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( e( 'We couldn\'t check your payment.' ) );
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'We couldn\'t check your payment.' );
 } );
 
 it( 'ignores a returned payment the cart has since replaced', function (): void {

@@ -11,13 +11,13 @@
 --}}
 <div class="flex flex-col gap-8" data-account-downloads>
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
     @endif
 
     @if ( ! $failed && ( null === $downloads || 0 === $downloads->total() ) && ( null === $licences || 0 === $licences->total() ) )
         <x-artisanpack-ec-empty-state icon="o-arrow-down-tray" :title="__( 'No downloads yet' )" :description="__( 'Files and licence keys from your orders will appear here.' )" data-account-no-downloads>
             @if ( null !== $catalogUrl )
-                <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
+                <x-artisanpack-button :href="$catalogUrl" color="primary">{{ __( 'Start shopping' ) }}</x-artisanpack-button>
             @endif
         </x-artisanpack-ec-empty-state>
     @endif
@@ -56,16 +56,16 @@
 
                         @if ( null !== $row['url'] )
                             @if ( $row['streaming'] )
-                                <x-artisanpack-button :label="__( 'Play' )" icon="o-play" :link="$row['url']" external class="btn-sm" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $row['file'] ] )" data-account-download-play />
+                                <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-play" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $row['file'] ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
                             @else
-                                <x-artisanpack-button :label="__( 'Download' )" icon="o-arrow-down-tray" :link="$row['url']" no-wire-navigate class="btn-sm" color="primary" :aria-label="__( 'Download :file', [ 'file' => $row['file'] ] )" data-account-download-button />
+                                <x-artisanpack-button size="sm" leading-icon="o-arrow-down-tray" :href="$row['url']" color="primary" :aria-label="__( 'Download :file', [ 'file' => $row['file'] ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
                             @endif
                         @endif
                     </li>
                 @endforeach
             </ul>
 
-            <x-artisanpack-pagination :rows="$downloads" hide-per-page data-account-downloads-pagination />
+            <x-artisanpack-pagination :rows="$downloads" data-account-downloads-pagination />
         </section>
     @endif
 
@@ -107,14 +107,14 @@
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <x-artisanpack-button :label="__( 'Copy' )" icon="o-clipboard-document" class="btn-sm" @click="copy()" :aria-label="__( 'Copy the licence key for :product', [ 'product' => $row['product'] ] )" data-account-licence-copy />
+                            <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-clipboard-document" @click="copy()" :aria-label="__( 'Copy the licence key for :product', [ 'product' => $row['product'] ] )" data-account-licence-copy>{{ __( 'Copy' ) }}</x-artisanpack-button>
                             <span class="text-sm font-semibold" role="status" aria-live="polite" x-text="copied ? @js( __( 'Copied' ) ) : ''"></span>
                         </div>
                     </li>
                 @endforeach
             </ul>
 
-            <x-artisanpack-pagination :rows="$licences" hide-per-page data-account-licences-pagination />
+            <x-artisanpack-pagination :rows="$licences" data-account-licences-pagination />
         </section>
     @endif
 </div>

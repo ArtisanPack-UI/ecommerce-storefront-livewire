@@ -1,78 +1,51 @@
 {{--
     The cart drawer. See Cart\Drawer.
 
-    The library drawer's focus trap lands on its hidden `drawer-toggle`
-    checkbox, which has no name (livewire-ui-components#117). That checkbox
-    is taken out of the tab order and the accessibility tree, and focus
-    moves to the drawer's title once it opens, so screen readers announce
-    "Your cart (n items)". On close, focus goes back to the last control
-    focused outside the drawer (the "Add to cart" button that opened it).
+    The design system's Drawer: a modal dialog on the end side, opened by the
+    `ecommerce-cart-open` browser event and closed by `ecommerce-cart-close`,
+    its close button, Escape or the backdrop. Its title, "Your cart", labels
+    the dialog and the item count describes it. Focus moves into the panel
+    on open and back to the control that opened it on close, and
+    `ecommerce-cart-closed` is dispatched whenever it closes, however it was
+    closed (its `open` state is watched: setting it in code fires no
+    `open-change`).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
+{{--
+    The drawer often opens from the server (after "Add to cart"), while the
+    button that started it is disabled, so the dialog has nothing to restore
+    focus to. The last control focused outside the drawer is kept and gets
+    focus back when the drawer closes and focus would otherwise be lost.
+--}}
 <div
     data-ecommerce-cart-drawer
-    x-data="{
-        returnTo: null,
-        focusTitle( tries = 20 ) {
-            const title  = document.getElementById( 'ecommerce-cart-drawer-title' );
-            const active = document.activeElement;
-
-            {{-- Stop once the shopper has moved on inside the panel (the focus trap's own first stop is the close button). --}}
-            if ( ! title || active === title || ( active?.closest( '#ecommerce-cart-drawer-panel' ) && ! active.hasAttribute( 'data-cart-drawer-close' ) ) ) {
-                return;
-            }
-
-            title.focus();
-
-            {{-- The panel can't take focus until it has slid in. --}}
-            if ( document.activeElement !== title && tries > 0 ) {
-                setTimeout( () => this.focusTitle( tries - 1 ), 25 );
-            }
-        },
-    }"
-    x-on:open="$el.querySelector( '.drawer-toggle' )?.setAttribute( 'tabindex', '-1' ); $el.querySelector( '.drawer-toggle' )?.setAttribute( 'aria-hidden', 'true' ); focusTitle()"
-    x-on:focusin.window="if ( ! $el.contains( $event.target ) ) { returnTo = $event.target }"
-    x-on:close="$dispatch( 'ecommerce-cart-closed' ); if ( returnTo?.isConnected ) { $nextTick( () => returnTo.focus() ) }"
+    x-data="{ returnTo: null }"
+    x-on:focusin.window="if ( ! document.getElementById( 'ecommerce-cart-drawer-content' )?.contains( $event.target ) ) { returnTo = $event.target }"
+    x-on:ecommerce-cart-closed.window="setTimeout( () => { if ( returnTo?.isConnected && ( ! document.activeElement || document.activeElement === document.body ) ) { returnTo.focus() } }, 50 )"
 >
     <x-artisanpack-drawer
         id="ecommerce-cart-drawer"
-        right
-        open-on="ecommerce-cart-open"
-        close-on="ecommerce-cart-close"
-        close-on-escape
-        class="w-96 max-w-full"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ecommerce-cart-drawer-title"
+        side="end"
+        :title="__( 'Your cart' )"
+        :description="trans_choice( ':count item|:count items', $count, [ 'count' => $count ] )"
+        :close-label="__( 'Close cart' )"
+        x-on:ecommerce-cart-open.window="open = true"
+        x-on:ecommerce-cart-close.window="open = false"
+        x-init="$watch( 'open', ( isOpen ) => { if ( ! isOpen ) { $dispatch( 'ecommerce-cart-closed' ) } } )"
     >
         <div id="ecommerce-cart-drawer-panel" class="flex min-h-full flex-col gap-4">
-            <div class="flex items-center justify-between gap-4">
-                <h2 id="ecommerce-cart-drawer-title" tabindex="-1" class="text-xl font-bold focus:outline-none">
-                    {{ __( 'Your cart' ) }}
-                    <span class="text-base font-normal text-base-content/70">({{ trans_choice( ':count item|:count items', $count, [ 'count' => $count ] ) }})</span>
-                </h2>
-
-                <x-artisanpack-button
-                    icon="o-x-mark"
-                    class="btn-ghost btn-sm btn-circle"
-                    :aria-label="__( 'Close cart' )"
-                    x-on:click="$dispatch( 'ecommerce-cart-close' )"
-                    data-cart-drawer-close
-                />
-            </div>
-
             <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ $announcement }}</p>
 
-            @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '#ecommerce-cart-drawer-panel', 'fallback' => '#ecommerce-cart-drawer-title' ] )
+            @include( 'ecommerce-storefront::livewire.cart.partials.focus-after-change', [ 'root' => '#ecommerce-cart-drawer-panel', 'fallback' => '#ecommerce-cart-drawer-content' ] )
 
             @if ( null !== $removedLine )
                 <div class="flex items-center justify-between gap-2 rounded-box bg-base-200 px-3 py-2 text-sm" data-cart-undo>
                     <span>{{ __( ':name was removed from your cart.', [ 'name' => $removedLine['name'] ] ) }}</span>
-                    <x-artisanpack-button :label="__( 'Undo' )" class="btn-xs" wire:click="undoRemove" wire:loading.attr="disabled" wire:target="undoRemove" data-cart-undo-button />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" wire:click="undoRemove" wire:loading.attr="disabled" wire:target="undoRemove" data-cart-undo-button>{{ __( 'Undo' ) }}</x-artisanpack-button>
                 </div>
             @endif
 
@@ -86,7 +59,7 @@
                     <x-artisanpack-icon name="o-shopping-cart" class="h-10 w-10 opacity-40" aria-hidden="true" />
                     <p>{{ __( 'Your cart is empty' ) }}</p>
                     @if ( null !== $catalogUrl )
-                        <x-artisanpack-button :label="__( 'Continue shopping' )" :link="$catalogUrl" no-wire-navigate class="btn-sm" />
+                        <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$catalogUrl">{{ __( 'Continue shopping' ) }}</x-artisanpack-button>
                     @endif
                 </div>
             @else
@@ -121,7 +94,7 @@
                                 @endif
 
                                 @if ( $line['free'] )
-                                    <x-artisanpack-badge :value="__( 'Free gift' )" class="badge-success badge-sm" />
+                                    <x-artisanpack-badge color="success" size="sm" :value="__( 'Free gift' )" />
                                 @else
                                     <div class="flex flex-wrap items-end gap-2">
                                         @if ( null === $line['unsellable'] || $line['short'] )
@@ -136,14 +109,15 @@
                                         @endif
 
                                         <x-artisanpack-button
-                                            :label="__( 'Remove' )"
-                                            class="btn-ghost btn-xs"
+                                           variant="ghost"
+                                           color="neutral"
+                                           size="sm"
+                                           
                                             :aria-label="__( 'Remove :name', [ 'name' => $line['name'] ] )"
                                             wire:click="removeLine( {{ $line['id'] }} )"
                                             wire:loading.attr="disabled"
                                             wire:target="removeLine( {{ $line['id'] }} )"
-                                            data-cart-line-remove
-                                        />
+                                            data-cart-line-remove>{{ __( 'Remove' ) }}</x-artisanpack-button>
                                     </div>
                                 @endif
                             </div>
@@ -159,13 +133,13 @@
                     <p class="text-sm text-base-content/70">{{ __( 'Shipping and tax are calculated at checkout.' ) }}</p>
 
                     @if ( null !== $cartUrl )
-                        <x-artisanpack-button :label="__( 'View cart' )" :link="$cartUrl" no-wire-navigate class="w-full" data-cart-drawer-view />
+                        <x-artisanpack-button variant="outline" color="neutral" :href="$cartUrl" class="w-full" data-cart-drawer-view>{{ __( 'View cart' ) }}</x-artisanpack-button>
                     @endif
 
                     @if ( $hasUnsellable )
                         <p class="text-sm font-semibold">{{ $onlyShort ? __( 'Lower the quantities marked to check out.' ) : __( 'Remove the items that can\'t be bought to check out.' ) }}</p>
                     @elseif ( null !== $checkoutUrl )
-                        <x-artisanpack-button :label="__( 'Checkout' )" :link="$checkoutUrl" no-wire-navigate color="primary" class="w-full" data-cart-drawer-checkout />
+                        <x-artisanpack-button :href="$checkoutUrl" color="primary" class="w-full" data-cart-drawer-checkout>{{ __( 'Checkout' ) }}</x-artisanpack-button>
                     @endif
                 </div>
             @endif

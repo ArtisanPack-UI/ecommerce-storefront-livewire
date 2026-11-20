@@ -252,8 +252,9 @@ it( 'links a review field to its error', function (): void {
         ->set( 'authorEmail', 'nope' )
         ->call( 'submit' )
         ->assertHasErrors( 'authorEmail' )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-ec-review-form-' . $product->id . '-email-error ec-field-ec-review-form-' . $product->id . '-email-hint"' )
-        ->assertSeeHtml( '<p id="ec-field-ec-review-form-' . $product->id . '-email-error"' );
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="ec-review-form-' . $product->id . '-email-hint ec-review-form-' . $product->id . '-email-error"' )
+        ->assertSeeHtml( 'id="ec-review-form-' . $product->id . '-email-error"' );
 } );
 
 it( 'files a honeypot submission as spam but thanks the sender as usual', function (): void {

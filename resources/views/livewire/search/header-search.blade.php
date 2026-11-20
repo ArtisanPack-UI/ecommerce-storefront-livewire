@@ -65,7 +65,7 @@
             name="q"
             :placeholder="__( 'Search products' )"
             :aria-label="__( 'Search products' )"
-            icon="o-magnifying-glass"
+            leading-icon="o-magnifying-glass"
             wire:model.live.debounce.300ms="q"
             autocomplete="off"
             enterkeyhint="search"
@@ -135,7 +135,7 @@
 
                                 <span class="flex min-w-0 flex-col">
                                     <span class="truncate text-sm font-medium">{{ $product['name'] }}</span>
-                                    <x-artisanpack-ec-price :price="$product['price']" class="text-xs" />
+                                    <x-artisanpack-ec-price :price="$product['price']" size="sm" />
                                 </span>
                             </a>
                         @endif

@@ -85,7 +85,7 @@
 
     @if ( $offersAccount )
         <div class="flex flex-col gap-3" data-checkout-account>
-            <x-artisanpack-checkbox :label="__( 'Create an account with this email' )" :hint="__( 'Track this order and check out faster next time.' )" wire:model.live="createAccount" data-checkout-create-account />
+            <x-artisanpack-checkbox :label="__( 'Create an account with this email' )" :description="__( 'Track this order and check out faster next time.' )" wire:model.live="createAccount" data-checkout-create-account />
 
             @if ( $createAccount )
                 <div data-field="password">
@@ -106,15 +106,13 @@
 
     <div class="flex flex-col gap-2">
         <x-artisanpack-button
+            size="lg"
             type="submit"
-            :label="__( 'Continue to payment' )"
             color="primary"
-            class="btn-lg w-full sm:w-auto"
-            spinner="saveReview"
+            class="w-full sm:w-auto"
             wire:loading.attr="disabled"
             wire:target="saveReview"
-            data-checkout-review-submit
-        />
+            data-checkout-review-submit>{{ __( 'Continue to payment' ) }}</x-artisanpack-button>
 
         @if ( null !== $totals && $paymentRequired )
             <p class="text-sm text-base-content/70">{{ __( 'You\'ll pay :total.', [ 'total' => \ArtisanPackUI\Ecommerce\Support\MoneyFormatter::format( $totals['total'], $totals['currency'] ) ] ) }}</p>

@@ -61,11 +61,11 @@
                     @break
 
                 @case( 'radio' )
-                    <x-artisanpack-radio
+                    <x-artisanpack-radio-group
                         :id="$field['id']"
                         :label="$field['label']"
                         :hint="$field['help']"
-                        :options="collect( $field['options'] )->map( fn ( array $option ): array => [ 'id' => $option['value'], 'name' => $option['label'] ] )->all()"
+                        :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $field['options'] )"
                         wire:model="{{ $ecommerceModel }}"
                         :error-field="$ecommerceModel"
                     />

@@ -22,10 +22,12 @@ use Illuminate\View\Component;
 /**
  * `<x-artisanpack-ec-stock-status :status="$stock" />` or `:product="$product"`
  *
- * Shows the engine's {@see EngineStockStatus} as an icon and text: "In
- * stock", "Low stock" (or "Only 2 left" with `catalog.show_stock_count` and
- * a known quantity), "Available on backorder", or "Out of stock". The text
- * always carries the meaning; colour only tints the icon (WCAG 1.4.1).
+ * Shows the engine's {@see EngineStockStatus} as a design-system Badge: a
+ * soft badge with an icon and a label, "In stock", "Low stock" (or "Only 2
+ * left" with `catalog.show_stock_count` and a known quantity), "Available
+ * on backorder", or "Out of stock". The label always carries the meaning;
+ * the color and icon only reinforce it (WCAG 1.4.1). With `compact` (the
+ * product card) it's a ghost badge with a dot, and "In stock" is not shown.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -35,17 +37,19 @@ use Illuminate\View\Component;
 class StockStatus extends Component
 {
     /**
-     * The icon and its tint per state.
+     * The icon and the design-system color per state.
      *
      * @since 1.0.0
+     * @since 2.0.0 Each state names a design-system badge `color` and a
+     *              registry icon instead of a Tailwind tint class.
      *
-     * @var array<string, array{icon: string, tint: string}>
+     * @var array<string, array{icon: string, color: string}>
      */
     public const STATES = [
-        EngineStockStatus::IN_STOCK     => [ 'icon' => 'o-check-circle', 'tint' => 'text-success' ],
-        EngineStockStatus::LOW_STOCK    => [ 'icon' => 'o-exclamation-triangle', 'tint' => 'text-warning' ],
-        EngineStockStatus::BACKORDER    => [ 'icon' => 'o-clock', 'tint' => 'text-info' ],
-        EngineStockStatus::OUT_OF_STOCK => [ 'icon' => 'o-x-circle', 'tint' => 'text-error' ],
+        EngineStockStatus::IN_STOCK     => [ 'icon' => 'circle-check', 'color' => 'success' ],
+        EngineStockStatus::LOW_STOCK    => [ 'icon' => 'circle-alert', 'color' => 'warning' ],
+        EngineStockStatus::BACKORDER    => [ 'icon' => 'clock', 'color' => 'info' ],
+        EngineStockStatus::OUT_OF_STOCK => [ 'icon' => 'x', 'color' => 'error' ],
     ];
 
     /**
@@ -59,15 +63,18 @@ class StockStatus extends Component
 
     /**
      * @since 1.0.0
+     * @since 2.0.0 Added `compact`.
      *
      * @param  EngineStockStatus|null           $status     The availability, when already known.
      * @param  Product|ProductVariant|null      $product    The product or variant to look up otherwise.
      * @param  bool|null                        $showCount  Say "Only 2 left"; defaults to `catalog.show_stock_count`.
+     * @param  bool                             $compact    The product card's ghost badge with a dot, which hides "In stock".
      */
     public function __construct(
         public ?EngineStockStatus $status = null,
         public Product|ProductVariant|null $product = null,
         public ?bool $showCount = null,
+        public bool $compact = false,
     ) {
         $this->stock = $this->status
             ?? ( null === $this->product ? new EngineStockStatus( EngineStockStatus::IN_STOCK ) : EngineStockStatus::for( $this->product ) );
@@ -104,6 +111,18 @@ class StockStatus extends Component
     public function state(): array
     {
         return self::STATES[ $this->stock->status ] ?? self::STATES[ EngineStockStatus::IN_STOCK ];
+    }
+
+    /**
+     * Whether anything shows: the compact form leaves out "In stock".
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function visible(): bool
+    {
+        return ! $this->compact || EngineStockStatus::IN_STOCK !== $this->stock->status;
     }
 
     /**

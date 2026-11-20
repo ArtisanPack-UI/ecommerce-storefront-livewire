@@ -28,7 +28,7 @@
     @elseif ( null !== $unavailable )
         <x-artisanpack-ec-empty-state icon="o-shopping-cart" :title="$unavailable" data-checkout-unavailable>
             @if ( null !== $cartUrl )
-                <x-artisanpack-button :label="__( 'Go to your cart' )" :link="$cartUrl" no-wire-navigate color="primary" />
+                <x-artisanpack-button :href="$cartUrl" color="primary">{{ __( 'Go to your cart' ) }}</x-artisanpack-button>
             @endif
         </x-artisanpack-ec-empty-state>
     @elseif ( $signInRequired )
@@ -40,11 +40,11 @@
         >
             <div class="flex flex-wrap justify-center gap-2">
                 @if ( null !== $loginUrl )
-                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" no-wire-navigate color="primary" data-checkout-login />
+                    <x-artisanpack-button :href="$loginUrl" color="primary" data-checkout-login>{{ __( 'Sign in' ) }}</x-artisanpack-button>
                 @endif
 
                 @if ( null !== $registerUrl )
-                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate data-checkout-register />
+                    <x-artisanpack-button variant="outline" color="neutral" :href="$registerUrl" data-checkout-register>{{ __( 'Create an account' ) }}</x-artisanpack-button>
                 @endif
             </div>
         </x-artisanpack-ec-empty-state>
@@ -58,7 +58,7 @@
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
             <div class="flex flex-col gap-6">
                 @if ( [] !== $adjustments )
-                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" data-checkout-adjustments>
+                    <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" data-checkout-adjustments>
                         <span class="block font-bold">{{ __( 'We\'ve updated your cart' ) }}</span>
                         <ul class="list-disc ps-5">
                             @foreach ( $adjustments as $adjustment )
@@ -71,11 +71,10 @@
                 @include( 'ecommerce-storefront::livewire.checkout.partials.error-summary' )
 
                 @if ( ! $ecommerceSinglePage && [] !== $steps )
-                    {{-- The steps component renders each label with x-html, so labels are escaped here. --}}
-                    <div aria-hidden="true" data-checkout-progress>
-                        <x-artisanpack-steps wire:model="progress" steps-color="step-primary" stepper-classes="w-full [&_.step]:min-w-0 max-sm:text-xs">
+                    <div aria-hidden="true" class="ec-checkout-progress" data-checkout-progress>
+                        <x-artisanpack-steps :value="$progress" class="w-full">
                             @foreach ( $steps as $checkoutStep )
-                                <x-artisanpack-step :step="$checkoutStep['number']" :text="str_replace( '\\', '', e( $checkoutStep['label'] ) )" />
+                                <x-artisanpack-step :step="$checkoutStep['number']" :title="$checkoutStep['label']" />
                             @endforeach
                         </x-artisanpack-steps>
                     </div>
@@ -115,12 +114,13 @@
 
                                 @if ( ! $checkoutStep['current'] && $checkoutStep['reachable'] && $checkoutStep['complete'] )
                                     <x-artisanpack-button
-                                        :label="__( 'Edit' )"
-                                        class="btn-ghost btn-sm"
+                                       variant="ghost"
+                                       color="neutral"
+                                       size="sm"
+                                       
                                         wire:click="goTo( '{{ $checkoutStep['key'] }}' )"
                                         aria-label="{{ __( 'Edit :step', [ 'step' => $checkoutStep['label'] ] ) }}"
-                                        data-checkout-edit="{{ $checkoutStep['key'] }}"
-                                    />
+                                        data-checkout-edit="{{ $checkoutStep['key'] }}">{{ __( 'Edit' ) }}</x-artisanpack-button>
                                 @endif
                             </div>
 

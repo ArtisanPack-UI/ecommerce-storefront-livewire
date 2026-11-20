@@ -19,13 +19,13 @@
             <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))] empty:hidden" role="alert" aria-live="assertive" data-stripe-error></p>
 
             <div>
-                <x-artisanpack-button type="button" :label="__( 'Pay now' )" color="primary" icon="o-lock-closed" disabled data-stripe-pay />
+                <x-artisanpack-button type="button" color="primary" leading-icon="o-lock-closed" disabled data-stripe-pay>{{ __( 'Pay now' ) }}</x-artisanpack-button>
             </div>
 
             <p class="text-xs text-base-content/70">{{ __( 'Your card details go straight to Stripe. This store never sees or stores them.' ) }}</p>
         </div>
     @else
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
     @endif
 </div>
 

@@ -56,6 +56,10 @@ it( 'has no accessibility violations in a filled cart and at each checkout step'
         ->click( '[data-add-to-cart]' )
         ->assertSee( 'Your cart' );
 
+    // The open drawer is a modal dialog: the page behind it is aria-hidden, so check it, then the page once it closes.
+    Accessibility::assertAccessible( $page, '#ecommerce-cart-drawer-content' );
+
+    $page->keys( '#ecommerce-cart-drawer-content', 'Escape' )->assertScript( 'document.getElementById( "ecommerce-cart-drawer-content" ).hidden' );
     Accessibility::assertAccessible( $page );
 
     $page->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )->assertSee( 'Order summary' );
@@ -96,7 +100,7 @@ it( 'has no accessibility violations when showing errors', function (): void {
         ->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )
         ->type( Locators::field( 'ec-cart-coupon' ), 'NOT-A-CODE' )
         ->click( '[data-cart-coupon] button[type="submit"]' )
-        ->assertPresent( '[data-cart-coupon] [data-field-error]' );
+        ->assertPresent( '[data-cart-coupon] [data-part="error"]' );
 
     Accessibility::assertAccessible( $page );
 
@@ -134,7 +138,7 @@ it( 'links a field to its error and hint, so a screen reader reads both', functi
         ->assertScript( <<<'JS'
             ( () => {
                 const input = document.querySelector( '[data-field="email"] input' );
-                const [ error, hint ] = input.getAttribute( 'aria-describedby' ).split( ' ' ).map( ( id ) => document.getElementById( id )?.textContent.trim() );
+                const [ hint, error ] = input.getAttribute( 'aria-describedby' ).split( ' ' ).map( ( id ) => document.getElementById( id )?.textContent.trim() );
 
                 return error?.length > 0 && document.querySelector( '[data-checkout-error="email"]' ).textContent.includes( error ) && hint === "We'll send your order confirmation here.";
             } )()

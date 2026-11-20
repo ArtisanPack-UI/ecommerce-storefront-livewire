@@ -561,7 +561,7 @@ it( 'sends a shopper whose payment is held for review to the confirmation', func
     expect( placedRedirect( $component ) )->toStartWith( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => $order->id ] ) )
         ->and( $order->payment_status )->toBe( 'pending' )
         ->and( session()->has( CheckoutPlacement::SESSION_KEY ) )->toBeFalse()
-        ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( e( 'We\'re reviewing your order and will email you shortly.' ) );
+        ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( 'We\'re reviewing your order and will email you shortly.' );
 
     // Coming back to checkout doesn't ask for the payment again.
     Livewire::test( Index::class )->assertDontSeeHtml( 'data-checkout-placement' );
