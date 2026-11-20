@@ -119,7 +119,7 @@ describe( 'add-to-cart row (#86)', function (): void {
     it( 'shows the line price on the button and follows the quantity live', function (): void {
         Livewire::test( SimpleForm::class, [ 'product' => makeProduct( 2800 ) ] )
             ->assertSeeHtml( 'data-add-to-cart-row' )
-            ->assertSeeHtml( 'wire:model.live.debounce.300ms="quantity"' )
+            ->assertSeeHtml( 'wire:model.live.change="quantity"' )
             ->assertSeeHtmlInOrder( [ 'Add to cart', '<span aria-hidden="true">·</span>', '<bdi>$28.00</bdi>' ] )
             ->set( 'quantity', 3 )
             ->assertSee( '$84.00' );

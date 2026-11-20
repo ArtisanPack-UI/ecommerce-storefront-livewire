@@ -15,8 +15,10 @@
     the id `{formId}-{key}-error`). Any error is also announced in an alert
     keyed on the form's `errorSummary`, so each refused add is announced.
 
-    When the button shows a line price the quantity binds live (debounced),
-    so the price follows the stepper.
+    When the button shows a line price the quantity binds live on `change`
+    (each stepper press, or leaving the field), so the price follows it.
+    Not a debounce: in Livewire 3 a debounced binding holds the value back,
+    so a click on "Add to cart" inside the window would add the old one.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -42,7 +44,7 @@
                         :id="$formId . '-quantity'"
                         :label="__( 'Quantity' )"
                         size="lg"
-                        wire:model.live.debounce.300ms="quantity"
+                        wire:model.live.change="quantity"
                         :error="$errors->first( 'quantity' )"
                         :disabled="! $canAdd"
                     />
