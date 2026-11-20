@@ -149,7 +149,7 @@ it( 'validates the address before saving', function (): void {
         ->assertHasErrors( [ 'form.address1', 'form.city', 'form.postal_code', 'form.region_code', 'form.label' ] )
         ->assertSet( 'editing', true )
         ->assertSeeHtml( 'wire:key="ec-account-address-errors-1"' )
-        ->assertSee( 'There are 5 problems to fix:' )
+        ->assertSee( 'Fix 5 things to continue' )
         ->assertSeeHtml( 'data-field-key="form.city"' );
 
     expect( $customer->addresses()->count() )->toBe( 0 );

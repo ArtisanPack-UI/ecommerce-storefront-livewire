@@ -1,22 +1,19 @@
 {{--
-    Empty state. See EmptyState.
+    Empty state (#84). See EmptyState.
+
+    The design-system EmptyState as a status region: the icon tile, the
+    title, the description and, from the slot, the actions. With `card` it
+    sits in a Card.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div {{ $attributes->class( [ 'flex flex-col items-center gap-3 px-4 py-12 text-center' ] ) }} role="status" data-empty-state>
-    <x-artisanpack-icon :name="$icon" class="w-10 h-10 opacity-50" aria-hidden="true" />
-    <p class="text-lg font-semibold">{{ $title }}</p>
-
-    @if ( null !== $description && '' !== $description )
-        <p class="max-w-prose opacity-75">{{ $description }}</p>
-    @endif
-
-    @if ( $slot->isNotEmpty() )
-        <div class="flex flex-wrap justify-center gap-2">
-            {{ $slot }}
-        </div>
-    @endif
-</div>
+@if ( $card )
+    <x-artisanpack-card class="ec-empty-state-card" data-empty-state-card>
+        @include( 'ecommerce-storefront::components.partials.empty-state-body' )
+    </x-artisanpack-card>
+@else
+    @include( 'ecommerce-storefront::components.partials.empty-state-body' )
+@endif

@@ -132,30 +132,10 @@
         font-weight: var(--apui-font-weight-regular);
     }
 
-    /* Interim styles for the error summary (#85), so it keeps working without DaisyUI. */
-
     /* The checkout's decorative progress bar (until #136) scrolls in its own box on a narrow screen. */
     .ec-checkout-progress {
         contain: inline-size;
         overflow-x: auto;
-    }
-
-    .ec-error-summary {
-        padding: 16px;
-        border: var(--apui-border-width) solid var(--apui-color-error-border);
-        border-radius: var(--apui-radius-surface);
-        background: var(--apui-color-error-soft);
-        color: var(--apui-color-error-soft-foreground);
-    }
-
-    .ec-error-summary:focus {
-        outline: none;
-    }
-
-    .ec-error-summary:focus-visible {
-        box-shadow:
-            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
-            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
     }
 
     /* Product card (#73) */
@@ -874,5 +854,119 @@
         .ec-account__tab[aria-current="page"] {
             outline: var(--apui-border-width) solid Highlight;
         }
+    }
+
+    /*
+     * Field (#83): the full-width wrapper, and the muted "(optional)" after
+     * an optional field's label. The control draws the label, asterisk, hint
+     * and error itself.
+     */
+    .ec-field {
+        display: block;
+        inline-size: 100%;
+        min-inline-size: 0;
+    }
+
+    .ec-field__optional {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /*
+     * Address form (#82): one column, then from 768px four tracks: names
+     * 2 + 2, street lines across, city / region / postcode at 2fr 1fr 1fr.
+     */
+    .ec-address-form__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .ec-address-form__cell {
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-address-form__grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            column-gap: 16px;
+        }
+
+        .ec-address-form__cell[data-span="full"] {
+            grid-column: span 4;
+        }
+
+        .ec-address-form__cell[data-span="half"] {
+            grid-column: span 2;
+        }
+
+        .ec-address-form__cell[data-span="quarter"] {
+            grid-column: span 1;
+        }
+    }
+
+    /*
+     * Empty state (#84): the description stops at 44ch, and in a Card it
+     * fills the card's body.
+     */
+    .ec-empty-state [data-scope="empty-state"][data-part="description"] {
+        max-inline-size: 44ch;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-empty-state-card {
+        inline-size: 100%;
+    }
+
+    /*
+     * Add-to-cart row (#86): a 132px quantity, the button filling the rest
+     * (at least 200px) and any extra buttons, bottom-aligned; it wraps on a
+     * narrow screen.
+     */
+    .ec-add-to-cart {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ec-add-to-cart__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 12px;
+    }
+
+    .ec-add-to-cart__quantity {
+        flex: none;
+    }
+
+    .ec-add-to-cart__button {
+        flex: 1 1 200px;
+        min-inline-size: min(200px, 100%);
+    }
+
+    .ec-add-to-cart__actions {
+        display: flex;
+        flex: none;
+        gap: 8px;
+    }
+
+    .ec-add-to-cart__price {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-add-to-cart__blocked,
+    .ec-add-to-cart__error {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-add-to-cart__blocked {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-add-to-cart__error {
+        color: var(--apui-color-error-text);
     }
 }

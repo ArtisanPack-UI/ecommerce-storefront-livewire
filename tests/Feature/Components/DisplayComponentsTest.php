@@ -242,6 +242,41 @@ describe( 'empty state and skeleton', function (): void {
             ->assertSee( 'href="/shop"', false );
     } );
 
+    it( 'draws the design-system empty state with an h2 title and the inbox icon by default (#84)', function (): void {
+        $view = $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later." data-reason="none"><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' );
+
+        $view->assertSee( 'apui-empty-state', false )
+            ->assertSee( 'ec-empty-state', false )
+            ->assertSee( 'data-size="md"', false )
+            ->assertSee( 'data-reason="none"', false )
+            ->assertSee( '<h2 data-scope="empty-state" data-part="title">Nothing here</h2>', false )
+            ->assertSeeInOrder( [ 'data-part="description"', 'Try again later.', 'data-part="actions"', 'href="/shop"' ], false )
+            ->assertDontSee( 'data-empty-state-card', false )
+            ->assertDontSee( 'opacity-', false );
+
+        expect( (string) $view )->toMatch( '/data-part="icon" aria-hidden="true"><svg /' );
+    } );
+
+    it( 'leaves out the description and actions parts when empty', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="" />' )
+            ->assertDontSee( 'data-part="description"', false )
+            ->assertDontSee( 'data-part="actions"', false );
+    } );
+
+    it( 'draws the compact size, a custom heading level, and falls back from an unknown size', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" size="sm" :heading-level="3" />' )
+            ->assertSee( 'data-size="sm"', false )
+            ->assertSee( '<h3 data-scope="empty-state"', false );
+
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" size="huge" />' )
+            ->assertSee( 'data-size="md"', false );
+    } );
+
+    it( 'sits in a card when it replaces a list, keeping its attributes on the empty state', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Your cart is empty" card data-cart-empty />' )
+            ->assertSeeInOrder( [ 'apui-card', 'data-empty-state-card', 'apui-empty-state', 'data-cart-empty' ], false );
+    } );
+
     it( 'draws busy placeholders with a spoken loading message', function (): void {
         $view = $this->blade( '<x-artisanpack-ec-skeleton variant="card" :count="3" />' );
 

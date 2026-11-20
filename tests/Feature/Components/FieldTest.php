@@ -94,3 +94,32 @@ it( 'maps select options to the library shape with custom keys', function (): vo
         ->assertSee( 'Large' )
         ->assertDontSee( 'junk' );
 } );
+
+it( 'marks an optional field after its label, escaped, and never a checkbox', function (): void {
+    $this->withViewErrors( [] )
+        ->blade( <<<'BLADE'
+            <x-artisanpack-ec-field id="company" label="Company <b>" optional wire:model="company" />
+            <x-artisanpack-ec-field control="select" id="region" label="Region" :options="[]" optional wire:model="region" />
+            <x-artisanpack-ec-field control="checkbox" id="news" label="Send me news" optional wire:model="news" />
+            BLADE )
+        ->assertSee( 'for="company">Company &lt;b&gt; <span class="ec-field__optional">(optional)</span></label>', false )
+        ->assertSee( 'for="region">Region <span class="ec-field__optional">(optional)</span></label>', false )
+        ->assertSee( 'Send me news' );
+
+    expect( substr_count( (string) $this->withViewErrors( [] )->blade( '<x-artisanpack-ec-field control="checkbox" id="news" label="Send me news" optional wire:model="news" />' ), '(optional)' ) )->toBe( 0 );
+} );
+
+it( 'leaves a required or unmarked field without the optional mark', function (): void {
+    $this->withViewErrors( [] )
+        ->blade( '<x-artisanpack-ec-field id="email" label="Email" wire:model="email" required />' )
+        ->assertSee( 'data-part="required"', false )
+        ->assertDontSee( '(optional)' );
+} );
+
+it( 'wraps the control in the full-width field block with no DaisyUI or Tailwind classes', function (): void {
+    $this->withViewErrors( [] )
+        ->blade( '<x-artisanpack-ec-field id="email" label="Email" wire:model="email" disabled />' )
+        ->assertSee( 'class="ec-field"', false )
+        ->assertSee( 'data-disabled', false )
+        ->assertDontSee( 'w-full', false );
+} );

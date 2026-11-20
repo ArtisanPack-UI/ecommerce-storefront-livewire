@@ -13,7 +13,9 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Component;
 use InvalidArgumentException;
 
@@ -33,6 +35,10 @@ use InvalidArgumentException;
  * props here because the library takes them as props, and are mapped to
  * the library's `value` / `label` shape. A checkbox shows its hint as its
  * description.
+ *
+ * Since 2.0.0 `optional` adds a muted "(optional)" after the label (the
+ * library control draws the required asterisk itself), and the wrapper is
+ * the full-width `.ec-field` block.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -63,6 +69,7 @@ class Field extends Component
      * @param  string|null                    $placeholderValue  Unused since 2.0.0: the library's empty option always has an empty value.
      * @param  string                         $optionValue       The option key holding the value.
      * @param  string                         $optionLabel       The option key holding the label.
+     * @param  bool                           $optional          Mark the label "(optional)". Since 2.0.0.
      *
      * @throws InvalidArgumentException When `control` is not one of {@see self::CONTROLS}.
      */
@@ -77,6 +84,7 @@ class Field extends Component
         public ?string $placeholderValue = null,
         public string $optionValue = 'id',
         public string $optionLabel = 'name',
+        public bool $optional = false,
     ) {
         if ( ! in_array( $control, self::CONTROLS, true ) ) {
             throw new InvalidArgumentException( sprintf( 'Unknown field control "%s".', $control ) );
@@ -94,6 +102,24 @@ class Field extends Component
     public function baseId(): string
     {
         return 'ec-field-' . (string) preg_replace( '/[^A-Za-z0-9_-]+/', '-', $this->id );
+    }
+
+    /**
+     * The label the library control prints: the label, then a muted
+     * "(optional)" when the field is marked optional. A checkbox's label is
+     * its whole sentence, so it is never marked.
+     *
+     * @since 2.0.0
+     *
+     * @return Htmlable|string|null
+     */
+    public function labelContent(): Htmlable|string|null
+    {
+        if ( null === $this->label || '' === $this->label || ! $this->optional || 'checkbox' === $this->control ) {
+            return $this->label;
+        }
+
+        return new HtmlString( e( $this->label ) . ' <span class="ec-field__optional">' . e( __( '(optional)' ) ) . '</span>' );
     }
 
     /**

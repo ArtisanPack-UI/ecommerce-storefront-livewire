@@ -139,7 +139,7 @@ it( 'focuses the error summary after an empty review submit', function (): void 
         ->click( '[data-review-submit]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-error-summary" )' )
         ->assertSeeIn( '[data-error-summary]', 'Choose a rating.' )
-        ->click( '[data-error-summary-link="rating"]' )
+        ->click( '[data-error-summary] a[href="#rating"]' )
         ->assertScript( focusIsIn( '[data-field-key="rating"]' ) );
 } );
 
