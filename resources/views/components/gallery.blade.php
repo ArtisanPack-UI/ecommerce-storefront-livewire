@@ -1,5 +1,18 @@
 {{--
-    Product gallery. See Gallery.
+    Product gallery (#80). See Gallery.
+
+    The root is both the gallery region and the design system's
+    `apuiLightbox` (its `open` and `index` state); the gallery's own state
+    (the image shown, the announcement) lives one scope in, so it can open
+    the lightbox at the image shown. Layout in resources/css/storefront.css
+    (ec-gallery): the square main image on the sunken surface with a
+    hairline border, the "1 / 4" counter Badge at the top start and the
+    Zoom Button (solid neutral on the raised surface) at the bottom end;
+    thumbnails in a four-column grid below, or a column beside it from 640px
+    up, with the current one ringed in the primary color.
+
+    The lightbox markup follows the design system's ImageGallery contract
+    (parts with ids under the root's id, teleported to the body).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -7,171 +20,205 @@
     @since      1.0.0
 --}}
 @if ( [] === $items )
-    <div {{ $attributes->class( [ 'flex aspect-square w-full items-center justify-center rounded-box bg-base-200' ] ) }} data-gallery="empty">
-        <x-artisanpack-icon name="o-photo" class="h-16 w-16 opacity-30" aria-hidden="true" />
-        <span class="sr-only">{{ __( 'No image available' ) }}</span>
+    <div {{ $attributes->class( [ 'ec-gallery', 'ec-gallery--empty' ] ) }} data-gallery="empty">
+        <x-artisanpack-icon name="image" aria-hidden="true" />
+        <span class="apui-sr-only">{{ __( 'No image available' ) }}</span>
     </div>
 @else
-    @php( $ecommerceBeside = in_array( $thumbnails, [ 'start', 'end' ], true ) )
+    @php
+        $ecommerceBaseId = $baseId();
+        $ecommerceCount  = count( $items );
+        $ecommerceScope  = \Illuminate\Support\Js::from( $scope );
+        $ecommerceAlt    = (string) ( $items[ $active ]['alt'] ?? '' );
+    @endphp
     <div
-        {{ $attributes->class( [ 'flex flex-col gap-3', 'sm:flex-row' => 'end' === $thumbnails, 'sm:flex-row-reverse' => 'start' === $thumbnails ] ) }}
-        x-data="{
-            images: @js( $items ),
-            active: {{ $active }},
-            zoomed: false,
-            origin: '50% 50%',
-            announcement: '',
-            show( index ) {
-                this.active       = ( index + this.images.length ) % this.images.length;
-                this.zoomed       = false;
-                this.announcement = @js( __( 'Image :number of :total: :alt' ) ).replace( ':number', this.active + 1 ).replace( ':total', this.images.length ).replace( ':alt', this.images[ this.active ].alt );
-            },
-            zoomLabel() {
-                const alt = this.images[ this.active ].alt;
-
-                return alt ? @js( __( 'Zoom image: :alt' ) ).replace( ':alt', alt ) : @js( __( 'Zoom image' ) );
-            },
-            showUrl( url ) {
-                const index = this.images.findIndex( ( image ) => image.url === url || image.full === url );
-
-                if ( index >= 0 ) {
-                    this.show( index );
-                }
-            },
-            pan( event ) {
-                const box = event.currentTarget.getBoundingClientRect();
-                this.origin = ( ( event.clientX - box.left ) / box.width * 100 ) + '% ' + ( ( event.clientY - box.top ) / box.height * 100 ) + '%';
-            },
-            openLightbox() {
-                this.$refs.lightbox.showModal();
-            },
-        }"
-        x-on:ecommerce-gallery-show.window="( {{ \Illuminate\Support\Js::from( $scope ) }} === null || $event.detail.scope === {{ \Illuminate\Support\Js::from( $scope ) }} ) && showUrl( $event.detail.url )"
+        {{ $attributes->except( 'id' )->class( [ 'ec-gallery' ] ) }}
+        id="{{ $ecommerceBaseId }}"
+        @if ( $zoom ) x-data="{{ $lightboxData() }}" @endif
         role="region"
         aria-roledescription="{{ __( 'gallery' ) }}"
         aria-label="{{ __( ':name images', [ 'name' => $name ] ) }}"
         data-gallery
         data-gallery-thumbnails="{{ $thumbnails }}"
     >
-        <div @class( [ 'relative overflow-hidden rounded-box bg-base-200', 'min-w-0 grow' => $ecommerceBeside ] )>
-            @if ( $zoom )
-                <button
-                    type="button"
-                    class="block aspect-square w-full cursor-zoom-in overflow-hidden"
-                    x-bind:class="zoomed && 'cursor-zoom-out'"
-                    x-on:click="zoomed = ! zoomed"
-                    x-on:mousemove="zoomed && pan( $event )"
-                    x-bind:aria-pressed="zoomed.toString()"
-                    {{-- Named from the image it shows, since its own name hides the image's alt text. --}}
-                    aria-label="{{ '' !== (string) ( $items[ $active ]['alt'] ?? '' ) ? __( 'Zoom image: :alt', [ 'alt' => $items[ $active ]['alt'] ] ) : __( 'Zoom image' ) }}"
-                    x-bind:aria-label="zoomLabel()"
-                    data-gallery-zoom
-                >
-                    @foreach ( $items as $index => $item )
-                        @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $item, 1200, 1200 ) )
-                        <img
-                            src="{{ $item['url'] }}"
-                            @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
-                            width="{{ $ecommerceSize['width'] }}"
-                            height="{{ $ecommerceSize['height'] }}"
-                            alt="{{ $item['alt'] }}"
-                            @if ( $index !== $active ) loading="lazy" style="display: none" @endif
-                            decoding="async"
-                            class="h-full w-full object-contain transition-transform duration-200"
-                            x-show="active === {{ $index }}"
-                            x-bind:style="zoomed ? { transform: 'scale(2)', transformOrigin: origin } : { transform: '', transformOrigin: '' }"
-                            data-gallery-image="{{ $index }}"
-                        >
-                    @endforeach
-                </button>
-            @else
-                <div class="block aspect-square w-full overflow-hidden" data-gallery-stage>
-                    @foreach ( $items as $index => $item )
-                        @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $item, 1200, 1200 ) )
-                        <img
-                            src="{{ $item['url'] }}"
-                            @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
-                            width="{{ $ecommerceSize['width'] }}"
-                            height="{{ $ecommerceSize['height'] }}"
-                            alt="{{ $item['alt'] }}"
-                            @if ( $index !== $active ) loading="lazy" style="display: none" @endif
-                            decoding="async"
-                            class="h-full w-full object-contain"
-                            x-show="active === {{ $index }}"
-                            data-gallery-image="{{ $index }}"
-                        >
-                    @endforeach
-                </div>
-            @endif
+        <div
+            class="ec-gallery__layout"
+            x-data="{
+                images: @js( $items ),
+                active: {{ $active }},
+                announcement: '',
+                show( index ) {
+                    this.active       = ( index + this.images.length ) % this.images.length;
+                    this.announcement = @js( __( 'Image :number of :total: :alt' ) ).replace( ':number', this.active + 1 ).replace( ':total', this.images.length ).replace( ':alt', this.images[ this.active ].alt );
+                },
+                showUrl( url ) {
+                    const index = this.images.findIndex( ( image ) => image.url === url || image.full === url );
 
-            <x-artisanpack-button
-                variant="outline"
-                color="neutral"
-                size="sm"
-                icon-only
-                leading-icon="o-arrows-pointing-out"
-                class="absolute end-3 top-3"
-                :aria-label="__( 'Open full-screen image' )"
-                x-on:click="openLightbox()"
-                data-gallery-open
-            />
-        </div>
+                    if ( index >= 0 ) {
+                        this.show( index );
+                    }
+                },
+                zoomLabel() {
+                    const alt = this.images[ this.active ].alt;
 
-        {{-- Announces the image a thumbnail, arrow key, or variant change brings up. --}}
-        <p class="sr-only" aria-live="polite" aria-atomic="true" x-text="announcement" data-gallery-announcement></p>
-
-        @if ( count( $items ) > 1 && 'none' !== $thumbnails )
-            <ul role="list" @class( [ 'flex flex-wrap gap-2', 'sm:w-16 sm:shrink-0 sm:flex-col sm:flex-nowrap' => $ecommerceBeside ] ) aria-label="{{ __( 'Thumbnails' ) }}">
-                @foreach ( $items as $index => $item )
-                    <li>
-                        <button
-                            type="button"
-                            class="block h-16 w-16 overflow-hidden rounded-box border-2 border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                            x-bind:class="active === {{ $index }} ? 'border-primary' : 'opacity-70 hover:opacity-100'"
-                            x-bind:aria-current="( active === {{ $index }} ).toString()"
-                            x-on:click="show( {{ $index }} )"
-                            aria-label="{{ __( 'Show image :number of :total', [ 'number' => $index + 1, 'total' => count( $items ) ] ) }}"
-                            data-gallery-thumbnail="{{ $index }}"
-                        >
-                            <img src="{{ $item['url'] }}" @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="64px" @endif width="64" height="64" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                        </button>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-
-        <dialog
-            x-ref="lightbox"
-            class="modal"
-            aria-label="{{ __( ':name images', [ 'name' => $name ] ) }}"
-            x-on:keydown.arrow-right.prevent="show( active + ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
-            x-on:keydown.arrow-left.prevent="show( active - ( 'rtl' === getComputedStyle( $el ).direction ? -1 : 1 ) )"
-            data-gallery-lightbox
+                    return alt ? @js( __( 'Zoom image: :alt' ) ).replace( ':alt', alt ) : @js( __( 'Zoom image' ) );
+                },
+                counter() {
+                    return @js( __( ':index / :count' ) ).replace( ':index', this.active + 1 ).replace( ':count', this.images.length );
+                },
+                @if ( $zoom )
+                    zoomIn() {
+                        this.index = this.active;
+                        this.open  = true;
+                    },
+                @endif
+            }"
+            @if ( $zoom ) x-init="$watch( 'index', ( value ) => open && ( active = Math.min( Math.max( Number( value ) || 0, 0 ), images.length - 1 ) ) )" @endif
+            x-on:ecommerce-gallery-show.window="( {{ $ecommerceScope }} === null || $event.detail.scope === {{ $ecommerceScope }} ) && showUrl( $event.detail.url )"
         >
-            <div class="modal-box flex max-w-5xl flex-col gap-3">
-                <div class="flex items-center justify-between gap-2">
-                    <p class="text-sm tabular-nums" aria-live="polite" x-text="@js( __( 'Image :number of :total' ) ).replace( ':number', active + 1 ).replace( ':total', images.length )"></p>
+            <div class="ec-gallery__stage" data-gallery-stage>
+                @foreach ( $items as $index => $item )
+                    @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $item, 1200, 1200 ) )
+                    <img
+                        src="{{ $item['url'] }}"
+                        @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="(min-width: 1024px) 50vw, 100vw" @endif
+                        width="{{ $ecommerceSize['width'] }}"
+                        height="{{ $ecommerceSize['height'] }}"
+                        alt="{{ $item['alt'] }}"
+                        @if ( $index !== $active ) loading="lazy" style="display: none" @endif
+                        decoding="async"
+                        class="ec-gallery__image"
+                        x-show="active === {{ $index }}"
+                        @if ( $zoom ) x-on:click="zoomIn()" @endif
+                        data-gallery-image="{{ $index }}"
+                    >
+                @endforeach
 
-                    <form method="dialog">
-                        <x-artisanpack-button variant="ghost" color="neutral" size="sm" icon-only type="submit" leading-icon="o-x-mark" :aria-label="__( 'Close' )" />
-                    </form>
-                </div>
+                @if ( $ecommerceCount > 1 )
+                    <x-artisanpack-badge variant="solid" color="neutral" class="ec-gallery__counter" aria-hidden="true" data-gallery-counter>
+                        <span x-text="counter()">{{ __( ':index / :count', [ 'index' => $active + 1, 'count' => $ecommerceCount ] ) }}</span>
+                    </x-artisanpack-badge>
+                @endif
 
-                <template x-for="( image, index ) in images" :key="index">
-                    <img x-show="active === index" :src="image.full" :alt="image.alt" loading="lazy" decoding="async" class="max-h-[80vh] w-full object-contain">
-                </template>
-
-                @if ( count( $items ) > 1 )
-                    <div class="flex justify-between gap-2">
-                        <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-chevron-left" class="rtl:[&_svg]:rotate-180" x-on:click="show( active - 1 )">{{ __( 'Previous' ) }}</x-artisanpack-button>
-                        <x-artisanpack-button variant="outline" color="neutral" size="sm" trailing-icon="o-chevron-right" class="rtl:[&_svg]:rotate-180" x-on:click="show( active + 1 )">{{ __( 'Next' ) }}</x-artisanpack-button>
-                    </div>
+                @if ( $zoom )
+                    <x-artisanpack-button
+                        variant="solid"
+                        color="neutral"
+                        size="sm"
+                        leading-icon="zoom-in"
+                        class="ec-gallery__zoom"
+                        aria-haspopup="dialog"
+                        :aria-label="'' !== $ecommerceAlt ? __( 'Zoom image: :alt', [ 'alt' => $ecommerceAlt ] ) : __( 'Zoom image' )"
+                        x-bind:aria-label="zoomLabel()"
+                        x-on:click="zoomIn()"
+                        data-gallery-zoom
+                    >{{ __( 'Zoom' ) }}</x-artisanpack-button>
                 @endif
             </div>
 
-            <form method="dialog" class="modal-backdrop">
-                <button type="submit" tabindex="-1">{{ __( 'Close' ) }}</button>
-            </form>
-        </dialog>
+            {{-- Announces the image a thumbnail or a variant change brings up. --}}
+            <p class="apui-sr-only" aria-live="polite" aria-atomic="true" x-text="announcement" data-gallery-announcement></p>
+
+            @if ( $ecommerceCount > 1 && 'none' !== $thumbnails )
+                <ul role="list" class="ec-gallery__thumbnails" aria-label="{{ __( 'Thumbnails' ) }}">
+                    @foreach ( $items as $index => $item )
+                        <li>
+                            <button
+                                type="button"
+                                class="ec-gallery__thumbnail"
+                                @if ( $index === $active ) aria-current="true" @endif
+                                x-bind:aria-current="active === {{ $index }} ? 'true' : null"
+                                x-on:click="show( {{ $index }} )"
+                                aria-label="{{ __( 'Image :number of :total: :alt', [ 'number' => $index + 1, 'total' => $ecommerceCount, 'alt' => $item['alt'] ] ) }}"
+                                data-gallery-thumbnail="{{ $index }}"
+                            >
+                                <img src="{{ $item['url'] }}" @if ( null !== $item['srcset'] ) srcset="{{ $item['srcset'] }}" sizes="128px" @endif width="128" height="128" alt="" loading="lazy" decoding="async">
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+
+        @if ( $zoom )
+            <template x-teleport="body">
+                <div id="{{ $ecommerceBaseId }}-layer" class="ec-gallery__layer" data-gallery-lightbox>
+                    <div data-scope="image-gallery" data-part="backdrop" id="{{ $ecommerceBaseId }}-backdrop" data-state="closed" x-apui:backdrop hidden></div>
+                    <div data-scope="image-gallery" data-part="positioner" id="{{ $ecommerceBaseId }}-positioner" x-apui:positioner>
+                        <div
+                            class="apui-lightbox"
+                            data-scope="image-gallery"
+                            data-part="content"
+                            id="{{ $ecommerceBaseId }}-content"
+                            role="dialog"
+                            tabindex="-1"
+                            data-state="closed"
+                            aria-labelledby="{{ $ecommerceBaseId }}-title"
+                            aria-modal="true"
+                            hidden
+                            x-apui:content
+                        >
+                            <div data-scope="image-gallery" data-part="bar" id="{{ $ecommerceBaseId }}-bar">
+                                <h2 data-scope="image-gallery" data-part="title" id="{{ $ecommerceBaseId }}-title" aria-live="polite" x-apui:title x-text="title">{{ __( ':index / :count', [ 'index' => $active + 1, 'count' => $ecommerceCount ] ) }} · {{ $name }}</h2>
+                                <x-artisanpack-button
+                                    variant="ghost"
+                                    color="neutral"
+                                    size="sm"
+                                    icon-only
+                                    leading-icon="x"
+                                    :aria-label="__( 'Close' )"
+                                    :id="$ecommerceBaseId . '-close-trigger'"
+                                    data-scope="image-gallery"
+                                    data-part="close-trigger"
+                                    x-apui:close-trigger=""
+                                />
+                            </div>
+                            <div data-scope="image-gallery" data-part="stage" id="{{ $ecommerceBaseId }}-stage">
+                                <img data-scope="image-gallery" data-part="image" id="{{ $ecommerceBaseId }}-stage-image" src="{{ $items[ $active ]['full'] }}" alt="{{ $items[ $active ]['alt'] }}" x-apui:image>
+                                <x-artisanpack-button
+                                    variant="soft"
+                                    color="neutral"
+                                    icon-only
+                                    leading-icon="chevron-left"
+                                    :aria-label="__( 'Previous image' )"
+                                    :id="$ecommerceBaseId . '-prev-trigger'"
+                                    :disabled="$ecommerceCount < 2"
+                                    data-scope="image-gallery"
+                                    data-part="prev-trigger"
+                                    x-apui:prev-trigger=""
+                                />
+                                <x-artisanpack-button
+                                    variant="soft"
+                                    color="neutral"
+                                    icon-only
+                                    leading-icon="chevron-right"
+                                    :aria-label="__( 'Next image' )"
+                                    :id="$ecommerceBaseId . '-next-trigger'"
+                                    :disabled="$ecommerceCount < 2"
+                                    data-scope="image-gallery"
+                                    data-part="next-trigger"
+                                    x-apui:next-trigger=""
+                                />
+                            </div>
+                            @if ( $ecommerceCount > 1 )
+                                <div data-scope="image-gallery" data-part="thumbs" id="{{ $ecommerceBaseId }}-thumbs" role="group" aria-label="{{ __( 'Thumbnails' ) }}">
+                                    @foreach ( $items as $index => $item )
+                                        <button
+                                            type="button"
+                                            data-scope="image-gallery"
+                                            data-part="thumb"
+                                            id="{{ $ecommerceBaseId }}-thumb-{{ $index }}"
+                                            @if ( $index === $active ) aria-current="true" @endif
+                                            aria-label="{{ __( 'Image :number of :total: :alt', [ 'number' => $index + 1, 'total' => $ecommerceCount, 'alt' => $item['alt'] ] ) }}"
+                                            x-apui:thumb="{ index: {{ $index }} }"
+                                        ><img src="{{ $item['url'] }}" alt="" loading="lazy" decoding="async"></button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </template>
+        @endif
     </div>
 @endif

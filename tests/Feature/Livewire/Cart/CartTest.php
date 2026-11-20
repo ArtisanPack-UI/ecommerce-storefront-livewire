@@ -78,7 +78,7 @@ it( 'lists the lines and the totals', function (): void {
         ->assertSee( 'Red / M' )
         ->assertSee( '$12.50' )
         ->assertSee( '$25.00' )
-        ->assertSeeHtml( 'aria-label="Increase quantity of Mug"' )
+        ->assertSeeHtml( 'aria-label="Increase quantity, Mug"' )
         ->assertSeeHtml( 'aria-label="Remove Mug"' )
         ->assertSee( 'Order summary' )
         ->assertSee( '$45.00' )
@@ -151,7 +151,7 @@ it( 'shows the engine\'s refusal and puts the quantity back', function (): void 
         ->set( 'quantities.' . $line->id, 5 )
         ->assertHasErrors( 'quantities.' . $line->id )
         ->assertSet( 'quantities.' . $line->id, 1 )
-        ->assertSeeHtml( 'data-quantity-error' )
+        ->assertSeeHtml( 'data-scope="input" data-part="error"' )
         ->assertNotDispatched( 'ecommerce-cart-updated' );
 } );
 

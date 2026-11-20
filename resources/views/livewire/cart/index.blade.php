@@ -112,6 +112,7 @@
                                         <x-artisanpack-ec-quantity
                                             :id="'ec-cart-quantity-' . $line['id']"
                                             :item-name="$line['name']"
+                                            size="sm"
                                             :min="1"
                                             :max="\ArtisanPackUI\Ecommerce\Services\StorefrontCartService::MAX_LINE_QUANTITY"
                                             wire:model.live.debounce.500ms="{{ $ecommerceField }}"

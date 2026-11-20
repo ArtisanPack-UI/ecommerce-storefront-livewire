@@ -132,46 +132,7 @@
         font-weight: var(--apui-font-weight-regular);
     }
 
-    /*
-     * Interim styles for pieces rebuilt later (quantity stepper #79, error
-     * summary #85), so they keep working without DaisyUI.
-     */
-    .ec-quantity {
-        display: inline-flex;
-        align-items: stretch;
-        gap: 4px;
-    }
-
-    .ec-quantity__input {
-        box-sizing: border-box;
-        inline-size: 5rem;
-        min-block-size: 40px;
-        padding-inline: 8px;
-        border: var(--apui-border-width) solid var(--apui-border-default);
-        border-radius: var(--apui-radius-field);
-        background: var(--apui-surface-default);
-        color: var(--apui-text-default);
-        font: inherit;
-        font-variant-numeric: tabular-nums;
-        text-align: center;
-    }
-
-    .ec-quantity__input[aria-invalid="true"] {
-        border-color: var(--apui-color-error-border);
-    }
-
-    .ec-quantity__input:focus-visible {
-        outline: var(--apui-focus-ring-width) solid transparent;
-        box-shadow:
-            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
-            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
-    }
-
-    .ec-quantity__error {
-        margin: 0;
-        color: var(--apui-color-error-text);
-        font-size: var(--apui-type-body-sm-font-size);
-    }
+    /* Interim styles for the error summary (#85), so it keeps working without DaisyUI. */
 
     /* The checkout's decorative progress bar (until #136) scrolls in its own box on a narrow screen. */
     .ec-checkout-progress {
@@ -330,6 +291,457 @@
 
     .ec-product-card__cta .apui-button {
         inline-size: 100%;
+    }
+
+    /*
+     * Rating summary (#77): the design system's read-only Rating, then the
+     * average in label text and the count muted. One link when it links to
+     * the reviews; the compact form (cards) is one star and "4.8 (126)".
+     */
+    .ec-rating {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-sm-font-size);
+        line-height: var(--apui-type-label-sm-line-height);
+        text-decoration: none;
+    }
+
+    .ec-rating[data-compact] {
+        gap: 4px;
+    }
+
+    .ec-rating__stars {
+        display: inline-flex;
+    }
+
+    /* The summary writes the average itself, in the store's locale. */
+    .ec-rating__stars [data-scope="rating"][data-part="value"] {
+        display: none;
+    }
+
+    .ec-rating__average {
+        font-weight: var(--apui-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-rating__count,
+    .ec-rating--empty {
+        color: var(--apui-text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* "31 reviews" keeps its own direction inside a right-to-left row. */
+    .ec-rating__count {
+        unicode-bidi: plaintext;
+    }
+
+    a.ec-rating .ec-rating__count {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    a.ec-rating:hover .ec-rating__count {
+        color: var(--apui-text-default);
+    }
+
+    a.ec-rating:focus-visible {
+        border-radius: var(--apui-radius-sm);
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-rating__star {
+        display: inline-flex;
+        color: var(--apui-color-accent);
+    }
+
+    .ec-rating__star svg {
+        inline-size: var(--apui-icon-size-sm);
+        block-size: var(--apui-icon-size-sm);
+        fill: currentcolor;
+        stroke: var(--apui-color-accent-border);
+        stroke-width: 1.5;
+    }
+
+    /*
+     * Swatches (#78): native radios or checkboxes drawn as selectable chips,
+     * 40px tall, with a 24px round color or image dot before the name; text
+     * values (sizes) are the chip alone, at least 56px wide and centered.
+     */
+    .ec-swatches {
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-swatches__legend {
+        margin-block-end: 8px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-swatches__chosen {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-swatches__options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ec-swatch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-sizing: border-box;
+        min-block-size: 40px;
+        min-inline-size: 56px;
+        padding-inline: 14px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        cursor: pointer;
+        transition:
+            background-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+            border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+    }
+
+    .ec-swatch[data-dot] {
+        padding-inline: 7px 14px;
+    }
+
+    .ec-swatch:hover {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-swatch__input {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        opacity: 0;
+    }
+
+    .ec-swatch:has(.ec-swatch__input:checked) {
+        border-color: var(--apui-selected-border);
+        background: var(--apui-selected-bg);
+        color: var(--apui-color-primary-soft-foreground);
+    }
+
+    .ec-swatch:has(.ec-swatch__input:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    /* Unavailable values stay visible, faded and struck through. */
+    .ec-swatch:has(.ec-swatch__input:disabled) {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .ec-swatch:has(.ec-swatch__input:disabled) .ec-swatch__label {
+        text-decoration: line-through;
+    }
+
+    .ec-swatch:has(.ec-swatch__input:disabled):hover {
+        background: var(--apui-surface-default);
+    }
+
+    .ec-swatch__dot {
+        flex: none;
+        box-sizing: border-box;
+        inline-size: 24px;
+        block-size: 24px;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-full);
+        object-fit: cover;
+    }
+
+    /* A value keeps its own direction ("14 oz") inside a right-to-left row. */
+    .ec-swatch__label {
+        unicode-bidi: plaintext;
+    }
+
+    .ec-swatch__count {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    @media (forced-colors: active) {
+        .ec-swatch:has(.ec-swatch__input:checked) {
+            outline: 2px solid Highlight;
+            outline-offset: 1px;
+        }
+
+        .ec-swatch__dot {
+            forced-color-adjust: none;
+        }
+    }
+
+    /*
+     * Quantity stepper (#79): a design-system Input whose box holds the
+     * minus and plus buttons around a centered number. 132px wide on the
+     * product page (lg), narrower in the cart and drawer.
+     */
+    .ec-quantity {
+        --ec-quantity-width: 120px;
+
+        display: inline-flex;
+        flex-direction: column;
+        inline-size: max-content;
+    }
+
+    .ec-quantity[data-size="lg"] {
+        --ec-quantity-width: 132px;
+    }
+
+    .ec-quantity[data-size="sm"] {
+        --ec-quantity-width: 108px;
+    }
+
+    .ec-quantity[data-size="xs"] {
+        --ec-quantity-width: 96px;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="box"] {
+        box-sizing: border-box;
+        inline-size: var(--ec-quantity-width);
+        gap: 0;
+        padding-inline: 2px;
+    }
+
+    .ec-quantity :is([data-scope="input"][data-part="prefix"], [data-scope="input"][data-part="suffix"]) {
+        display: inline-flex;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="control"] {
+        min-inline-size: 0;
+        padding-inline: 0;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="control"]::-webkit-inner-spin-button,
+    .ec-quantity [data-scope="input"][data-part="control"]::-webkit-outer-spin-button {
+        margin: 0;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    /* The error may run wider than the stepper. */
+    .ec-quantity [data-scope="input"][data-part="error"] {
+        max-inline-size: 24rem;
+    }
+
+    .ec-quantity .apui-button[aria-disabled="true"] {
+        color: var(--apui-text-disabled);
+        cursor: not-allowed;
+    }
+
+    /*
+     * Gallery (#80): the square main image (radius lg, hairline border) with
+     * the counter at the top start and Zoom at the bottom end, then the
+     * thumbnails in four columns (radius md); the current one has a 2px
+     * primary ring past a 2px gap in the page color. From 640px up the
+     * thumbnails can sit in a column beside the image.
+     */
+    /* The lightbox's teleported layer adds no box of its own. */
+    .ec-gallery__layer {
+        display: contents;
+    }
+
+    .ec-gallery__layout {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ec-gallery__stage,
+    .ec-gallery--empty {
+        position: relative;
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1;
+        inline-size: 100%;
+        overflow: hidden;
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-radius-lg);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-gallery--empty {
+        display: grid;
+        place-items: center;
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-gallery--empty svg {
+        inline-size: 48px;
+        block-size: 48px;
+    }
+
+    .ec-gallery__image {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: contain;
+    }
+
+    .ec-gallery[x-data] .ec-gallery__image {
+        cursor: zoom-in;
+    }
+
+    /* "1 / 4" reads left to right in every direction. */
+    .ec-gallery__counter {
+        position: absolute;
+        inset-block-start: 12px;
+        inset-inline-start: 12px;
+        direction: ltr;
+        font-variant-numeric: tabular-nums;
+        unicode-bidi: isolate;
+        pointer-events: none;
+    }
+
+    .ec-gallery__zoom.apui-button {
+        position: absolute;
+        inset-block-end: 12px;
+        inset-inline-end: 12px;
+        --apui-button-bg: var(--apui-surface-raised);
+        --apui-button-bg-hover: var(--apui-surface-sunken);
+        --apui-button-fg: var(--apui-text-default);
+        --apui-button-radius: var(--apui-radius-full);
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        box-shadow: var(--apui-elevation-overlay, var(--apui-elevation-raised));
+    }
+
+    .ec-gallery__thumbnails {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-gallery__thumbnail {
+        display: block;
+        box-sizing: border-box;
+        inline-size: 100%;
+        aspect-ratio: 1 / 1;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        cursor: pointer;
+        appearance: none;
+    }
+
+    .ec-gallery__thumbnail > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-gallery__thumbnail[aria-current="true"] {
+        border-color: transparent;
+        box-shadow:
+            0 0 0 2px var(--apui-surface-page),
+            0 0 0 4px var(--apui-color-primary);
+    }
+
+    .ec-gallery__thumbnail:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: 6px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__layout {
+            align-items: flex-start;
+        }
+
+        .ec-gallery[data-gallery-thumbnails="end"] .ec-gallery__layout {
+            flex-direction: row;
+        }
+
+        .ec-gallery[data-gallery-thumbnails="start"] .ec-gallery__layout {
+            flex-direction: row-reverse;
+        }
+
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__stage {
+            flex: 1;
+            min-inline-size: 0;
+        }
+
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__thumbnails {
+            display: flex;
+            flex: none;
+            flex-direction: column;
+            inline-size: 80px;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .ec-gallery__thumbnail[aria-current="true"] {
+            outline: 3px solid Highlight;
+            outline-offset: 2px;
+        }
+    }
+
+    /*
+     * Address (#81): name, street lines, city/region/postcode and country,
+     * then the phone muted, on a 22px line; in a Card when it has a title.
+     */
+    .ec-address {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-style: normal;
+        line-height: 22px;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-address__line {
+        display: block;
+    }
+
+    .ec-address__phone,
+    .ec-address--empty {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-address-card [data-scope="card"][data-part="title"] {
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
     }
 
     /* Account shell (#72): a 232px sidebar beside the content from 1024px. */

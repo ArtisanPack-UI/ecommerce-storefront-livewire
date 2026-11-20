@@ -68,6 +68,24 @@ class Swatches extends Component
     }
 
     /**
+     * The chosen value's label, for the legend ("Glaze: Stoneware").
+     *
+     * @since 2.0.0
+     *
+     * @return string|null Null when nothing is chosen.
+     */
+    public function chosenLabel(): ?string
+    {
+        foreach ( $this->items as $item ) {
+            if ( $item['selected'] ) {
+                return $item['label'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
