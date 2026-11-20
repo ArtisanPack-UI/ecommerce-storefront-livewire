@@ -101,3 +101,9 @@ it( 'says when the engine can\'t load the orders', function (): void {
 
     Livewire::test( Orders::class )->assertOk()->assertSeeHtml( 'data-account-orders-failed' );
 } );
+
+it( 'offers only the status filters, without a placeholder option', function (): void {
+    shopper();
+
+    Livewire::test( Orders::class )->assertDontSee( 'Select…' );
+} );

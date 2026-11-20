@@ -32,8 +32,10 @@ it( 'shows the name linked to the product page, the price, the stock state, and 
     expect( $html )
         ->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'ceramic-mug' ] ) . '"' )
         ->toContain( 'Ceramic mug' )
-        ->toContain( 'Sale price: was $25.00, now $19.00' )
-        ->toContain( 'In stock' )
+        ->toContain( 'Sale price' )
+        ->toContain( 'Original price' )
+        ->toContain( '>Sale</span>' )
+        ->not->toContain( 'In stock' )
         ->toContain( 'src="https://cdn.example.test/mug.jpg"' )
         ->toContain( 'alt="Ceramic mug"' )
         ->toContain( 'loading="lazy"' )
@@ -45,7 +47,7 @@ it( 'offers quick add for a simple product that can be bought', function (): voi
 
     expect( renderCard( $product ) )
         ->toContain( 'wire:click="quickAdd( ' . $product->id . ' )"' )
-        ->toContain( 'Add to cart<span class="sr-only">: Ceramic mug</span>' )
+        ->toContain( 'Add to cart<span class="apui-sr-only">: Ceramic mug</span>' )
         ->not->toContain( 'aria-label="Add Ceramic mug to cart"' );
 } );
 
@@ -136,7 +138,7 @@ it( 'ignores filtered values of the wrong type', function (): void {
 
     expect( renderCard( $product ) )
         ->toContain( '$19.00' )
-        ->toContain( 'In stock' )
+        ->not->toContain( 'data-stock-status' )
         ->toContain( 'Teapot' )
         ->toContain( 'Hot' )
         ->toContain( 'data-quick-add' );
@@ -171,4 +173,71 @@ it( 'prices the card for the signed-in customer, as the cart will', function ():
     app()->forgetScopedInstances();
 
     expect( renderCard( $product ) )->toContain( '$10.00' )->not->toContain( '$20.00' );
+} );
+
+it( 'is a design-system card whose name link covers it, with quick add as an outline button above it', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Ceramic mug' ] );
+
+    $html = renderCard( $product );
+
+    expect( $html )->toContain( 'class="apui-card ec-product-card"' )
+        ->toContain( 'class="ec-product-card__name"' )
+        ->toContain( 'data-cta="add"' )
+        ->toMatch( '/<button[^>]*data-variant="outline"[^>]*data-color="neutral"[^>]*data-size="sm"/' )
+        ->and( substr_count( $html, '<a ' ) )->toBe( 1 );
+} );
+
+it( 'shows the first category above the name when the categories are loaded', function (): void {
+    $product  = makeProduct( 1900, [ 'name' => 'Ceramic mug' ] );
+    $category = ArtisanPackUI\Ecommerce\Models\ProductCategory::factory()->create( [ 'name' => 'Ceramics' ] );
+    $product->categories()->attach( $category );
+
+    expect( renderCard( $product->fresh( 'categories' ) ) )
+        ->toContain( 'data-product-card-category>Ceramics</p>' );
+
+    expect( renderCard( $product->fresh() ) )->not->toContain( 'data-product-card-category' );
+} );
+
+it( 'says "Choose options" for a product that needs choices, without a second link', function (): void {
+    $html = renderCard( makeProduct( 1900, [ 'type' => 'variable' ] ) );
+
+    expect( $html )->toContain( 'data-cta="options" aria-hidden="true"' )
+        ->toContain( 'Choose options' )
+        ->not->toContain( 'data-quick-add' )
+        ->and( substr_count( $html, '<a ' ) )->toBe( 1 );
+} );
+
+it( 'shows a disabled "Sold out" and dims the image when the product can\'t be bought', function (): void {
+    $product = makeProduct( 1900, [ 'name' => 'Bowl' ] );
+    InventoryItem::factory()->create( [ 'stockable_type' => $product->getMorphClass(), 'stockable_id' => $product->id, 'track_inventory' => true, 'allow_backorder' => false, 'quantity_on_hand' => 0 ] );
+
+    $html = renderCard( $product );
+
+    expect( $html )->toContain( 'data-sold-out' )
+        ->toContain( 'Sold out<span class="apui-sr-only">: Bowl</span>' )
+        ->toMatch( '/<button[^>]*\sdisabled[^>]*data-product-card-sold-out/s' )
+        ->toContain( 'Out of stock' );
+} );
+
+it( 'offers nothing at the bottom when quick add is off or there is no price', function (): void {
+    expect( renderCard( makeProduct(), ':quick-add="false"' ) )->not->toContain( 'data-cta=' );
+    expect( renderCard( Product::factory()->create() ) )->not->toContain( 'data-cta=' );
+} );
+
+it( 'marks a sale with a solid error badge over the image, before the filter\'s badges', function (): void {
+    addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', static function ( array $card ): array {
+        $card['badges'][] = 'New';
+
+        return $card;
+    } );
+
+    $html = renderCard( makeProduct( 1900, [], 2500 ) );
+
+    expect( $html )->toContain( 'data-product-card-badges' )
+        ->toMatch( '/data-variant="solid"\s+data-color="error".*?>Sale<\/span>.*?data-variant="solid"\s+data-color="neutral".*?>New<\/span>/s' )
+        ->not->toContain( '% off' );
+} );
+
+it( 'eager-loads the categories with the other display relations', function (): void {
+    expect( ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard::relations() )->toContain( 'categories' )->toContain( 'images' );
 } );

@@ -103,7 +103,7 @@ it( 'offers the layout and terms page on the admin\'s checkout settings', functi
         ->and( $settings->definition( CheckoutLayout::TERMS_SETTING )->configKey() )->toBe( 'artisanpack.ecommerce-storefront-livewire.checkout.terms_url' );
 } );
 
-it( 'escapes step labels in the progress bar, which renders them as HTML', function (): void {
+it( 'escapes step labels in the progress bar', function (): void {
     Livewire::component( 'age-check-step', Tests\Fixtures\Livewire\AgeCheckStep::class );
 
     addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', static function ( array $steps ): array {
@@ -115,7 +115,7 @@ it( 'escapes step labels in the progress bar, which renders them as HTML', funct
     $html = Livewire::test( Index::class )->html();
 
     expect( $html )->not->toContain( '<img src=x' )
-        ->and( $html )->toContain( 'text: \'&amp;lt;img src=x onerror=alert(1)&amp;gt;Age &amp;#039;check&amp;#039;\'' );
+        ->and( $html )->toContain( '&lt;img src=x onerror=alert(1)&gt;Age &#039;check&#039;' );
 } );
 
 it( 'accepts the same terms pages in the admin setting as at checkout', function ( string $url, bool $allowed ): void {

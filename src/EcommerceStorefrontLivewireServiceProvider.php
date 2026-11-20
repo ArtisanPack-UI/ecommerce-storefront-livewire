@@ -15,6 +15,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire;
 
+use ArtisanPack\LivewireUiComponents\Support\IconRegistry;
 use ArtisanPackUI\Ecommerce\Models\Product as ProductModel;
 use ArtisanPackUI\Ecommerce\Registries\ProductTypeRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SatelliteRegistry;
@@ -200,6 +201,21 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
     ];
 
     /**
+     * Lucide icons the storefront uses that livewire-ui-components doesn't
+     * ship. A host's own registration of the same name wins.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, string>
+     */
+    public const ICONS = [
+        'clock'   => '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+        'map-pin' => '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+        'package' => '<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',
+        'tag'     => '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',
+    ];
+
+    /**
      * Registers the package configuration and the per-request cart resolver.
      *
      * @since 1.0.0
@@ -239,6 +255,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->registerTranslations();
         $this->registerCommands();
         $this->registerBladeComponents();
+        $this->registerIcons();
         $this->registerLayoutResolver();
         $this->registerLivewireComponents();
         $this->registerProductForms();
@@ -455,6 +472,26 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->commands( [
             InstallCommand::class,
         ] );
+    }
+
+    /**
+     * Registers the storefront's extra icons with livewire-ui-components.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    protected function registerIcons(): void
+    {
+        $missing = array_filter(
+            self::ICONS,
+            static fn ( string $body, string $name ): bool => ! IconRegistry::has( $name ),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        if ( [] !== $missing ) {
+            IconRegistry::register( $missing );
+        }
     }
 
     /**

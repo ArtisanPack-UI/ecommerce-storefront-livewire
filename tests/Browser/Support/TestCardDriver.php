@@ -56,8 +56,8 @@ class TestCardDriver extends PaymentDriver
     {
         return <<<'BLADE'
             <div class="flex flex-wrap gap-2" data-test-card="{{ $reference }}">
-                <x-artisanpack-button label="Pay with test card" color="primary" wire:click="pay" spinner="pay" data-test-card-pay />
-                <x-artisanpack-button label="Use a declined card" wire:click="decline" data-test-card-decline />
+                <x-artisanpack-button color="primary" wire:click="pay" data-test-card-pay>Pay with test card</x-artisanpack-button>
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="decline" data-test-card-decline>Use a declined card</x-artisanpack-button>
             </div>
         BLADE;
     }

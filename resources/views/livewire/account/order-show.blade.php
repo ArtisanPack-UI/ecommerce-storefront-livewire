@@ -27,21 +27,19 @@
 
         <div class="flex flex-wrap gap-2">
             @if ( null !== $ordersUrl )
-                <x-artisanpack-button :label="__( 'All orders' )" :link="$ordersUrl" no-wire-navigate icon="o-arrow-left" class="btn-ghost btn-sm rtl:[&_svg]:rotate-180" data-account-order-back />
+                <x-artisanpack-button variant="ghost" color="neutral" size="sm" :href="$ordersUrl" leading-icon="o-arrow-left" class="rtl:[&_svg]:rotate-180" data-account-order-back>{{ __( 'All orders' ) }}</x-artisanpack-button>
             @endif
 
             @if ( $canBuyAgain )
                 <x-artisanpack-button
-                    :label="__( 'Buy again' )"
-                    icon="o-arrow-path"
+                    size="sm"
+                    leading-icon="o-arrow-path"
                     color="primary"
-                    class="btn-sm"
+                   
                     wire:click="buyAgain"
-                    spinner="buyAgain"
                     wire:loading.attr="disabled"
                     wire:target="buyAgain"
-                    data-account-order-buy-again
-                />
+                    data-account-order-buy-again>{{ __( 'Buy again' ) }}</x-artisanpack-button>
             @endif
         </div>
     </div>
@@ -66,7 +64,7 @@
                         </div>
 
                         @if ( null !== $shipment['url'] )
-                            <a href="{{ $shipment['url'] }}" class="btn btn-sm" target="_blank" rel="noopener noreferrer nofollow" data-order-tracking-link>
+                            <a href="{{ $shipment['url'] }}" class="apui-button" data-variant="outline" data-color="neutral" data-size="sm" target="_blank" rel="noopener noreferrer nofollow" data-order-tracking-link>
                                 {{ __( 'Track package' ) }}
                                 <span class="sr-only">{{ __( '(opens in a new tab)' ) }}</span>
                                 <x-artisanpack-icon name="o-arrow-top-right-on-square" class="h-4 w-4" aria-hidden="true" />

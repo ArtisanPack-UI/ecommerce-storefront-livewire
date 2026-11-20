@@ -9,25 +9,26 @@
 <div class="flex flex-col gap-6" data-account-orders>
     <div class="max-w-xs">
         <x-artisanpack-select
+            placeholder=""
             id="ec-account-orders-status"
             :label="__( 'Show' )"
-            :options="$filters"
+            :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $filters )"
             wire:model.live="status"
             data-account-orders-filter
         />
     </div>
 
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your orders couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-orders-failed />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'Your orders couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-orders-failed />
     @elseif ( null === $orders || 0 === $orders->total() )
         @if ( '' !== $status )
             <x-artisanpack-ec-empty-state icon="o-funnel" :title="__( 'No orders match this filter' )" data-account-orders-empty="filtered">
-                <x-artisanpack-button :label="__( 'Show all orders' )" wire:click="$set( 'status', '' )" />
+                <x-artisanpack-button variant="outline" color="neutral" wire:click="$set( 'status', '' )">{{ __( 'Show all orders' ) }}</x-artisanpack-button>
             </x-artisanpack-ec-empty-state>
         @else
             <x-artisanpack-ec-empty-state icon="o-shopping-bag" :title="__( 'No orders yet' )" :description="__( 'Orders you place will appear here.' )" data-account-orders-empty="none">
                 @if ( null !== $catalogUrl )
-                    <x-artisanpack-button :label="__( 'Start shopping' )" :link="$catalogUrl" no-wire-navigate color="primary" />
+                    <x-artisanpack-button :href="$catalogUrl" color="primary">{{ __( 'Start shopping' ) }}</x-artisanpack-button>
                 @endif
             </x-artisanpack-ec-empty-state>
         @endif
@@ -54,6 +55,6 @@
             @endscope
         </x-artisanpack-table>
 
-        <x-artisanpack-pagination :rows="$orders" hide-per-page data-account-orders-pagination />
+        <x-artisanpack-pagination :rows="$orders" data-account-orders-pagination />
     @endif
 </div>

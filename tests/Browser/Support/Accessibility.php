@@ -23,14 +23,13 @@ final class Accessibility
      * @var array<int, array{0: string, 1: string}>
      */
     public const LIBRARY_ISSUES = [
+        // livewire-ui-components 3.0: the Drawer's panel is an <aside> with
+        // role="dialog", a role axe doesn't allow on <aside>.
+        [ 'aria-allowed-role', '[data-scope="drawer"][data-part="content"]' ],
         // ArtisanPack-UI/livewire-ui-components#117: `x-artisanpack-select`
         // labels with a <legend>, so the control itself has no accessible
         // name.
         [ 'select-name', 'fieldset' ],
-        // ArtisanPack-UI/livewire-ui-components#117: the open drawer's
-        // `drawer-toggle` checkbox is unlabelled and outside any landmark.
-        [ 'label', '.drawer > input.drawer-toggle' ],
-        [ 'region', '.drawer > input.drawer-toggle' ],
         // ArtisanPack-UI/livewire-ui-components#129:
         // `x-artisanpack-breadcrumbs` puts the separator <span>s straight
         // into its <ul>.
@@ -48,22 +47,26 @@ final class Accessibility
      * Asserts the page has no accessibility violations beyond the known
      * library ones.
      *
-     * @param  object  $page  The page (a Pest browser webpage).
+     * @param  object       $page    The page (a Pest browser webpage).
+     * @param  string|null  $within  A selector to check only that part of the page (an open modal dialog).
      *
      * @return object
      */
-    public static function assertAccessible( object $page ): object
+    public static function assertAccessible( object $page, ?string $within = null ): object
     {
         $page->assertScript( 'document.readyState', 'complete' );
 
         $ignored = json_encode( self::LIBRARY_ISSUES );
+        $context = null === $within ? 'document' : 'document.querySelector( ' . json_encode( $within ) . ' )';
 
         /** @var array<int, array{id: string, impact: string|null, help: string, nodes: array<int, string>}> $violations */
         $violations = (array) $page->script( <<<JS
             async () => {
                 const ignored = {$ignored};
+                // Colors mid-transition (a button re-enabled after a request) aren't the final ones.
+                await Promise.all( document.getAnimations().map( ( animation ) => animation.finished.catch( () => null ) ) );
                 // target-size (WCAG 2.2 SC 2.5.8, 24px) is off by default in axe 4.x.
-                const { violations } = await window.axe.run( document, { rules: { 'target-size': { enabled: true } } } );
+                const { violations } = await window.axe.run( {$context}, { rules: { 'target-size': { enabled: true } } } );
 
                 return violations
                     .map( ( violation ) => ( {

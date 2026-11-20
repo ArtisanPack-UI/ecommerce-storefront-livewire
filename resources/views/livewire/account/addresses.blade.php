@@ -25,16 +25,16 @@
     @endif
 
     @if ( $failed )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'Your addresses couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-addresses-failed />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'Your addresses couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-addresses-failed />
     @endif
 
     @if ( [] === $addresses && ! $failed )
         <x-artisanpack-ec-empty-state icon="o-map-pin" :title="__( 'No saved addresses' )" :description="__( 'Save an address to check out faster.' )" data-account-no-addresses>
-            <x-artisanpack-button :label="__( 'Add an address' )" icon="o-plus" color="primary" wire:click="add" data-account-address-add />
+            <x-artisanpack-button leading-icon="o-plus" color="primary" wire:click="add" data-account-address-add>{{ __( 'Add an address' ) }}</x-artisanpack-button>
         </x-artisanpack-ec-empty-state>
     @elseif ( [] !== $addresses )
         <div class="flex justify-end">
-            <x-artisanpack-button :label="__( 'Add an address' )" icon="o-plus" color="primary" wire:click="add" data-account-address-add />
+            <x-artisanpack-button leading-icon="o-plus" color="primary" wire:click="add" data-account-address-add>{{ __( 'Add an address' ) }}</x-artisanpack-button>
         </div>
 
         <ul class="grid gap-4 md:grid-cols-2" aria-label="{{ __( 'Saved addresses' ) }}">
@@ -45,11 +45,11 @@
 
                         <div class="flex flex-wrap gap-1">
                             @if ( $row['default_shipping'] )
-                                <x-artisanpack-badge :value="__( 'Default shipping' )" class="badge-primary badge-soft" data-account-address-default="shipping" />
+                                <x-artisanpack-badge color="primary" :value="__( 'Default shipping' )" data-account-address-default="shipping" />
                             @endif
 
                             @if ( $row['default_billing'] )
-                                <x-artisanpack-badge :value="__( 'Default billing' )" class="badge-secondary badge-soft" data-account-address-default="billing" />
+                                <x-artisanpack-badge color="secondary" :value="__( 'Default billing' )" data-account-address-default="billing" />
                             @endif
                         </div>
                     </div>
@@ -59,15 +59,15 @@
                     <div class="mt-auto flex flex-wrap gap-2">
                         {{-- Each button names its address for screen readers, after the visible word (WCAG 2.5.3). --}}
                         @php( $ecommerceAddressName = implode( ', ', array_filter( [ $row['label'], $row['summary'] ] ) ) )
-                        <x-artisanpack-button icon="o-pencil" class="btn-sm" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}">{{ __( 'Edit' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
-                        <x-artisanpack-button icon="o-trash" class="btn-sm btn-ghost" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}">{{ __( 'Delete' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                        <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-pencil" wire:click="edit( {{ $row['id'] }} )" data-account-address-edit="{{ $row['id'] }}">{{ __( 'Edit' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                        <x-artisanpack-button variant="ghost" color="neutral" size="sm" leading-icon="o-trash" wire:click="confirmDelete( {{ $row['id'] }} )" data-account-address-delete="{{ $row['id'] }}">{{ __( 'Delete' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
 
                         @unless ( $row['default_shipping'] )
-                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping">{{ __( 'Use for shipping' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                            <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="makeDefault( {{ $row['id'] }}, 'shipping' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="shipping">{{ __( 'Use for shipping' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
 
                         @unless ( $row['default_billing'] )
-                            <x-artisanpack-button class="btn-sm btn-ghost" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing">{{ __( 'Use for billing' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
+                            <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="makeDefault( {{ $row['id'] }}, 'billing' )" wire:loading.attr="disabled" wire:target="makeDefault" data-account-address-make-default="billing">{{ __( 'Use for billing' ) }}<span class="sr-only">: {{ $ecommerceAddressName }}</span></x-artisanpack-button>
                         @endunless
                     </div>
                 </li>
@@ -75,7 +75,7 @@
         </ul>
     @endif
 
-    <x-artisanpack-modal wire:model="editing" :title="null === $editingId ? __( 'Add an address' ) : __( 'Edit address' )" box-class="max-w-2xl" data-account-address-modal>
+    <x-artisanpack-dialog wire:model="editing" :title="null === $editingId ? __( 'Add an address' ) : __( 'Edit address' )" :classes="['root' => 'max-w-2xl']" data-account-address-modal>
         <form wire:submit="save" class="flex flex-col gap-4" novalidate>
             @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-address' ] )
 
@@ -98,18 +98,18 @@
             </div>
 
             <div class="modal-action">
-                <x-artisanpack-button :label="__( 'Cancel' )" class="btn-ghost" @click="$wire.editing = false" />
-                <x-artisanpack-button type="submit" :label="__( 'Save address' )" color="primary" spinner="save" wire:loading.attr="disabled" wire:target="save" data-account-address-save />
+                <x-artisanpack-button variant="ghost" color="neutral" @click="$wire.editing = false">{{ __( 'Cancel' ) }}</x-artisanpack-button>
+                <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="save" data-account-address-save>{{ __( 'Save address' ) }}</x-artisanpack-button>
             </div>
         </form>
-    </x-artisanpack-modal>
+    </x-artisanpack-dialog>
 
-    <x-artisanpack-modal wire:model="confirmingDelete" :title="__( 'Delete this address?' )" data-account-address-delete-modal>
+    <x-artisanpack-dialog wire:model="confirmingDelete" :title="__( 'Delete this address?' )" data-account-address-delete-modal>
         <p>{{ __( 'It will be removed from your address book. Orders that used it keep their copy.' ) }}</p>
 
-        <x-slot:actions>
-            <x-artisanpack-button :label="__( 'Cancel' )" class="btn-ghost" @click="$wire.confirmingDelete = false" />
-            <x-artisanpack-button :label="__( 'Delete address' )" class="btn-error" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" data-account-address-delete-confirm />
-        </x-slot:actions>
-    </x-artisanpack-modal>
+        <x-slot:footer>
+            <x-artisanpack-button variant="ghost" color="neutral" @click="$wire.confirmingDelete = false">{{ __( 'Cancel' ) }}</x-artisanpack-button>
+            <x-artisanpack-button color="error" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" data-account-address-delete-confirm>{{ __( 'Delete address' ) }}</x-artisanpack-button>
+        </x-slot:footer>
+    </x-artisanpack-dialog>
 </div>

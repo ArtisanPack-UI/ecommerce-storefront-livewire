@@ -38,33 +38,36 @@
                         {{-- Mobile: the filters in a drawer. Focus returns to this button when it closes. --}}
                         <div class="lg:hidden" x-data x-on:ecommerce-filters-closed.window="$refs.trigger.focus()">
                             <x-artisanpack-button
+                                variant="outline"
+                                color="neutral"
+                                size="sm"
                                 x-ref="trigger"
-                                :label="[] === $activeFilters ? __( 'Filters' ) : __( 'Filters (:count)', [ 'count' => count( $activeFilters ) ] )"
-                                icon="o-adjustments-horizontal"
-                                class="btn-sm"
+                                leading-icon="o-adjustments-horizontal"
+                               
                                 aria-haspopup="dialog"
                                 aria-controls="ecommerce-catalog-filters-drawer"
                                 x-on:click="$dispatch( 'ecommerce-filters-open' )"
-                                data-filters-open
-                            />
+                                data-filters-open>{{ [] === $activeFilters ? __( 'Filters' ) : __( 'Filters (:count)', [ 'count' => count( $activeFilters ) ] ) }}</x-artisanpack-button>
                         </div>
                     @endif
 
                     @if ( $products->total() > 0 )
                         <x-artisanpack-select
+                            placeholder=""
                             id="ecommerce-catalog-sort"
                             :label="__( 'Sort by' )"
-                            :options="collect( $sorts )->map( fn ( string $label, string $key ): array => [ 'id' => $key, 'name' => $label ] )->values()->all()"
+                            :options="collect( $sorts )->map( fn ( string $label, string $key ): array => [ 'value' => $key, 'label' => $label ] )->values()->all()"
                             wire:model.live="sort"
-                            class="select-sm"
+                            size="sm"
                         />
 
                         <x-artisanpack-select
+                            placeholder=""
                             id="ecommerce-catalog-per-page"
                             :label="__( 'Per page' )"
-                            :options="collect( $perPageValues )->map( fn ( int $value ): array => [ 'id' => $value, 'name' => (string) $value ] )->all()"
+                            :options="collect( $perPageValues )->map( fn ( int $value ): array => [ 'value' => $value, 'label' => (string) $value ] )->all()"
                             wire:model.live="perPage"
-                            class="select-sm"
+                            size="sm"
                         />
                     @endif
                 </div>
@@ -74,17 +77,18 @@
                 <div class="flex flex-wrap items-center gap-2" aria-label="{{ __( 'Active filters' ) }}" role="group" data-active-filters>
                     @foreach ( $activeFilters as $filter )
                         <x-artisanpack-button
-                            :label="$filter['label']"
-                            icon-right="o-x-mark"
-                            class="btn-xs btn-outline rounded-full"
+                            variant="outline"
+                            color="neutral"
+                            size="sm"
+                            trailing-icon="o-x-mark"
+                            class="rounded-full"
                             :aria-label="__( 'Remove filter: :filter', [ 'filter' => $filter['label'] ] )"
                             wire:click="removeFilter( {{ \Illuminate\Support\Js::from( $filter['group'] ) }}, {{ \Illuminate\Support\Js::from( $filter['value'] ) }} )"
                             wire:key="active-filter-{{ $filter['group'] }}-{{ $filter['value'] }}"
-                            data-active-filter="{{ $filter['group'] }}"
-                        />
+                            data-active-filter="{{ $filter['group'] }}">{{ $filter['label'] }}</x-artisanpack-button>
                     @endforeach
 
-                    <x-artisanpack-button :label="__( 'Clear all' )" class="btn-xs btn-ghost" wire:click="clearFilters" data-clear-filters />
+                    <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="clearFilters" data-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-button>
                 </div>
             @endif
 
@@ -101,7 +105,7 @@
                         @endif
 
                         @if ( $filtered )
-                            <x-artisanpack-button :label="__( 'Clear filters' )" color="primary" wire:click="clearFilters" />
+                            <x-artisanpack-button color="primary" wire:click="clearFilters">{{ __( 'Clear filters' ) }}</x-artisanpack-button>
                         @endif
                     </x-artisanpack-ec-empty-state>
                 @elseif ( $filtered )
@@ -110,7 +114,7 @@
                         :title="__( 'No products match your filters' )"
                         :description="__( 'Try removing a filter or two.' )"
                     >
-                        <x-artisanpack-button :label="__( 'Clear filters' )" color="primary" wire:click="clearFilters" />
+                        <x-artisanpack-button color="primary" wire:click="clearFilters">{{ __( 'Clear filters' ) }}</x-artisanpack-button>
                     </x-artisanpack-ec-empty-state>
                 @else
                     <x-artisanpack-ec-empty-state
@@ -130,8 +134,8 @@
 
                 <x-artisanpack-pagination
                     :rows="$products"
-                    hide-per-page
-                    :page-info-template="__( 'Showing {from} to {to} of {total} results' )"
+                    summary
+                    :summary-label="__( 'Showing {from} to {to} of {total} results' )"
                 />
             @endif
         </div>
@@ -139,69 +143,36 @@
 
     @if ( $ecommerceHasFilters )
         {{--
-            As in the cart drawer, the library drawer's unnamed `drawer-toggle`
-            checkbox is taken out of the tab order and the accessibility tree
-            (livewire-ui-components#117), and focus moves to the title on
-            open. The close button is our own: the library's has no name.
+            The design system's Drawer on the start side, below lg: opened by
+            the Filters button (`ecommerce-filters-open`), closed by its close
+            button, Escape, the backdrop or "Show N results"
+            (`ecommerce-filters-close`). `ecommerce-filters-closed` sends focus
+            back to the Filters button.
         --}}
-        <div
-            class="lg:hidden"
-            x-data="{
-                focusTitle( tries = 20 ) {
-                    const title  = document.getElementById( 'ecommerce-catalog-filters-title' );
-                    const active = document.activeElement;
-
-                    if ( ! title || active === title || ( active?.closest( '[data-filters-drawer]' ) && ! active.hasAttribute( 'data-filters-close' ) ) ) {
-                        return;
-                    }
-
-                    title.focus();
-
-                    if ( document.activeElement !== title && tries > 0 ) {
-                        setTimeout( () => this.focusTitle( tries - 1 ), 25 );
-                    }
-                },
-            }"
-            x-on:open="$el.querySelector( '.drawer-toggle' )?.setAttribute( 'tabindex', '-1' ); $el.querySelector( '.drawer-toggle' )?.setAttribute( 'aria-hidden', 'true' ); focusTitle()"
-            x-on:close="$dispatch( 'ecommerce-filters-closed' )"
-        >
+        <div class="lg:hidden">
             <x-artisanpack-drawer
+                side="start"
                 id="ecommerce-catalog-filters-drawer"
-                open-on="ecommerce-filters-open"
-                close-on="ecommerce-filters-close"
-                close-on-escape
-                class="w-80 max-w-full"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="ecommerce-catalog-filters-title"
+                size="sm"
+                :title="__( 'Filters' )"
+                :close-label="__( 'Close filters' )"
+                x-on:ecommerce-filters-open.window="open = true"
+                x-on:ecommerce-filters-close.window="open = false"
+                x-init="$watch( 'open', ( isOpen ) => { if ( ! isOpen ) { $dispatch( 'ecommerce-filters-closed' ) } } )"
                 data-filters-drawer
             >
-                <div class="mb-4 flex items-center justify-between gap-2">
-                    <h2 id="ecommerce-catalog-filters-title" tabindex="-1" class="text-xl font-bold focus:outline-none">{{ __( 'Filters' ) }}</h2>
-
-                    <x-artisanpack-button
-                        icon="o-x-mark"
-                        class="btn-ghost btn-sm btn-circle"
-                        :aria-label="__( 'Close filters' )"
-                        x-on:click="$dispatch( 'ecommerce-filters-close' )"
-                        data-filters-close
-                    />
-                </div>
-
                 @include( 'ecommerce-storefront::livewire.catalog.partials.filters', [ 'idPrefix' => 'ecommerce-filters-drawer' ] )
 
-                <x-slot:actions>
+                <x-slot:footer>
                     @if ( [] !== $activeFilters )
-                        <x-artisanpack-button :label="__( 'Clear all' )" class="btn-ghost" wire:click="clearFilters" />
+                        <x-artisanpack-button variant="ghost" color="neutral" wire:click="clearFilters">{{ __( 'Clear all' ) }}</x-artisanpack-button>
                     @endif
 
                     <x-artisanpack-button
-                        :label="trans_choice( 'Show :count result|Show :count results', $products->total(), [ 'count' => $products->total() ] )"
                         color="primary"
                         x-on:click="$dispatch( 'ecommerce-filters-close' )"
-                        data-filters-apply
-                    />
-                </x-slot:actions>
+                        data-filters-apply>{{ trans_choice( 'Show :count result|Show :count results', $products->total(), [ 'count' => $products->total() ] ) }}</x-artisanpack-button>
+                </x-slot:footer>
             </x-artisanpack-drawer>
         </div>
     @endif

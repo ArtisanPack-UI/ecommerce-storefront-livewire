@@ -23,7 +23,7 @@
             </h2>
 
             @if ( null !== $paymentProblem )
-                <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="$paymentProblem" data-checkout-payment-problem />
+                <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="$paymentProblem" data-checkout-payment-problem />
             @endif
 
             <div data-field="gateway">
@@ -37,7 +37,7 @@
                         ], key( 'checkout-placement-driver-' . $payment['reference'] ) )
                     </div>
                 @else
-                    <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment can\'t be finished here' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-placement-unavailable />
+                    <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'This payment can\'t be finished here' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-placement-unavailable />
                 @endif
 
                 @error( 'gateway' )

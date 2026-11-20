@@ -30,16 +30,24 @@
                 @if ( $products->count() > 1 )
                     <div class="flex gap-2 md:hidden">
                         <x-artisanpack-button
-                            icon="o-chevron-left"
-                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
+                            variant="outline"
+                            color="neutral"
+                            size="sm"
+                            icon-only
+                            leading-icon="o-chevron-left"
+                            class="rtl:[&_svg]:rotate-180"
                             :aria-label="__( 'Previous products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( -1 )"
                             data-related-previous
                         />
                         <x-artisanpack-button
-                            icon="o-chevron-right"
-                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
+                            variant="outline"
+                            color="neutral"
+                            size="sm"
+                            icon-only
+                            leading-icon="o-chevron-right"
+                            class="rtl:[&_svg]:rotate-180"
                             :aria-label="__( 'Next products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( 1 )"

@@ -409,7 +409,7 @@ class StorefrontPageController extends Controller
         } catch ( DigitalDownloadException $exception ) {
             abort_if( 404 === $exception->status && 'download-not-found' === $exception->errorCode, 404 );
 
-            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage(), 'alert-warning' ) );
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage() ) );
 
             return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.account.downloads' ) );
         }
@@ -539,7 +539,7 @@ class StorefrontPageController extends Controller
         $held = ! CheckoutPlacement::isPaid( $order ) && CheckoutPlacement::isHeld( $order );
 
         if ( $held ) {
-            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ), 'alert-success' ) );
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ) ) );
         }
 
         if ( $held || CheckoutPlacement::isPaid( $order ) ) {
@@ -615,7 +615,7 @@ class StorefrontPageController extends Controller
      */
     protected function backToPayment( string $title, string $description ): RedirectResponse
     {
-        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description ) );
 
         return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
     }

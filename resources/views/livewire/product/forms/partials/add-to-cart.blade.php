@@ -37,18 +37,15 @@
         @endif
 
         <x-artisanpack-button
-            :label="$buttonLabel ?? ( $buttonText ?? null ) ?? __( 'Add to cart' )"
-            icon="o-shopping-cart"
+            leading-icon="o-shopping-cart"
             color="primary"
             class="grow sm:grow-0"
             wire:click="addToCart"
             wire:loading.attr="disabled"
             wire:target="addToCart"
-            spinner="addToCart"
             :disabled="! $canAdd"
             :aria-describedby="[] === $ecommerceDescribedBy ? null : implode( ' ', $ecommerceDescribedBy )"
-            data-add-to-cart
-        />
+            data-add-to-cart>{{ $buttonLabel ?? ( $buttonText ?? null ) ?? __( 'Add to cart' ) }}</x-artisanpack-button>
     </div>
 
     @if ( ! $ecommerceShowQuantity && $errors->has( 'quantity' ) )

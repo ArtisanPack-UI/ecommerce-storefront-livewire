@@ -152,3 +152,9 @@ it( 'registers the install command', function (): void {
 it( 'registers the publish tags', function ( string $tag ): void {
     expect( ServiceProvider::pathsToPublish( EcommerceStorefrontLivewireServiceProvider::class, $tag ) )->not->toBeEmpty();
 } )->with( [ 'ecommerce-storefront-config', 'ecommerce-storefront-views', 'ecommerce-storefront-lang' ] );
+
+it( 'registers the icons the storefront draws that the component library lacks', function (): void {
+    foreach ( array_keys( EcommerceStorefrontLivewireServiceProvider::ICONS ) as $icon ) {
+        expect( ArtisanPack\LivewireUiComponents\Support\IconRegistry::has( $icon ) )->toBeTrue( $icon );
+    }
+} );

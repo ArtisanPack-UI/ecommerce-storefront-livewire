@@ -25,7 +25,7 @@
                 type="search"
                 name="q"
                 :label="__( 'Search products' )"
-                icon="o-magnifying-glass"
+                leading-icon="o-magnifying-glass"
                 wire:model.live.debounce.500ms="q"
                 autocomplete="off"
                 enterkeyhint="search"
@@ -33,7 +33,7 @@
             />
         </div>
 
-        <x-artisanpack-button type="submit" :label="__( 'Search' )" color="primary" wire:loading.attr="disabled" wire:target="search" data-search-submit />
+        <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="search" data-search-submit>{{ __( 'Search' ) }}</x-artisanpack-button>
     </form>
 
     @if ( [] !== $suggestions )

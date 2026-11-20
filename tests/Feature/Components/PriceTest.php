@@ -32,19 +32,43 @@ it( 'renders a regular price', function (): void {
         ->assertDontSee( 'Sale' );
 } );
 
-it( 'strikes through the compare-at price and reads "was / now" to screen readers on a sale', function (): void {
+it( 'shows the sale price, then the original struck through, each labelled for screen readers', function (): void {
     $view = $this->blade( '<x-artisanpack-ec-price :price="$price" />', [ 'price' => plainPrice( 1900, 2500 ) ] );
 
-    $view->assertSee( 'Sale price: was $25.00, now $19.00' )
-        ->assertSee( '<del class="tabular-nums text-base-content/70" aria-hidden="true">$25.00</del>', false )
-        ->assertSee( 'Sale' )
+    $view->assertSeeInOrder( [ 'data-tone="sale"', 'Sale price', '$19.00', '<del class="ec-price__was">', 'Original price', '$25.00' ], false )
+        ->assertSee( '24% off' )
+        ->assertSee( 'data-price-discount', false )
         ->assertSee( 'data-on-sale', false );
 } );
 
-it( 'hides the sale badge when asked', function (): void {
+it( 'hides the percentage-off badge when asked', function (): void {
     $this->blade( '<x-artisanpack-ec-price :price="$price" :sale-badge="false" />', [ 'price' => plainPrice( 1900, 2500 ) ] )
-        ->assertDontSee( 'badge-error', false );
+        ->assertSee( 'Sale price' )
+        ->assertDontSee( 'data-price-discount', false )
+        ->assertDontSee( '% off' );
 } );
+
+it( 'says "Free" for a zero price, in the success tone', function (): void {
+    $this->blade( '<x-artisanpack-ec-price :price="$price" />', [ 'price' => plainPrice( 0 ) ] )
+        ->assertSee( 'Free' )
+        ->assertSee( 'data-tone="free"', false )
+        ->assertDontSee( '$0.00' );
+} );
+
+it( 'shows a range as "From" and its lowest price when asked', function (): void {
+    $this->blade( '<x-artisanpack-ec-price :price="$price" from />', [ 'price' => plainPrice( 3400, null, 3400, 5000 ) ] )
+        ->assertSeeInOrder( [ 'ec-price__from', 'From', '$34.00' ], false )
+        ->assertDontSee( '$50.00' );
+} );
+
+it( 'sizes the price for its context, falling back to md', function ( string $size, string $expected ): void {
+    $this->blade( '<x-artisanpack-ec-price :price="$price" size="' . $size . '" />', [ 'price' => plainPrice( 1900 ) ] )
+        ->assertSee( 'data-size="' . $expected . '"', false );
+} )->with( [
+    'small'   => [ 'sm', 'sm' ],
+    'large'   => [ 'lg', 'lg' ],
+    'unknown' => [ 'huge', 'md' ],
+] );
 
 it( 'shows a variable product\'s range with a spoken "from / to"', function (): void {
     $this->blade( '<x-artisanpack-ec-price :price="$price" />', [ 'price' => plainPrice( 1000, null, 1000, 2400 ) ] )
@@ -102,5 +126,5 @@ it( 'renders an engine sale price', function (): void {
     $price = app( PriceDisplayResolver::class )->for( makeProduct( 1900, [], 2500 ), 'USD' );
 
     $this->blade( '<x-artisanpack-ec-price :price="$price" />', [ 'price' => $price ] )
-        ->assertSee( 'Sale price: was $25.00, now $19.00' );
+        ->assertSeeInOrder( [ 'Sale price', '$19.00', 'Original price', '$25.00' ] );
 } );

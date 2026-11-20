@@ -289,7 +289,7 @@ it( 'offers a mobile drawer with a "Show N results" button that closes it', func
         ->set( 'onSale', true )
         ->assertSeeHtml( 'id="ecommerce-catalog-filters-drawer"' )
         ->assertSeeHtml( 'x-on:ecommerce-filters-open.window="open = true"' )
-        ->assertSeeHtml( '@keydown.window.escape="close()"' )
+        ->assertSeeHtml( 'x-on:ecommerce-filters-close.window="open = false"' )
         ->assertSee( 'Show 1 result' )
         ->assertSee( 'Filters (1)' );
 } );

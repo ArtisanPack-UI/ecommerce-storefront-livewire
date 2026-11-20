@@ -54,9 +54,9 @@
                 <div class="border-t border-base-content/10 pt-4" data-review-cta>
                     @if ( $submitted )
                         {{-- Takes focus from the form it replaces. --}}
-                        <x-artisanpack-alert
+                        <x-artisanpack-alert color="success"
                             icon="o-check-circle"
-                            class="alert-success"
+                           
                             :title="$published ? __( 'Thanks — your review is published' ) : __( 'Thanks — your review is awaiting moderation' )"
                             role="status"
                             tabindex="-1"
@@ -67,13 +67,13 @@
                     @elseif ( $eligibility->allowed )
                         {{-- Stays while the form is open, so it can report (and toggle) that state and take focus back on Cancel. --}}
                         <x-artisanpack-button
-                            :label="__( 'Write a review' )"
-                            icon="o-pencil-square"
+                            variant="outline"
+                            color="neutral"
+                            leading-icon="o-pencil-square"
                             x-on:click="$wire.showForm ? $wire.closeForm() : $wire.openForm()"
                             aria-controls="{{ $ecommerceFormId }}"
                             :aria-expanded="$showForm ? 'true' : 'false'"
-                            data-review-open
-                        />
+                            data-review-open>{{ __( 'Write a review' ) }}</x-artisanpack-button>
                     @else
                         <p class="text-sm" data-review-ineligible="{{ $eligibility->reason }}">
                             @if ( null !== $loginUrl && in_array( $eligibility->reason, [ \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::GUESTS_NOT_ALLOWED, \ArtisanPackUI\Ecommerce\Reviews\ReviewEligibility::PURCHASE_REQUIRED ], true ) )
@@ -95,7 +95,7 @@
                     @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => $ecommerceFormId, 'summaryExcept' => [ 'review' ] ] )
 
                     @error( 'review' )
-                        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-error" :title="$message" role="alert" data-review-error />
+                        <x-artisanpack-alert color="error" icon="o-exclamation-triangle" :title="$message" data-review-error />
                     @enderror
 
                     <x-artisanpack-ec-rating-input :id="$ecommerceFormId . '-rating'" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" required data-field-key="rating" />
@@ -118,8 +118,8 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2">
-                        <x-artisanpack-button type="submit" :label="__( 'Submit review' )" color="primary" spinner="submit" wire:loading.attr="disabled" wire:target="submit" data-review-submit />
-                        <x-artisanpack-button :label="__( 'Cancel' )" class="btn-ghost" x-on:click="$wire.closeForm().then( () => $nextTick( () => document.querySelector( '[data-product-reviews=&quot;{{ $product->id }}&quot;] [data-review-open]' )?.focus() ) )" data-review-cancel />
+                        <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="submit" data-review-submit>{{ __( 'Submit review' ) }}</x-artisanpack-button>
+                        <x-artisanpack-button variant="ghost" color="neutral" x-on:click="$wire.closeForm().then( () => $nextTick( () => document.querySelector( '[data-product-reviews=&quot;{{ $product->id }}&quot;] [data-review-open]' )?.focus() ) )" data-review-cancel>{{ __( 'Cancel' ) }}</x-artisanpack-button>
                     </div>
                 </form>
             @endif
@@ -127,7 +127,7 @@
             @if ( null !== $ratingFilter )
                 <div class="flex flex-wrap items-center gap-2 text-sm" data-review-filter="{{ $ratingFilter }}">
                     <span>{{ trans_choice( 'Showing reviews rated :count star|Showing reviews rated :count stars', $ratingFilter, [ 'count' => $ratingFilter ] ) }}</span>
-                    <x-artisanpack-button :label="__( 'Show all reviews' )" class="btn-ghost btn-xs" wire:click="filterRating" />
+                    <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="filterRating">{{ __( 'Show all reviews' ) }}</x-artisanpack-button>
                 </div>
             @endif
 
@@ -159,7 +159,7 @@
                                     <span id="ec-review-{{ $review->id }}-author" class="font-medium text-base-content">{{ $review->author_name }}</span>
                                     <time datetime="{{ ( $review->approved_at ?? $review->created_at )?->toIso8601String() }}">{{ LocalizedDate::format( $review->approved_at ?? $review->created_at ) }}</time>
                                     @if ( $review->is_verified_purchase )
-                                        <x-artisanpack-badge :value="__( 'Verified purchase' )" class="badge-success badge-sm" data-review-verified />
+                                        <x-artisanpack-badge color="success" size="sm" :value="__( 'Verified purchase' )" data-review-verified />
                                     @endif
                                 </p>
 
@@ -171,7 +171,7 @@
                     @endforeach
                 </ol>
 
-                <x-artisanpack-pagination :rows="$reviews" hide-per-page :page-info-template="__( 'Showing {from} to {to} of {total} reviews' )" />
+                <x-artisanpack-pagination :rows="$reviews" summary :summary-label="__( 'Showing {from} to {to} of {total} reviews' )" />
             @elseif ( null !== $ratingFilter )
                 <p class="text-base-content/70" data-reviews-filtered-empty>{{ __( 'No reviews with this rating.' ) }}</p>
             @endif

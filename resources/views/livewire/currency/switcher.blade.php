@@ -9,13 +9,13 @@
 <div data-ecommerce-currency-switcher>
     @if ( $show )
         <x-artisanpack-select
+            placeholder=""
             id="ecommerce-currency-switcher"
             :label="__( 'Currency' )"
-            :options="$options"
+            :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $options )"
             wire:model.live="currency"
             wire:loading.attr="disabled"
-            class="select-sm"
-            inline
+            size="sm"
         />
     @endif
 </div>

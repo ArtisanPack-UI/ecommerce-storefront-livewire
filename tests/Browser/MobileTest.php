@@ -26,7 +26,7 @@ function onPhone( string $url, int $width = 390, int $height = 844 ): object
  */
 function recordFocus(): string
 {
-    return 'window.ecFocused = []; window.addEventListener( "focusin", ( event ) => window.ecFocused.push( event.target.matches( ".drawer-toggle" ) ? "drawer-toggle" : ( event.target.getAttribute( "aria-label" ) ?? event.target.textContent.trim().slice( 0, 30 ) ) ) ); true';
+    return 'window.ecFocused = []; window.addEventListener( "focusin", ( event ) => window.ecFocused.push( event.target.closest( "#ecommerce-catalog-filters-drawer-content" ) ? "drawer" : "page" ) ); true';
 }
 
 /**
@@ -35,7 +35,15 @@ function recordFocus(): string
  */
 function filtersDrawerShown(): string
 {
-    return '( ( panel ) => [ "none", "0%", "0px" ].includes( getComputedStyle( panel ).translate ) && getComputedStyle( panel.closest( ".drawer-side" ) ).opacity === "1" )( document.querySelector( "[data-filters-drawer]" ) )';
+    return '( ( panel ) => panel?.dataset.state === "open" && panel.getAnimations().every( ( animation ) => "finished" === animation.playState ) )( document.getElementById( "ecommerce-catalog-filters-drawer-content" ) )';
+}
+
+/**
+ * JavaScript: whether focus is inside the open filters drawer.
+ */
+function filtersFocusInDrawer(): string
+{
+    return 'null !== document.activeElement?.closest( "#ecommerce-catalog-filters-drawer-content" )';
 }
 
 /**
@@ -50,7 +58,7 @@ it( 'has no accessibility violations on a phone', function ( Closure $open ): vo
     Accessibility::assertAccessible( $open()->assertNoJavaScriptErrors() );
 } )->with( [
     'catalog'              => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) ) ],
-    'catalog with filters' => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )->click( '[data-filters-open]' )->assertScript( 'document.activeElement?.id', 'ecommerce-catalog-filters-title' )->assertScript( filtersDrawerShown() ) ],
+    'catalog with filters' => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )->click( '[data-filters-open]' )->assertScript( filtersFocusInDrawer() )->assertScript( filtersDrawerShown() ) ],
     'product'              => [ fn (): object => onPhone( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => phoneProduct()->slug ] ) ) ],
 ] );
 
@@ -97,16 +105,20 @@ it( 'has no accessibility violations at each checkout step on a phone, with the 
 it( 'opens and closes the filters by keyboard, returning focus to the button', function (): void {
     onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->keys( '[data-filters-open]', 'Enter' )
-        ->assertScript( 'document.activeElement?.id', 'ecommerce-catalog-filters-title' )
-        ->keys( '#ecommerce-catalog-filters-title', 'Escape' )
+        ->assertScript( filtersFocusInDrawer() )
+        ->keys( '#ecommerce-catalog-filters-drawer-content', 'Escape' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-filters-open" )' )
         ->keys( '[data-filters-open]', 'Enter' )
-        ->assertScript( 'document.activeElement?.id', 'ecommerce-catalog-filters-title' )
-        ->click( '[data-filters-close]' )
+        ->assertScript( filtersFocusInDrawer() )
+        ->click( '#ecommerce-catalog-filters-drawer-close-trigger' )
+        ->assertScript( 'document.activeElement?.hasAttribute( "data-filters-open" )' )
+        ->keys( '[data-filters-open]', 'Enter' )
+        ->assertScript( filtersFocusInDrawer() )
+        ->click( '[data-filters-apply]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-filters-open" )' );
 } );
 
-it( 'never tabs onto a drawer toggle', function (): void {
+it( 'keeps Tab out of the closed filters drawer and inside the open one', function (): void {
     $page = onPhone( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertPresent( '[data-filters-open]' );
 
     $page->script( recordFocus() );
@@ -115,13 +127,13 @@ it( 'never tabs onto a drawer toggle', function (): void {
     $closed = $page->script( 'window.ecFocused' );
 
     $page->keys( '[data-filters-open]', 'Enter' )
-        ->assertScript( 'document.activeElement?.id', 'ecommerce-catalog-filters-title' );
+        ->assertScript( filtersFocusInDrawer() );
 
     $page->script( recordFocus() );
-    $page->keys( '#ecommerce-catalog-filters-title', array_fill( 0, 30, 'Tab' ) );
+    $page->keys( '#ecommerce-catalog-filters-drawer-content', array_fill( 0, 30, 'Tab' ) );
 
-    expect( $closed )->not->toBeEmpty()->not->toContain( 'drawer-toggle' )
-        ->and( $page->script( 'window.ecFocused' ) )->not->toBeEmpty()->not->toContain( 'drawer-toggle' );
+    expect( $closed )->not->toBeEmpty()->not->toContain( 'drawer' )
+        ->and( $page->script( 'window.ecFocused' ) )->not->toBeEmpty()->not->toContain( 'page' );
 } );
 
 it( 'has a search link in the header on a phone', function (): void {

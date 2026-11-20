@@ -12,17 +12,14 @@
 
         <div>
             <x-artisanpack-button
-                :label="__( 'Continue to :gateway', [ 'gateway' => $label ] )"
                 color="primary"
-                icon-right="o-arrow-top-right-on-square"
-                spinner="confirm"
+                trailing-icon="o-arrow-top-right-on-square"
                 wire:click="confirm"
                 wire:loading.attr="disabled"
                 wire:target="confirm"
-                data-payment-redirect
-            />
+                data-payment-redirect>{{ __( 'Continue to :gateway', [ 'gateway' => $label ] ) }}</x-artisanpack-button>
         </div>
     @else
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
     @endif
 </div>

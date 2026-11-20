@@ -13,50 +13,48 @@
 <div class="flex flex-col gap-4" data-checkout-payment>
     @if ( ! $paymentRequired || $paymentConfirmed )
         @if ( $paymentRequired )
-            <x-artisanpack-alert icon="o-check-circle" class="alert-success alert-soft text-base-content!" :title="__( 'Your payment is confirmed. Place your order to finish.' )" data-checkout-payment-confirmed />
+            <x-artisanpack-alert color="success" icon="o-check-circle" :title="__( 'Your payment is confirmed. Place your order to finish.' )" data-checkout-payment-confirmed />
         @else
             <p data-checkout-payment-free>{{ __( 'Your order is free, so there\'s nothing to pay.' ) }}</p>
         @endif
 
         <div>
             <x-artisanpack-button
-                :label="__( 'Place order' )"
+                size="lg"
                 color="primary"
-                class="btn-lg w-full sm:w-auto"
-                spinner="placeOrder"
+                class="w-full sm:w-auto"
                 wire:click="placeOrder( '{{ $placeOrderToken }}' )"
                 wire:loading.attr="disabled"
                 wire:target="placeOrder"
-                data-checkout-place-order
-            />
+                data-checkout-place-order>{{ __( 'Place order' ) }}</x-artisanpack-button>
         </div>
     @elseif ( $needsAccount )
-        <x-artisanpack-alert
+        <x-artisanpack-alert color="info"
             icon="o-lock-closed"
-            class="alert-info alert-soft text-base-content!"
+           
             :title="__( 'Sign in or create an account to pay' )"
             :description="__( 'This store needs an account to place an order. You\'ll come back here afterwards.' )"
             data-checkout-payment-account-needed
         >
             <x-slot:actions>
                 @if ( null !== $loginUrl )
-                    <x-artisanpack-button :label="__( 'Sign in' )" :link="$loginUrl" no-wire-navigate class="btn-sm" color="primary" />
+                    <x-artisanpack-button size="sm" :href="$loginUrl" color="primary">{{ __( 'Sign in' ) }}</x-artisanpack-button>
                 @endif
 
                 @if ( null !== $registerUrl )
-                    <x-artisanpack-button :label="__( 'Create an account' )" :link="$registerUrl" no-wire-navigate class="btn-sm" />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$registerUrl">{{ __( 'Create an account' ) }}</x-artisanpack-button>
                 @endif
             </x-slot:actions>
         </x-artisanpack-alert>
     @elseif ( [] === $gateways )
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'No payment methods are available' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-no-gateways />
+        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'No payment methods are available' )" :description="__( 'Please contact the store to complete your order.' )" data-checkout-no-gateways />
     @else
         <div data-field="gateway">
             @if ( count( $gateways ) > 1 )
-                <x-artisanpack-radio
+                <x-artisanpack-radio-group
                     id="ec-checkout-gateway"
                     :label="__( 'Payment method' )"
-                    :options="collect( $gateways )->map( fn ( string $label, string $key ): array => [ 'id' => $key, 'name' => $label ] )->values()->all()"
+                    :options="collect( $gateways )->map( fn ( string $label, string $key ): array => [ 'value' => $key, 'label' => $label ] )->values()->all()"
                     wire:model.live="gateway"
                     data-checkout-gateways
                 />

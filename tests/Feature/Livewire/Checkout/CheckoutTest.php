@@ -40,7 +40,7 @@ it( 'sends a cart with lines that can\'t be bought back to the cart page', funct
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.cart' ) );
 
     expect( session( ToastPayload::SESSION_KEY )['toast'] )
-        ->title->toBe( e( 'Some items can\'t be bought' ) )
+        ->title->toBe( 'Some items can\'t be bought' )
         ->description->toBe( 'Remove the item marked in your cart to check out.' );
 } );
 

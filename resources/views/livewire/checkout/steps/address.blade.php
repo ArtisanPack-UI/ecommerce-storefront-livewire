@@ -13,10 +13,10 @@
     @if ( $ships )
         <div class="flex flex-col gap-4" data-checkout-shipping-address>
             @if ( [] !== $savedAddresses )
-                <x-artisanpack-radio
+                <x-artisanpack-radio-group
                     id="ec-checkout-saved-shipping"
                     :label="__( 'Ship to' )"
-                    :options="$savedAddresses"
+                    :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $savedAddresses )"
                     wire:model.live="savedShipping"
                     data-checkout-saved="shipping"
                 />
@@ -41,10 +41,10 @@
     @if ( ! $ships || ! $billingSameAsShipping )
         <div class="flex flex-col gap-4" data-checkout-billing-address>
             @if ( [] !== $savedAddresses )
-                <x-artisanpack-radio
+                <x-artisanpack-radio-group
                     id="ec-checkout-saved-billing"
                     :label="__( 'Bill to' )"
-                    :options="$savedAddresses"
+                    :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $savedAddresses )"
                     wire:model.live="savedBilling"
                     data-checkout-saved="billing"
                 />
@@ -67,6 +67,6 @@
     @endif
 
     <div>
-        <x-artisanpack-button type="submit" :label="__( 'Continue' )" color="primary" spinner="saveAddress" wire:loading.attr="disabled" wire:target="saveAddress" data-checkout-address-submit />
+        <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="saveAddress" data-checkout-address-submit>{{ __( 'Continue' ) }}</x-artisanpack-button>
     </div>
 </form>

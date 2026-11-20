@@ -275,3 +275,17 @@ it( 'keeps the currencies it shows out of the browser\'s reach', function (): vo
     expect( fn () => Livewire::actingAs( $user )->test( MergePrompt::class )->set( 'guestCurrency', '<script>' ) )
         ->toThrow( CannotUpdateLockedPropertyException::class );
 } );
+
+it( 'is an alertdialog Escape can\'t dismiss, described by its first sentence', function (): void {
+    $user = makeUser();
+
+    accountCartWith( $user, dualPricedProduct( 'Tea' ), 'EUR' );
+    signInWithGuestCart( $user, guestCartWith( dualPricedProduct( 'Mug' ), 'USD' ) );
+
+    $html = Livewire::actingAs( $user )->test( MergePrompt::class )->assertSet( 'open', true )->html();
+
+    expect( $html )->toContain( 'role="alertdialog"' )
+        ->toContain( 'x-on:keydown.escape.window.capture.stop.prevent' )
+        ->toContain( 'aria-describedby="ecommerce-cart-merge-description"' )
+        ->not->toContain( 'id="ecommerce-cart-merge-close-trigger"' );
+} );

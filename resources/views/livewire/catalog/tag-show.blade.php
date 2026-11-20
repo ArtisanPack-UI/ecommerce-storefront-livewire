@@ -8,9 +8,7 @@
 --}}
 <div class="flex flex-col gap-6" data-tag-page="{{ $tag->id }}">
     @if ( [] !== $breadcrumbs )
-        <nav aria-label="{{ __( 'Breadcrumb' ) }}">
-            <x-artisanpack-breadcrumbs :items="$breadcrumbs" no-wire-navigate />
-        </nav>
+        <x-artisanpack-breadcrumbs :items="$breadcrumbs" :label="__( 'Breadcrumb' )" :navigate="false" />
     @endif
 
     <h1 class="text-3xl font-bold">{{ $tag->name }}</h1>

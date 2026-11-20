@@ -21,11 +21,11 @@
             </div>
 
             <div class="sm:col-span-2">
-                <x-artisanpack-checkbox id="profile.accepts_marketing" :label="__( 'Email me news and offers' )" :hint="__( 'You can change your mind at any time.' )" wire:model="profile.accepts_marketing" data-account-profile-marketing />
+                <x-artisanpack-checkbox id="profile.accepts_marketing" :label="__( 'Email me news and offers' )" :description="__( 'You can change your mind at any time.' )" wire:model="profile.accepts_marketing" data-account-profile-marketing />
             </div>
 
             <div class="sm:col-span-2">
-                <x-artisanpack-button type="submit" :label="__( 'Save details' )" color="primary" spinner="saveProfile" wire:loading.attr="disabled" wire:target="saveProfile" data-account-profile-save />
+                <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="saveProfile" data-account-profile-save>{{ __( 'Save details' ) }}</x-artisanpack-button>
             </div>
         </form>
     </section>
@@ -40,11 +40,11 @@
         @if ( null !== $profileUrl || null !== $passwordUrl )
             <div class="flex flex-wrap gap-2">
                 @if ( null !== $profileUrl )
-                    <x-artisanpack-button :label="__( 'Change your email' )" :link="$profileUrl" no-wire-navigate icon="o-envelope" class="btn-sm" data-account-host-link="profile" />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$profileUrl" leading-icon="o-envelope" data-account-host-link="profile">{{ __( 'Change your email' ) }}</x-artisanpack-button>
                 @endif
 
                 @if ( null !== $passwordUrl )
-                    <x-artisanpack-button :label="__( 'Change your password' )" :link="$passwordUrl" no-wire-navigate icon="o-key" class="btn-sm" data-account-host-link="password" />
+                    <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$passwordUrl" leading-icon="o-key" data-account-host-link="password">{{ __( 'Change your password' ) }}</x-artisanpack-button>
                 @endif
             </div>
         @endif
@@ -61,11 +61,11 @@
                     @foreach ( $categories as $category => $definition )
                         <div wire:key="account-preference-{{ $channel }}-{{ $category }}" data-account-preference="{{ $channel }}.{{ $category }}">
                             @if ( 'marketing' === $category && ! $consented )
-                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :hint="__( 'Agree to news and offers in your details above first.' )" disabled data-account-preference-needs-consent />
+                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :description="__( 'Agree to news and offers in your details above first.' )" disabled data-account-preference-needs-consent />
                             @elseif ( $definition['locked'] )
-                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :hint="$definition['description']" checked disabled data-account-preference-locked />
+                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :description="$definition['description']" checked disabled data-account-preference-locked />
                             @else
-                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :hint="$definition['description']" wire:model="preferences.{{ $channel }}.{{ $category }}" />
+                                <x-artisanpack-toggle :id="'preferences-' . $channel . '-' . $category" :label="$definition['label']" :description="$definition['description']" wire:model="preferences.{{ $channel }}.{{ $category }}" />
                             @endif
                         </div>
                     @endforeach
@@ -73,7 +73,7 @@
             @endforeach
 
             <div>
-                <x-artisanpack-button type="submit" :label="__( 'Save notification preferences' )" color="primary" spinner="savePreferences" wire:loading.attr="disabled" wire:target="savePreferences" data-account-preferences-save />
+                <x-artisanpack-button type="submit" color="primary" wire:loading.attr="disabled" wire:target="savePreferences" data-account-preferences-save>{{ __( 'Save notification preferences' ) }}</x-artisanpack-button>
             </div>
         </form>
     </section>

@@ -105,8 +105,12 @@
             @endif
 
             <x-artisanpack-button
-                icon="o-arrows-pointing-out"
-                class="btn-circle btn-sm absolute end-3 top-3"
+                variant="outline"
+                color="neutral"
+                size="sm"
+                icon-only
+                leading-icon="o-arrows-pointing-out"
+                class="absolute end-3 top-3"
                 :aria-label="__( 'Open full-screen image' )"
                 x-on:click="openLightbox()"
                 data-gallery-open
@@ -149,7 +153,7 @@
                     <p class="text-sm tabular-nums" aria-live="polite" x-text="@js( __( 'Image :number of :total' ) ).replace( ':number', active + 1 ).replace( ':total', images.length )"></p>
 
                     <form method="dialog">
-                        <x-artisanpack-button type="submit" icon="o-x-mark" class="btn-ghost btn-sm btn-circle" :aria-label="__( 'Close' )" />
+                        <x-artisanpack-button variant="ghost" color="neutral" size="sm" icon-only type="submit" leading-icon="o-x-mark" :aria-label="__( 'Close' )" />
                     </form>
                 </div>
 
@@ -159,8 +163,8 @@
 
                 @if ( count( $items ) > 1 )
                     <div class="flex justify-between gap-2">
-                        <x-artisanpack-button icon="o-chevron-left" :label="__( 'Previous' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active - 1 )" />
-                        <x-artisanpack-button icon-right="o-chevron-right" :label="__( 'Next' )" class="btn-sm rtl:[&_svg]:rotate-180" x-on:click="show( active + 1 )" />
+                        <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-chevron-left" class="rtl:[&_svg]:rotate-180" x-on:click="show( active - 1 )">{{ __( 'Previous' ) }}</x-artisanpack-button>
+                        <x-artisanpack-button variant="outline" color="neutral" size="sm" trailing-icon="o-chevron-right" class="rtl:[&_svg]:rotate-180" x-on:click="show( active + 1 )">{{ __( 'Next' ) }}</x-artisanpack-button>
                     </div>
                 @endif
             </div>

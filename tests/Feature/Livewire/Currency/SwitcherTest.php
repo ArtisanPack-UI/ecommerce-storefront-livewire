@@ -196,7 +196,7 @@ it( 'names currencies in the shopper\'s language', function (): void {
 } );
 
 it( 'shows a flashed toast after the reload', function (): void {
-    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', '<b>Prices</b> changed', null, 'alert-success' ) );
+    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', '<b>Prices</b> changed' ) );
 
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->assertOk()
@@ -209,7 +209,7 @@ it( 'shows a flashed toast after the reload', function (): void {
 
 it( 'gives the flashed toast script the CSP nonce', function (): void {
     Illuminate\Support\Facades\Vite::useCspNonce( 'abc123' );
-    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', 'Prices changed', null, 'alert-success' ) );
+    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', 'Prices changed' ) );
 
     $html = $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
 

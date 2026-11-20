@@ -9,10 +9,14 @@
     description, canonical URL, robots directive, and structured data
     (`ecommerce-storefront::partials.seo`).
 
-    The package ships no CSS build. The host's Vite entries (filterable with
-    `ap.ecommerceStorefrontLivewire.layout.viteEntries`) are loaded when a
-    Vite build or dev server is present; the host adds this package's views
-    to its Tailwind `@source` list (see `php artisan ecommerce-storefront:install`).
+    The package ships no CSS build. The design system's CSS and behavior come
+    from the host's Vite entries (filterable with
+    `ap.ecommerceStorefrontLivewire.layout.viteEntries`), loaded when a Vite
+    build or dev server is present; the host adds this package's views to its
+    Tailwind `@source` list (see `php artisan ecommerce-storefront:install`).
+    The storefront's own token-only styles are inlined (see partials/styles),
+    and `@apuiThemeScript` applies the shopper's light or dark choice before
+    the first paint.
 
     The header search box comes from `ecommerce-storefront::partials.header.search`.
     Header actions (currency switcher, account, cart, and anything a
@@ -46,7 +50,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield( 'title', __( 'Shop' ) ) &middot; {{ config( 'app.name' ) }}</title>
+    @apuiThemeScript
     @include( 'ecommerce-storefront::partials.vite-assets' )
+    @include( 'ecommerce-storefront::partials.styles' )
     @livewireStyles
     @stack( 'head' )
     @if ( \ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo::seoPackageInstalled() )
@@ -54,43 +60,41 @@
     @endif
     @stack( 'styles' )
 </head>
-<body class="flex min-h-screen flex-col bg-base-100 font-sans antialiased">
-    <a href="#ecommerce-storefront-content" class="btn btn-sm sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50">
+<body class="ec-storefront flex min-h-screen flex-col font-sans antialiased">
+    <a href="#ecommerce-storefront-content" class="apui-button sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50" data-variant="solid" data-color="primary" data-size="sm">
         {{ __( 'Skip to content' ) }}
     </a>
 
-    <header>
-        <x-artisanpack-nav sticky>
-            <x-slot:brand class="min-w-0 gap-6">
-                <a href="{{ $ecommerceHasCatalog ? route( 'artisanpack.ecommerce.storefront.catalog' ) : url( '/' ) }}" class="truncate text-lg font-bold">
-                    {{ config( 'app.name' ) }}
-                </a>
+    <x-artisanpack-navbar sticky>
+        <x-slot:brand class="min-w-0 gap-6">
+            <a href="{{ $ecommerceHasCatalog ? route( 'artisanpack.ecommerce.storefront.catalog' ) : url( '/' ) }}" class="truncate text-lg font-bold">
+                {{ config( 'app.name' ) }}
+            </a>
 
-                @if ( $ecommerceHasCatalog )
-                    <nav aria-label="{{ __( 'Store' ) }}" class="hidden sm:block">
-                        <a href="{{ route( 'artisanpack.ecommerce.storefront.catalog' ) }}" class="link link-hover">{{ __( 'Shop' ) }}</a>
-                    </nav>
+            @if ( $ecommerceHasCatalog )
+                <nav aria-label="{{ __( 'Store' ) }}" class="hidden sm:block">
+                    <a href="{{ route( 'artisanpack.ecommerce.storefront.catalog' ) }}" class="link link-hover">{{ __( 'Shop' ) }}</a>
+                </nav>
+            @endif
+        </x-slot:brand>
+
+        {{-- Wraps rather than scrolling sideways on a 320px screen (WCAG 1.4.10); the action labels are icon-only below sm. --}}
+        <x-slot:actions class="shrink-0 flex-wrap justify-end">
+            @if ( $ecommerceHasSearch )
+                @include( 'ecommerce-storefront::partials.header.search' )
+            @endif
+
+            @foreach ( $ecommerceHeaderActions as $ecommerceActionKey => $ecommerceAction )
+                @if ( $ecommerceAction instanceof Htmlable )
+                    {{ $ecommerceAction }}
+                @elseif ( is_string( $ecommerceAction ) && view()->exists( $ecommerceAction ) )
+                    @include( $ecommerceAction )
                 @endif
-            </x-slot:brand>
+            @endforeach
 
-            {{-- Wraps rather than scrolling sideways on a 320px screen (WCAG 1.4.10); the action labels are icon-only below sm. --}}
-            <x-slot:actions class="shrink-0 flex-wrap justify-end">
-                @if ( $ecommerceHasSearch )
-                    @include( 'ecommerce-storefront::partials.header.search' )
-                @endif
-
-                @foreach ( $ecommerceHeaderActions as $ecommerceActionKey => $ecommerceAction )
-                    @if ( $ecommerceAction instanceof Htmlable )
-                        {{ $ecommerceAction }}
-                    @elseif ( is_string( $ecommerceAction ) && view()->exists( $ecommerceAction ) )
-                        @include( $ecommerceAction )
-                    @endif
-                @endforeach
-
-                <x-artisanpack-theme-toggle aria-label="{{ __( 'Toggle dark mode' ) }}" />
-            </x-slot:actions>
-        </x-artisanpack-nav>
-    </header>
+            <x-artisanpack-theme-toggle variant="icon" />
+        </x-slot:actions>
+    </x-artisanpack-navbar>
 
     {{--
         The same markup as x-artisanpack-main without its sidebar drawer:

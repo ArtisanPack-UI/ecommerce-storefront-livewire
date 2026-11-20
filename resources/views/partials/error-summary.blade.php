@@ -21,7 +21,7 @@
         role="alert"
         aria-labelledby="{{ $summaryId }}-errors-title"
         x-init="$nextTick( () => $el.focus() )"
-        @class( [ 'rounded-box border border-error bg-error/10 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-error', $summaryClass ?? '' ] )
+        @class( [ 'ec-error-summary', $summaryClass ?? '' ] )
         data-error-summary
     >
         <p id="{{ $summaryId }}-errors-title" class="font-semibold">
