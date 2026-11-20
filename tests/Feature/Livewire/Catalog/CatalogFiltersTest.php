@@ -131,7 +131,7 @@ it( 'counts a group\'s options without its own selection, so other values stay s
         ->html();
 
     // Blue still counts 1 (the hiker), so it is not disabled.
-    expect( $html )->toMatch( '/value="blue"\s+class="peer sr-only"[^>]*>/' )
+    expect( $html )->toMatch( '/value="blue"\s+class="ec-swatch__input"[^>]*>/' )
         ->and( $html )->not->toMatch( '/value="blue"[^>]*disabled/' );
 } );
 

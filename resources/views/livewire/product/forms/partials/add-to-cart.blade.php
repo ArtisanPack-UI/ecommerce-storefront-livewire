@@ -30,6 +30,7 @@
             <x-artisanpack-ec-quantity
                 :id="$formId . '-quantity'"
                 :label="__( 'Quantity' )"
+                size="lg"
                 wire:model="quantity"
                 :error="$errors->first( 'quantity' )"
                 :disabled="! $canAdd"

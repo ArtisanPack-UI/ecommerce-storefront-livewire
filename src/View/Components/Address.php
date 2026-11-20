@@ -29,6 +29,11 @@ use JsonSerializable;
  * `address1`, `address2`, `city`, `region`, `region_code`, `postal_code`,
  * and `country_code`.
  *
+ * `<x-artisanpack-ec-address :address="$address" :title="__( 'Ship to' )" :edit-href="$editUrl" />`
+ *
+ * With a `title`, the address sits in a design-system Card under that
+ * heading, with an Edit link in the header when `edit-href` is given.
+ *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
  *
@@ -57,12 +62,16 @@ class Address extends Component
     /**
      * @since 1.0.0
      *
-     * @param  mixed  $address    An address array, or an object with `toArray()`.
-     * @param  bool   $showPhone  Whether to show the phone number.
+     * @param  mixed        $address    An address array, or an object with `toArray()`.
+     * @param  bool         $showPhone  Whether to show the phone number.
+     * @param  string|null  $title      Draws the address in a card with this heading ("Ship to").
+     * @param  string|null  $editHref   Adds an Edit link to the card's header.
      */
     public function __construct(
         public mixed $address = null,
         public bool $showPhone = true,
+        public ?string $title = null,
+        public ?string $editHref = null,
     ) {
         $fields = self::fields( $this->address );
 

@@ -73,7 +73,7 @@ it( 'shows the engine\'s reason on the quantity field', function (): void {
         ->set( 'quantity', 5 )
         ->call( 'addToCart' )
         ->assertHasErrors( 'quantity' )
-        ->assertSeeHtml( 'data-quantity-error' )
+        ->assertSeeHtml( 'data-scope="input" data-part="error"' )
         ->assertSeeHtml( 'aria-invalid="true"' )
         ->assertNotDispatched( 'ecommerce-cart-updated' );
 } );

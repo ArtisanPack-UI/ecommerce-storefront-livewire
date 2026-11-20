@@ -115,14 +115,48 @@ describe( 'stock status', function (): void {
 } );
 
 describe( 'rating summary', function (): void {
-    it( 'reads the rating aloud and links the review count', function (): void {
+    it( 'is one link named with the whole summary', function (): void {
         $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.46" :count="12" href="/p#reviews" />' )
-            ->assertSee( 'Rated 4.5 out of 5' )
-            ->assertSee( '12 reviews' )
+            ->assertSee( '<a', false )
             ->assertSee( 'href="/p#reviews"', false )
-            ->assertSee( 'aria-hidden="true"', false );
+            ->assertSee( 'aria-label="Rated 4.5 out of 5, 12 reviews"', false )
+            ->assertSee( '12 reviews' )
+            ->assertSee( 'class="apui-rating', false )
+            ->assertDontSee( 'text-warning', false );
+    } );
 
-        expect( substr_count( (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" />' ), 'text-warning' ) )->toBe( 4 );
+    it( 'does not link to an unsafe address', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" href="javascript:alert(1)" />' );
+
+        expect( $html )->not->toContain( 'javascript:' )
+            ->and( $html )->not->toContain( '<a' )
+            ->and( $html )->toContain( 'Rated 4 out of 5, 3 reviews' );
+    } );
+
+    it( 'reads the summary from hidden text when it does not link', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" />' );
+
+        expect( $html )->toContain( '<span class="apui-sr-only">Rated 4 out of 5, 3 reviews</span>' )
+            ->and( $html )->not->toContain( '<a' )
+            ->and( substr_count( $html, 'data-filled' ) )->toBe( 4 );
+    } );
+
+    it( 'draws the stars to the nearest half', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.4" :count="3" />' );
+
+        expect( substr_count( $html, 'data-filled' ) )->toBe( 4 )
+            ->and( substr_count( $html, 'data-half' ) )->toBe( 1 );
+    } );
+
+    it( 'draws one star and "4.8 (126)" in its compact form', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.8" :count="126" compact />' );
+
+        expect( $html )->toContain( 'data-compact' )
+            ->and( $html )->toContain( 'data-rating-star' )
+            ->and( $html )->not->toContain( 'apui-rating' )
+            ->and( $html )->toContain( '4.8' )
+            ->and( $html )->toContain( '(126)' )
+            ->and( $html )->toContain( 'Rated 4.8 out of 5, 126 reviews' );
     } );
 
     it( 'uses the singular for one review and the locale\'s decimal mark', function (): void {
@@ -175,6 +209,27 @@ describe( 'address', function (): void {
 
     it( 'says when there is no address', function (): void {
         $this->blade( '<x-artisanpack-ec-address :address="null" />' )->assertSee( 'No address' );
+    } );
+
+    it( 'renders a plain address element with the phone muted', function (): void {
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'first_name\' => \'Dana\', \'address1\' => \'1408 Magnolia Ave\', \'phone\' => \'(817) 555-0142\' ]" />' )
+            ->assertSee( '<address class="ec-address"', false )
+            ->assertSee( 'class="ec-address__line ec-address__phone"', false )
+            ->assertDontSee( 'apui-card', false );
+    } );
+
+    it( 'sits in a card with a heading and an Edit link when it has a title', function (): void {
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'first_name\' => \'Dana\', \'address1\' => \'1408 Magnolia Ave\' ]" title="Ship to" edit-href="/account/addresses" />' )
+            ->assertSee( 'apui-card', false )
+            ->assertSee( 'Ship to' )
+            ->assertSee( 'href="/account/addresses"', false )
+            ->assertSee( 'data-address-edit', false )
+            ->assertSee( '<span class="apui-sr-only">: Ship to</span>', false )
+            ->assertSee( '1408 Magnolia Ave' );
+
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'address1\' => \'1 Main St\' ]" title="Bill to" />' )
+            ->assertSee( 'Bill to' )
+            ->assertDontSee( 'data-address-edit', false );
     } );
 } );
 

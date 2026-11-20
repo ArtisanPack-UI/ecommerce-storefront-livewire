@@ -83,8 +83,8 @@ it( 'chooses a variant and adds it to the cart', function (): void {
 
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'journey-shirt' ] ) )
         ->assertButtonDisabled( '[data-add-to-cart]' )
-        ->click( '[data-purchase-form] label[title="Blue"]' )
-        ->assertScript( 'document.querySelector( \'[data-purchase-form] label[title="Blue"] input\' ).checked' )
+        ->click( '[data-purchase-form] label >> internal:text="Blue"s' )
+        ->assertScript( '[ ...document.querySelectorAll( "[data-purchase-form] label.ec-swatch" ) ].find( ( label ) => "Blue" === label.textContent.trim() )?.querySelector( "input" ).checked' )
         ->click( '[data-purchase-form] label >> internal:text="L"s' )
         // "$29.00" is already on the page in the price range, so wait for
         // the variant to resolve: a disabled button would make the click
@@ -107,7 +107,7 @@ it( 'updates the cart and applies a coupon', function (): void {
         ->click( '[data-add-to-cart]' )
         ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Coupon mug' )
         ->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )
-        ->click( '[data-ecommerce-cart] [aria-label="Increase quantity of Coupon mug"]' )
+        ->click( '[data-ecommerce-cart] [aria-label="Increase quantity, Coupon mug"]' )
         ->assertSeeIn( '[data-ecommerce-cart] [data-cart-line-total]', '$40.00' )
         ->type( Locators::field( 'ec-cart-coupon' ), 'journey10' )
         ->click( '[data-cart-coupon] button[type="submit"]' )

@@ -36,6 +36,16 @@ use Illuminate\View\Component;
 class Quantity extends Component
 {
     /**
+     * The sizes: `lg` on the product page, `md`, `sm` in the cart and `xs`
+     * (extra-small buttons) in the drawer.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const SIZES = [ 'lg', 'md', 'sm', 'xs' ];
+
+    /**
      * @since 1.0.0
      *
      * @param  string       $id        The input id.
@@ -43,7 +53,8 @@ class Quantity extends Component
      * @param  int          $min       The lowest value.
      * @param  int|null     $max       The highest value.
      * @param  string|null  $error     The error message to show.
-     * @param  string|null  $itemName  Names the item in the buttons' labels ("Increase quantity of Mug").
+     * @param  string|null  $itemName  Names the item in the buttons' labels ("Increase quantity, Mug").
+     * @param  string       $size      `lg` (product page), `md`, `sm` (cart) or `xs` (drawer).
      */
     public function __construct(
         public string $id,
@@ -52,7 +63,9 @@ class Quantity extends Component
         public ?int $max = null,
         public ?string $error = null,
         public ?string $itemName = null,
+        public string $size = 'md',
     ) {
+        $this->size = in_array( $size, self::SIZES, true ) ? $size : 'md';
     }
 
     /**

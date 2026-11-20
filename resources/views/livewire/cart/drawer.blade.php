@@ -101,6 +101,7 @@
                                             <x-artisanpack-ec-quantity
                                                 :id="'ec-drawer-quantity-' . $line['id']"
                                                 :item-name="$line['name']"
+                                                size="xs"
                                                 :min="1"
                                                 :max="\ArtisanPackUI\Ecommerce\Services\StorefrontCartService::MAX_LINE_QUANTITY"
                                                 wire:model.live.debounce.500ms="{{ $ecommerceField }}"

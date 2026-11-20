@@ -13,24 +13,25 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
+use ArtisanPack\LivewireUiComponents\Support\RenderedIds;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Js;
 use Illuminate\View\Component;
+use Livewire\Livewire;
+use Throwable;
 
 /**
  * `<x-artisanpack-ec-gallery :images="ProductImages::gallery( $product )" :name="$product->name" />`
  *
- * The product page gallery (spec §7.2): the main image, thumbnails that
- * switch it, zoom on the main image, and a lightbox (a native modal
- * `<dialog>`, so Escape and focus return work) with previous/next and arrow
- * keys. Another component switches the image by dispatching the browser
- * event `ecommerce-gallery-show` with the image `url` and, when the gallery
- * has one, its `scope` (the product page does this when the chosen variant
- * has its own image).
- *
- * Local stand-in for the library's image slider thumbnails, external
- * control, and zoom (livewire-ui-components#123, spec §10 U4); when they
- * ship, this is the one file to swap.
+ * The product page gallery (spec §7.2): the square main image with a
+ * "1 / 4" counter and a Zoom button, thumbnails that switch it, and the
+ * design system's Lightbox (`apuiLightbox`: a modal dialog with previous,
+ * next, arrow keys that follow the text direction, Escape and focus return)
+ * for the full-size images. Another component switches the image by
+ * dispatching the browser event `ecommerce-gallery-show` with the image
+ * `url` and, when the gallery has one, its `scope` (the product page does
+ * this when the chosen variant has its own image).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -59,6 +60,15 @@ class Gallery extends Component
     public array $items;
 
     /**
+     * The claimed id, once worked out.
+     *
+     * @since 2.0.0
+     *
+     * @var string|null
+     */
+    private ?string $resolvedBaseId = null;
+
+    /**
      * @since 1.0.0
      *
      * @param  array<int, array<string, mixed>>  $images  Images (`url`, `srcset`, `full`, `alt`), as from `ProductImages::gallery()`.
@@ -66,7 +76,7 @@ class Gallery extends Component
      * @param  int                               $active  The index shown first.
      * @param  string|null                       $scope       Only follow `ecommerce-gallery-show` events with this `scope`.
      * @param  string                            $thumbnails  Thumbnail position ({@see self::THUMBNAIL_POSITIONS}).
-     * @param  bool                              $zoom        Zoom the image in place on click.
+     * @param  bool                              $zoom        Open the image in the design system's lightbox on click.
      */
     public function __construct(
         public array $images,
@@ -98,6 +108,67 @@ class Gallery extends Component
     }
 
     /**
+     * The id the gallery's parts hang off: the caller's `id`, else one
+     * derived from the images, so it stays the same across Livewire renders.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    public function baseId(): string
+    {
+        if ( null !== $this->resolvedBaseId ) {
+            return $this->resolvedBaseId;
+        }
+
+        $id = $this->attributes?->get( 'id' );
+
+        if ( is_string( $id ) && '' !== $id ) {
+            return $this->resolvedBaseId = $id;
+        }
+
+        $owner = self::livewireScope();
+
+        $id = 'ec-gallery-' . substr( hash( 'xxh128', implode( '|', [
+            $owner,
+            $this->name,
+            $this->scope ?? '',
+            $this->thumbnails,
+            $this->zoom ? 'zoom' : '',
+            ...array_column( $this->items, 'url' ),
+        ] ) ), 0, 12 );
+
+        // Hashed with the owning Livewire component, and claimed like the
+        // library's own ids: a second gallery with the same images in that
+        // component gets "-2", so lightboxes never share parts.
+        return $this->resolvedBaseId = app( RenderedIds::class )->claim( $owner, $id );
+    }
+
+    /**
+     * The design system's `apuiLightbox` Alpine component for the zoom: the
+     * full-size images, with the counter in the store's words.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    public function lightboxData(): string
+    {
+        $images = array_map(
+            fn ( array $item ): array => [ 'src' => $item['full'], 'alt' => $item['alt'], 'caption' => $this->name ],
+            $this->items,
+        );
+
+        return sprintf(
+            'apuiLightbox({ id: %s, images: %s, open: false, index: %d, modal: true, labels: { counter: %s } })',
+            Js::from( $this->baseId() )->toHtml(),
+            Js::from( $images )->toHtml(),
+            $this->active,
+            Js::from( __( ':index / :count', [ 'index' => '{index}', 'count' => '{count}' ] ) )->toHtml(),
+        );
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
@@ -107,5 +178,23 @@ class Gallery extends Component
     public function render(): View
     {
         return view( 'ecommerce-storefront::components.gallery' );
+    }
+
+    /**
+     * The id scope: the rendering Livewire component's id, or '' outside one.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    private static function livewireScope(): string
+    {
+        try {
+            $component = Livewire::current();
+        } catch ( Throwable ) {
+            return '';
+        }
+
+        return is_object( $component ) && method_exists( $component, 'getId' ) ? (string) $component->getId() : '';
     }
 }

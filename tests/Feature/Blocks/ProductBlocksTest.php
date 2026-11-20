@@ -93,7 +93,7 @@ it( 'shows the gallery with thumbnails below, beside, or hidden, and zoom on or 
     $none   = renderProductBlock( new ProductGalleryBlock(), [ 'thumbnails' => 'none' ] );
 
     expect( $below )->toContain( 'data-gallery-thumbnails="bottom"' )->toContain( 'data-gallery-thumbnail="1"' )->toContain( 'data-gallery-zoom' )->toContain( 'Lamp side' )
-        ->and( $beside )->toContain( 'data-gallery-thumbnails="start"' )->toContain( 'sm:flex-row-reverse' )->not->toContain( 'data-gallery-zoom' )->toContain( 'data-gallery-stage' )
+        ->and( $beside )->toContain( 'data-gallery-thumbnails="start"' )->not->toContain( 'apuiLightbox' )->not->toContain( 'data-gallery-zoom' )->toContain( 'data-gallery-stage' )
         ->and( $none )->not->toContain( 'data-gallery-thumbnail="1"' )
         ->and( renderProductBlock( new ProductGalleryBlock(), [ 'thumbnails' => 'diagonal' ] ) )->toContain( 'data-gallery-thumbnails="bottom"' );
 } );

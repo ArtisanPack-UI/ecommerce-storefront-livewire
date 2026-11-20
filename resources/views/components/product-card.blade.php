@@ -90,7 +90,7 @@
         @if ( ( $showRating && $card['reviews'] > 0 ) || $ecommerceShowsStock )
             <div class="ec-product-card__meta">
                 @if ( $showRating )
-                    <x-artisanpack-ec-rating-summary :rating="$card['rating']" :count="$card['reviews']" hide-empty />
+                    <x-artisanpack-ec-rating-summary :rating="$card['rating']" :count="$card['reviews']" hide-empty compact />
                 @endif
 
                 <x-artisanpack-ec-stock-status :status="$card['stock']" compact />
