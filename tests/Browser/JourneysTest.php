@@ -75,6 +75,20 @@ it( 'adds a quantity to the cart from the product page', function (): void {
         ->assertNoJavaScriptErrors();
 } );
 
+it( 'keeps the line price on "Add to cart" in step with the quantity', function (): void {
+    makeProduct( 2400, [ 'name' => 'Line price mug', 'slug' => 'line-price-mug' ] );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'line-price-mug' ] ) )
+        ->assertSeeIn( '[data-add-to-cart-price]', '$24.00' )
+        ->click( '[data-quantity] [aria-label="Increase quantity"]' )
+        ->assertSeeIn( '[data-add-to-cart-price]', '$48.00' )
+        ->type( '[data-quantity] input', '5' )
+        ->click( '[data-add-to-cart]' )
+        ->assertSeeIn( '[data-add-to-cart-price]', '$120.00' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel [data-cart-subtotal]', '$120.00' )
+        ->assertNoJavaScriptErrors();
+} );
+
 it( 'chooses a variant and adds it to the cart', function (): void {
     makeVariableProduct( [
         'red/m'  => [ 'price' => 2500, 'stock' => 4 ],

@@ -53,6 +53,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
 | `ap.ecommerceStorefrontLivewire.product.sections` | filter | Rendering the sections below the product (reviews, upsells, related) | `array $sections` (key => `component`, `params`, `position`), `Product $product` | Sections. Each component also receives `product`. |
+| `ap.ecommerceStorefrontLivewire.product.addToCartActions` | filter | Rendering the add-to-cart row of every purchase form | `array $actions`, `Product $product` | Buttons after "Add to cart", such as a wishlist heart: key => view name (rendered with `$product` and `$formId`) or `Htmlable`. Use an outline neutral icon-only Button with an accessible name. Since 2.0.0. |
 | `ap.ecommerceStorefrontLivewire.product.shippingReturns` | filter | Rendering the "Shipping & returns" tab | `string $html`, `Product $product` | HTML (cleaned with `kses` rules); empty hides the tab. |
 | `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` | filter | Rendering the Recently Viewed section | `array $ids`, `int $limit`, `?Customer $customer`, `?Product $exclude` | Product ids, most recent first. Answered by the recently-viewed satellite. |
 | `ap.ecommerce.product.viewed` (engine) | action | Once per product page view (not on Livewire updates or editor previews) | `Product $product`, `?Customer $customer` | — |

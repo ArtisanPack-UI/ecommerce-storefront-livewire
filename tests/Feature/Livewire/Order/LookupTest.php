@@ -79,8 +79,8 @@ it( 'requires a valid email and the order number', function (): void {
         ->assertSeeHtml( 'aria-invalid="true"' )
         ->assertSeeHtml( 'data-error-summary' )
         ->assertSeeHtml( 'wire:key="ec-order-lookup-errors-1"' )
-        ->assertSeeHtml( 'data-error-summary-link="email"' )
-        ->assertSee( 'There are 2 problems to fix:' );
+        ->assertSeeHtml( 'href="#email"' )
+        ->assertSee( 'Fix 2 things to continue' );
 
     Livewire::test( Lookup::class )
         ->set( 'email', 'not-an-email' )

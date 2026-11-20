@@ -19,15 +19,18 @@ use ArtisanPackUI\Ecommerce\Models\CartItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
+use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Money\Money;
 
 /**
  * The base for every purchase form on the product page (spec §7.2, §8.2).
@@ -45,6 +48,12 @@ use Livewire\Component;
  * {@see self::lineVariantId()} and {@see self::lineOptions()}; override
  * those (or `addToCart()` itself) in a type's form. Forms registered in the
  * `ProductFormRegistry` should extend this class.
+ *
+ * Since 2.0.0 the "Add to cart" button shows the line price when the form
+ * knows the unit price up front ({@see self::unitPrice()}), and the row
+ * takes extra buttons, such as a wishlist heart, from the
+ * `ap.ecommerceStorefrontLivewire.product.addToCartActions` filter
+ * ({@see self::addToCartActions()}).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -107,6 +116,25 @@ abstract class PurchaseForm extends Component
      * @var string
      */
     public string $announcement = '';
+
+    /**
+     * The unit price, memoized for the current request (protected, so
+     * Livewire never stores it).
+     *
+     * @since 2.0.0
+     *
+     * @var Money|null
+     */
+    protected ?Money $unitPriceCache = null;
+
+    /**
+     * Whether {@see self::$unitPriceCache} has been resolved this request.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    protected bool $unitPriceResolved = false;
 
     /**
      * Starts the quantity at 1. Forms that mount call this first.
@@ -179,6 +207,64 @@ abstract class PurchaseForm extends Component
     }
 
     /**
+     * Whether "Add to cart" shows a line price, so the quantity binds live
+     * to keep it current.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function showsLinePrice(): bool
+    {
+        return null !== $this->cachedUnitPrice();
+    }
+
+    /**
+     * The "Add to cart" line price: the unit price times the quantity, or
+     * null when the form can't know it up front or the quantity isn't a
+     * whole number in range.
+     *
+     * @since 2.0.0
+     *
+     * @return string|null
+     */
+    public function linePrice(): ?string
+    {
+        $unit     = $this->cachedUnitPrice();
+        $quantity = filter_var( $this->quantity, FILTER_VALIDATE_INT );
+
+        if ( null === $unit || false === $quantity || $quantity < 1 || $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
+            return null;
+        }
+
+        return MoneyFormatter::formatMoney( $unit->multiply( (string) $quantity ) );
+    }
+
+    /**
+     * Extra buttons after "Add to cart", such as a wishlist heart, from the
+     * `ap.ecommerceStorefrontLivewire.product.addToCartActions` filter:
+     * key => view name (rendered with `$product` and `$formId`) or an
+     * `Htmlable`. Anything else is dropped.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, Htmlable|string>
+     */
+    public function addToCartActions(): array
+    {
+        $actions = applyFilters( 'ap.ecommerceStorefrontLivewire.product.addToCartActions', [], $this->product );
+
+        if ( ! is_array( $actions ) ) {
+            return [];
+        }
+
+        return array_filter(
+            $actions,
+            static fn ( mixed $action ): bool => $action instanceof Htmlable || ( is_string( $action ) && view()->exists( $action ) ),
+        );
+    }
+
+    /**
      * Starts an "Add to cart": clears the last announcement and keys a new
      * failure alert, so a refusal is announced even when it repeats.
      * Forms that override {@see self::addToCart()} call this first.
@@ -225,6 +311,38 @@ abstract class PurchaseForm extends Component
     protected function readyToAdd(): bool
     {
         return true;
+    }
+
+    /**
+     * The price of one unit, for the line price on "Add to cart", or null
+     * when it depends on choices the shopper hasn't made (variants, options,
+     * a group). Forms with a fixed price override this.
+     *
+     * @since 2.0.0
+     *
+     * @return Money|null
+     */
+    protected function unitPrice(): ?Money
+    {
+        return null;
+    }
+
+    /**
+     * {@see self::unitPrice()}, resolved once per request: the row asks
+     * for it twice per render.
+     *
+     * @since 2.0.0
+     *
+     * @return Money|null
+     */
+    protected function cachedUnitPrice(): ?Money
+    {
+        if ( ! $this->unitPriceResolved ) {
+            $this->unitPriceCache    = $this->unitPrice();
+            $this->unitPriceResolved = true;
+        }
+
+        return $this->unitPriceCache;
     }
 
     /**

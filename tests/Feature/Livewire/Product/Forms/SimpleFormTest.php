@@ -110,3 +110,60 @@ it( 'adds to the cart in hosts that prevent lazy loading', function (): void {
         ->call( 'addToCart' )
         ->assertDispatched( 'ecommerce-cart-updated', count: 1 );
 } );
+
+describe( 'add-to-cart row (#86)', function (): void {
+    afterEach( function (): void {
+        removeAllFilters( 'ap.ecommerceStorefrontLivewire.product.addToCartActions' );
+    } );
+
+    it( 'shows the line price on the button and follows the quantity live', function (): void {
+        Livewire::test( SimpleForm::class, [ 'product' => makeProduct( 2800 ) ] )
+            ->assertSeeHtml( 'data-add-to-cart-row' )
+            ->assertSeeHtml( 'wire:model.live.change="quantity"' )
+            ->assertSeeHtmlInOrder( [ 'Add to cart', '<span aria-hidden="true">·</span>', '<bdi>$28.00</bdi>' ] )
+            ->set( 'quantity', 3 )
+            ->assertSee( '$84.00' );
+    } );
+
+    it( 'leaves the line price out for a quantity it cannot price', function ( mixed $quantity ): void {
+        Livewire::test( SimpleForm::class, [ 'product' => makeProduct( 2800 ) ] )
+            ->set( 'quantity', $quantity )
+            ->assertDontSeeHtml( 'data-add-to-cart-price' );
+    } )->with( [ 'empty' => '', 'zero' => 0, 'text' => 'two', 'too many' => 100000 ] );
+
+    it( 'leaves the line price out and binds the quantity deferred when the product cannot be bought', function (): void {
+        $product = makeProduct( 2800 );
+        setStock( $product, 0 );
+
+        Livewire::test( SimpleForm::class, [ 'product' => $product ] )
+            ->assertDontSeeHtml( 'data-add-to-cart-price' )
+            ->assertSeeHtml( 'wire:model="quantity"' )
+            ->assertSeeHtml( 'class="ec-add-to-cart__blocked"' );
+    } );
+
+    it( 'renders extra row buttons from the filter and drops anything else', function (): void {
+        addFilter( 'ap.ecommerceStorefrontLivewire.product.addToCartActions', static fn ( array $actions, Product $product ): array => $actions + [
+            'wishlist' => new Illuminate\Support\HtmlString( '<button type="button" data-wishlist="' . $product->id . '">Save</button>' ),
+            'missing'  => 'no-such-view',
+            'junk'     => 42,
+        ] );
+
+        $product = makeProduct();
+
+        Livewire::test( SimpleForm::class, [ 'product' => $product ] )
+            ->assertSeeHtml( 'data-add-to-cart-actions' )
+            ->assertSeeHtml( 'data-wishlist="' . $product->id . '"' );
+    } );
+
+    it( 'has no actions box without row buttons', function (): void {
+        Livewire::test( SimpleForm::class, [ 'product' => makeProduct() ] )
+            ->assertDontSeeHtml( 'data-add-to-cart-actions' );
+    } );
+
+    it( 'uses no DaisyUI or Tailwind utility classes', function (): void {
+        Livewire::test( SimpleForm::class, [ 'product' => makeProduct() ] )
+            ->assertDontSeeHtml( 'class="sr-only"' )
+            ->assertDontSeeHtml( 'base-content' )
+            ->assertDontSeeHtml( 'flex-wrap' );
+    } );
+} );
