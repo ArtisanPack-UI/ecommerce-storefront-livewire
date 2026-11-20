@@ -68,6 +68,13 @@
                 },
                 @if ( $zoom )
                     zoomIn() {
+                        {{-- The lightbox is teleported to the body: give it the gallery's direction, so its arrow keys follow the text. --}}
+                        const layer = document.getElementById( @js( $ecommerceBaseId . '-layer' ) );
+
+                        if ( layer ) {
+                            layer.dir = getComputedStyle( this.$root ).direction;
+                        }
+
                         this.index = this.active;
                         this.open  = true;
                     },

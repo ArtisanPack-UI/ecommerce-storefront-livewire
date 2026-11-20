@@ -2,6 +2,7 @@
 
 declare( strict_types=1 );
 
+use ArtisanPack\LivewireUiComponents\Support\RenderedIds;
 use ArtisanPackUI\Ecommerce\Models\ProductImage;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 
@@ -79,7 +80,9 @@ describe( 'quantity', function (): void {
 
     it( 're-reads the limits when the server changes the bound value', function (): void {
         expect( (string) $this->blade( '<x-artisanpack-ec-quantity id="qty" wire:model.live="quantities.5" />' ) )
-            ->toContain( '$wire.$watch( &#039;quantities.5&#039;' );
+            ->toContain( '$wire.$watch( &#039;quantities.5&#039;' )
+            ->toContain( 'this.$refs.input.valueAsNumber' )
+            ->not->toContain( 'parseInt' );
 
         expect( (string) $this->blade( '<x-artisanpack-ec-quantity id="qty" />' ) )->not->toContain( '$wire.$watch' );
     } );
@@ -149,14 +152,17 @@ describe( 'gallery', function (): void {
             ->and( $html )->toContain( '\u0022caption\u0022:\u0022Mug\u0022' )
             ->and( $html )->not->toContain( 'style="display: contents"' )
             ->and( substr_count( $html, 'aria-label="Image 2 of 2: Mug"' ) )->toBe( 2 )
-            ->and( $html )->toMatch( '/aria-label="Image 2 of 2: Mug"\s+x-apui:thumb/' );
+            ->and( $html )->toMatch( '/aria-label="Image 2 of 2: Mug"\s+x-apui:thumb/' )
+            // The teleported lightbox takes the gallery's direction when it opens.
+            ->and( $html )->toContain( 'layer.dir = getComputedStyle( this.$root ).direction' );
     } );
 
     it( 'keeps its part ids stable across renders', function (): void {
         $render = fn (): string => (string) $this->blade( '<x-artisanpack-ec-gallery :images="[ [ \'url\' => \'https://cdn.example.test/1.jpg\' ] ]" name="Mug" />' );
 
         preg_match( '/id="(ec-gallery-[a-f0-9]+)"/', $render(), $first );
-        app( ArtisanPack\LivewireUiComponents\Support\RenderedIds::class )->reset( '' );
+        // A new request (or Livewire render) starts with no ids claimed.
+        app()->instance( RenderedIds::class, new RenderedIds() );
         preg_match( '/id="(ec-gallery-[a-f0-9]+)"/', $render(), $second );
 
         expect( $first[1] ?? null )->not->toBeNull()->toBe( $second[1] ?? null );

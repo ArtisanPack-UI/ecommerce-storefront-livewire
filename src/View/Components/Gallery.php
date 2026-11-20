@@ -127,7 +127,10 @@ class Gallery extends Component
             return $this->resolvedBaseId = $id;
         }
 
+        $owner = self::livewireScope();
+
         $id = 'ec-gallery-' . substr( hash( 'xxh128', implode( '|', [
+            $owner,
             $this->name,
             $this->scope ?? '',
             $this->thumbnails,
@@ -135,9 +138,10 @@ class Gallery extends Component
             ...array_column( $this->items, 'url' ),
         ] ) ), 0, 12 );
 
-        // Claimed like the library's own ids: a second gallery with the same
-        // images on the page gets "-2", so the lightboxes never share parts.
-        return $this->resolvedBaseId = app( RenderedIds::class )->claim( self::livewireScope(), $id );
+        // Hashed with the owning Livewire component, and claimed like the
+        // library's own ids: a second gallery with the same images in that
+        // component gets "-2", so lightboxes never share parts.
+        return $this->resolvedBaseId = app( RenderedIds::class )->claim( $owner, $id );
     }
 
     /**

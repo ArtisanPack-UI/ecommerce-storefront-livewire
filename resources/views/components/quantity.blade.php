@@ -33,7 +33,7 @@
     x-data="{
         value: null,
         read() {
-            const number = parseInt( this.$refs.input.value, 10 );
+            const number = this.$refs.input.valueAsNumber;
 
             this.value = Number.isNaN( number ) ? null : number;
         },
