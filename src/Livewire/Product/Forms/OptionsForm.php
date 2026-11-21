@@ -28,6 +28,9 @@ use Illuminate\Validation\Rule;
  * field's `required` and string `rules`, and adds the product with the
  * values as cart line options (keyed by each field's `name`, dot notation).
  *
+ * Since 2.0.0 a text field with a `max:N` rule shows a live "12 of 20
+ * characters" count under it.
+ *
  * Fields with `meta.add_separately` (and `meta.product_id`, optionally
  * `meta.variant_id`) are quantities of other products, each added as its
  * own line, as for a grouped product.
@@ -39,6 +42,15 @@ use Illuminate\Validation\Rule;
  */
 class OptionsForm extends PurchaseForm
 {
+    /**
+     * The longest value any text or textarea field accepts.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public const TEXT_MAX_LENGTH = 1000;
+
     /**
      * The field values, nested by field name.
      *
@@ -228,7 +240,7 @@ class OptionsForm extends PurchaseForm
                 'quantity'        => [ 'integer', 'min:0', 'max:' . StorefrontCartService::MAX_LINE_QUANTITY ],
                 'checkbox'        => [ 'boolean' ],
                 'select', 'radio' => [ Rule::in( array_column( $field['options'], 'value' ) ) ],
-                default           => [ 'string', 'max:1000' ],
+                default           => [ 'string', 'max:' . self::TEXT_MAX_LENGTH ],
             };
 
             $rules[ $key ]      = [ ( $field['required'] ?? false ) ? ( 'checkbox' === $field['type'] ? 'accepted' : 'required' ) : 'nullable', ...$types, ...$own ];
@@ -276,19 +288,46 @@ class OptionsForm extends PurchaseForm
             }
 
             $fields[] = [
-                'type'     => $field['type'],
-                'name'     => $name,
-                'id'       => 'ec-product-' . $this->product->id . '-option-' . str_replace( '.', '-', $name ),
-                'label'    => (string) ( $field['label'] ?? $name ),
-                'options'  => $options,
-                'rules'    => $field['rules'] ?? [],
-                'required' => (bool) ( $field['required'] ?? false ),
-                'default'  => $field['default'] ?? null,
-                'help'     => is_string( $field['help'] ?? null ) ? $field['help'] : null,
-                'meta'     => is_array( $field['meta'] ?? null ) ? $field['meta'] : [],
+                'type'      => $field['type'],
+                'name'      => $name,
+                'id'        => 'ec-product-' . $this->product->id . '-option-' . str_replace( '.', '-', $name ),
+                'label'     => (string) ( $field['label'] ?? $name ),
+                'options'   => $options,
+                'rules'     => $field['rules'] ?? [],
+                'required'  => (bool) ( $field['required'] ?? false ),
+                'default'   => $field['default'] ?? null,
+                'help'      => is_string( $field['help'] ?? null ) ? $field['help'] : null,
+                'meta'      => is_array( $field['meta'] ?? null ) ? $field['meta'] : [],
+                'maxLength' => in_array( $field['type'], [ 'text', 'textarea' ], true ) ? self::maxLength( $field['rules'] ?? [] ) : null,
             ];
         }
 
         return $this->fieldCache = $fields;
+    }
+
+    /**
+     * The longest value a text field accepts when it declares a `max:N`
+     * rule: the smallest declared limit, capped at the
+     * {@see self::TEXT_MAX_LENGTH} every text field is validated against.
+     * Null without a declared limit.
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $rules  The field's rules (a pipe string or a list).
+     *
+     * @return int|null
+     */
+    protected static function maxLength( mixed $rules ): ?int
+    {
+        $rules = is_string( $rules ) ? explode( '|', $rules ) : (array) $rules;
+        $max   = null;
+
+        foreach ( $rules as $rule ) {
+            if ( is_string( $rule ) && 1 === preg_match( '/^max:(\d+)$/', trim( $rule ), $matches ) ) {
+                $max = null === $max ? (int) $matches[1] : min( $max, (int) $matches[1] );
+            }
+        }
+
+        return null !== $max && $max > 0 ? min( $max, self::TEXT_MAX_LENGTH ) : null;
     }
 }

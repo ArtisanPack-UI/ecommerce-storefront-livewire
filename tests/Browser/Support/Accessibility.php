@@ -65,9 +65,23 @@ final class Accessibility
                 const ignored = {$ignored};
                 // Colors mid-transition (a button re-enabled after a request) aren't the final ones.
                 // Looping animations (a skeleton's shimmer) never finish, so only the finite ones are awaited.
-                await Promise.all( document.getAnimations()
-                    .filter( ( animation ) => Number.isFinite( animation.effect?.getComputedTiming().iterations ?? 1 ) )
-                    .map( ( animation ) => animation.finished.catch( () => null ) ) );
+                // Livewire can drop a loading state a frame after the morph the test waited for, starting a
+                // transition after the first look, so wait two frames before each look until none are running.
+                const finite = () => document.getAnimations()
+                    .filter( ( animation ) => Number.isFinite( animation.effect?.getComputedTiming().iterations ?? 1 ) );
+                const frames = () => new Promise( ( resolve ) => requestAnimationFrame( () => requestAnimationFrame( resolve ) ) );
+
+                for ( let attempt = 0; attempt < 10; attempt++ ) {
+                    await frames();
+
+                    const running = finite();
+
+                    if ( 0 === running.length ) {
+                        break;
+                    }
+
+                    await Promise.all( running.map( ( animation ) => animation.finished.catch( () => null ) ) );
+                }
                 // target-size (WCAG 2.2 SC 2.5.8, 24px) is off by default in axe 4.x.
                 const { violations } = await window.axe.run( {$context}, { rules: { 'target-size': { enabled: true } } } );
 

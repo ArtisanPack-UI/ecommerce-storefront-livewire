@@ -180,3 +180,35 @@ it( 'keeps its props out of the browser\'s reach', function ( string $property, 
     'type'  => [ 'type', 'upsell' ],
     'limit' => [ 'limit', 12 ],
 ] );
+
+it( 'lays the cards out on the design system: a scroll row with controls, a grid of the chosen columns from md', function (): void {
+    $phone = makeProduct( 50000, [ 'name' => 'Phone' ] );
+    $case  = makeProduct( 2000, [ 'name' => 'Case' ] );
+    $cable = makeProduct( 1000, [ 'name' => 'Cable' ] );
+
+    relate( $phone, ProductRelation::UPSELL, [ $case, $cable ] );
+
+    $html = Livewire::withoutLazyLoading()
+        ->test( RelatedProducts::class, [ 'product' => $phone, 'type' => 'upsell', 'columns' => 3 ] )
+        ->assertSeeHtml( 'class="ec-related"' )
+        ->assertSeeHtml( 'class="ec-related__list"' )
+        ->assertSeeHtml( 'data-columns="3"' )
+        ->assertSeeHtml( 'data-related-previous' )
+        ->assertSeeHtml( 'data-related-next' )
+        ->html();
+
+    expect( $html )->not->toContain( 'md:grid' )
+        ->not->toContain( 'lg:grid-cols' )
+        ->not->toContain( 'snap-x' )
+        ->not->toContain( 'text-2xl' );
+} );
+
+it( 'clamps the columns to what the grid supports', function (): void {
+    $phone = makeProduct( 50000, [ 'name' => 'Phone' ] );
+    relate( $phone, ProductRelation::UPSELL, [ makeProduct( 2000, [ 'name' => 'Case' ] ) ] );
+
+    Livewire::withoutLazyLoading()
+        ->test( RelatedProducts::class, [ 'product' => $phone, 'type' => 'upsell', 'columns' => 12 ] )
+        ->assertSeeHtml( 'data-columns="6"' )
+        ->assertDontSeeHtml( 'data-related-next' );
+} );

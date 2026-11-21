@@ -14,7 +14,11 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms;
 
 use ArtisanPackUI\Ecommerce\Models\DigitalFile;
+use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
+use Money\Money;
 
 /**
  * `<livewire:artisanpack-ecommerce-storefront-product-form-digital :product="$product" />`
@@ -25,6 +29,9 @@ use Illuminate\Contracts\View\View;
  * the product issues them (`meta.licensing`). When the product offers
  * licence types (`meta.licensing.types`), the shopper picks one; it goes on
  * the cart line as `license_type`.
+ *
+ * Since 2.0.0 the licence types are radio cards, and "Add to cart" shows
+ * the line price (a digital product has one price whatever the licence).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -97,6 +104,21 @@ class DigitalForm extends PurchaseForm
         }
 
         return true;
+    }
+
+    /**
+     * The product's own price, for the line price on "Add to cart".
+     *
+     * @since 2.0.0
+     *
+     * @return Money|null
+     */
+    protected function unitPrice(): ?Money
+    {
+        $cart  = app( StorefrontCart::class );
+        $price = app( PriceDisplayResolver::class )->for( DisplayData::for( $this->product ), $cart->currency(), null, $cart->customer() );
+
+        return null === $price || $price->isRange() ? null : $price->price;
     }
 
     /**

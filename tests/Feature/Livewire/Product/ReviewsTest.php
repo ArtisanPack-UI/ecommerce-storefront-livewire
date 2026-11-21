@@ -70,9 +70,41 @@ it( 'renders the histogram, the average, and the approved reviews', function ():
         ->assertDontSee( 'Pending Pat' );
 } );
 
+it( 'lays the reviews out on the design system: the summary card, the breakdown bars and the list', function (): void {
+    $product = makeProduct();
+
+    approvedReview( $product, 5, [ 'author_name' => 'Ana', 'title' => 'Lovely', 'is_verified_purchase' => true ] );
+    approvedReview( $product, 4, [ 'author_name' => 'Ben' ] );
+
+    $html = Livewire::test( Reviews::class, [ 'product' => $product ] )
+        ->assertSeeHtml( 'class="ec-reviews"' )
+        ->assertSeeHtml( 'data-review-summary' )
+        ->assertSeeHtml( 'apui-card' )
+        ->assertSeeHtml( 'apui-progress' )
+        ->assertSeeHtml( 'data-color="accent"' )
+        ->assertSeeHtml( 'aria-label="4.5 out of 5"' )
+        ->assertSee( '4.5' )
+        ->assertSee( '2 reviews' )
+        ->assertSeeHtml( 'aria-label="Rated 5 out of 5"' )
+        ->assertSeeHtml( 'data-review-verified' )
+        ->assertSeeHtml( 'class="ec-review__body"' )
+        ->assertSee( 'Write a review' )
+        ->html();
+
+    expect( $html )->not->toContain( 'progress-warning' )
+        ->not->toContain( 'text-base-content' )
+        ->not->toContain( 'bg-base-200' )
+        ->not->toContain( 'rounded-box' )
+        ->not->toContain( 'lg:grid-cols-3' );
+} );
+
 it( 'says when there are no reviews yet', function (): void {
     Livewire::test( Reviews::class, [ 'product' => makeProduct() ] )
-        ->assertSee( 'No reviews yet. Be the first to review this product.' )
+        ->assertSee( 'No reviews yet' )
+        ->assertSee( 'Be the first to review this product.' )
+        ->assertSeeHtml( 'data-reviews-empty' )
+        ->assertSeeHtml( 'ec-reviews__layout--single' )
+        ->assertDontSeeHtml( 'data-review-summary' )
         ->assertDontSeeHtml( 'data-review-histogram' )
         ->assertSee( 'Write a review' );
 } );
@@ -100,7 +132,9 @@ it( 'filters to one rating from the histogram and back', function (): void {
         ->assertSet( 'ratingFilter', null )
         ->call( 'filterRating', '2' )
         ->assertSet( 'ratingFilter', 2 )
-        ->assertSee( 'Showing reviews rated 2 stars' );
+        ->assertSee( 'Showing reviews rated 2 stars' )
+        ->assertSee( 'No reviews with this rating' )
+        ->assertSeeHtml( 'data-reviews-filtered-empty' );
 } );
 
 it( 'ignores a bad rating from the query string', function ( mixed $rating ): void {

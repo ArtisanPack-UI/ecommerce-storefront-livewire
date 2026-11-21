@@ -195,7 +195,7 @@ it( 'shows the page product\'s related products, upsells, or cross-sells', funct
         ->not->toContain( 'data-product-card="' . $this->mug->id . '"' )
         ->and( renderBlock( new RelatedProductsBlock(), [ 'type' => 'cross_sell', 'columns' => 2 ] ) )
         ->toContain( 'data-product-card="' . $this->mug->id . '"' )
-        ->toContain( 'lg:grid-cols-2' );
+        ->toContain( 'data-columns="2"' );
 } );
 
 it( 'needs a product for related products but suggests cross-sells for the cart', function (): void {

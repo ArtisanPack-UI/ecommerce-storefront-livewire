@@ -75,3 +75,39 @@ it( 'preselects the only licence type and shows the engine\'s refusal of an unkn
         ->call( 'addToCart' )
         ->assertHasErrors( 'licenseType' );
 } );
+
+it( 'offers the licence types as design-system radio cards', function (): void {
+    $html = Livewire::test( DigitalForm::class, [ 'product' => makeDigital( [ 'licensing' => [ 'types' => [ 'Personal', 'Studio and teaching' ] ] ] ) ] )
+        ->assertSeeHtml( 'class="ec-purchase-form" data-purchase-form="digital"' )
+        ->assertSeeHtml( 'data-variant="cards"' )
+        ->assertSeeHtml( 'type="radio"' )
+        ->assertSeeHtml( 'wire:model="licenseType"' )
+        ->assertSee( 'Personal' )
+        ->assertSee( 'Studio and teaching' )
+        ->set( 'licenseType', 'Personal' )
+        ->html();
+
+    expect( preg_match( '/<input[^>]*value="Personal"[^>]*>/', $html, $match ) )->toBe( 1 )
+        ->and( $match[0] )->toContain( 'checked' )
+        ->and( $html )->not->toContain( '<select' );
+} );
+
+it( 'shows the notes beside the download icon and the line price on the button', function (): void {
+    $html = Livewire::test( DigitalForm::class, [ 'product' => makeDigital() ] )
+        ->assertSeeHtml( 'class="ec-digital-notes" data-digital-notes' )
+        ->assertSeeHtml( 'data-add-to-cart-price' )
+        ->assertSee( '$15.00' )
+        ->set( 'quantity', 3 )
+        ->assertSee( '$45.00' )
+        ->html();
+
+    expect( $html )->not->toContain( 'text-sm' )
+        ->not->toContain( 'flex-col' );
+} );
+
+it( 'shows the licence error on the radio cards', function (): void {
+    Livewire::test( DigitalForm::class, [ 'product' => makeDigital( [ 'licensing' => [ 'types' => [ 'Personal', 'Team' ] ] ] ) ] )
+        ->call( 'addToCart' )
+        ->assertSee( 'Choose a licence.' )
+        ->assertSeeHtml( 'aria-invalid="true"' );
+} );

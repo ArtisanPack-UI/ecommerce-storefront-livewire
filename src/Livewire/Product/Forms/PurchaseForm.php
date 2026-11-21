@@ -230,14 +230,9 @@ abstract class PurchaseForm extends Component
      */
     public function linePrice(): ?string
     {
-        $unit     = $this->cachedUnitPrice();
-        $quantity = filter_var( $this->quantity, FILTER_VALIDATE_INT );
+        $line = $this->lineMoney();
 
-        if ( null === $unit || false === $quantity || $quantity < 1 || $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
-            return null;
-        }
-
-        return MoneyFormatter::formatMoney( $unit->multiply( (string) $quantity ) );
+        return null === $line ? null : MoneyFormatter::formatMoney( $line );
     }
 
     /**
@@ -343,6 +338,26 @@ abstract class PurchaseForm extends Component
         }
 
         return $this->unitPriceCache;
+    }
+
+    /**
+     * The unit price times the quantity, or null when the unit price isn't
+     * known up front or the quantity isn't a whole number in range.
+     *
+     * @since 2.0.0
+     *
+     * @return Money|null
+     */
+    protected function lineMoney(): ?Money
+    {
+        $unit     = $this->cachedUnitPrice();
+        $quantity = filter_var( $this->quantity, FILTER_VALIDATE_INT );
+
+        if ( null === $unit || false === $quantity || $quantity < 1 || $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
+            return null;
+        }
+
+        return $unit->multiply( (string) $quantity );
     }
 
     /**

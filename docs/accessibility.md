@@ -22,7 +22,7 @@ The storefront targets **WCAG 2.2 AA**. Every shopper flow (browsing, choosing o
 - **Swatches and ratings.** Option swatches are native radio groups (checkboxes for multi-select filters) inside a `fieldset` with a `legend`, so the arrow keys move within a group and Tab moves between groups. A disabled option says why. The review form's stars are labelled radios ("4 stars"), with a focus outline around the group and the chosen rating written out ("4 out of 5").
 - **Prices read correctly.** A sale price is read as one sentence, "Sale price: was $25.00, now $19.00", and a range as "From $10.00 to $20.00", instead of bare amounts.
 - **Stock in text, not colour.** Stock status is always written out ("In stock", "Low stock", "Out of stock"); colour only tints the icon.
-- **Ratings in text.** Star ratings are read as "Rated 4.5 out of 5" with the review count.
+- **Ratings in text.** Star ratings are read as "Rated 4.5 out of 5" with the review count. Each row of the reviews breakdown is a button named for the whole row ("5 stars: 98 reviews (78%)"), pressed while it filters the list; its bar is decorative.
 - **Target size.** Filter options and suggestion rows are at least 24px tall, and the suite checks target size on every screen.
 - **Contrast on soft alerts.** Soft (tinted) alerts use the base text colour instead of the tint colour, so their text keeps 4.5:1. Field errors the storefront prints itself mix the error colour with the text colour for the same reason.
 - **Visible focus.** Product card links show a focus outline; swatches, gallery thumbnails, and the rating input draw a focus outline in the primary colour.
