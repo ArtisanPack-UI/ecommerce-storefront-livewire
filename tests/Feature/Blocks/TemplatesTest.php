@@ -98,6 +98,78 @@ it( 'offers the commerce patterns whenever the blocks are registered', function 
         ->and( $patterns['artisanpack-commerce/sale-banner-grid']['raw_content'] )->toContain( 'On sale now' )->toContain( '"source":"on_sale"' );
 } );
 
+it( 'builds the featured products pattern from a heading row with "Shop all" over the featured grid', function (): void {
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/featured-products']['content'];
+
+    preg_match( '#<!-- wp:paragraph \{"className":"ec-pattern__link"\} -->\n<p class="ec-pattern__link">(.+)</p>\n<!-- /wp:paragraph -->#', $content, $link );
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-pattern"} -->' )
+        ->toContain( '<!-- wp:group {"className":"ec-pattern__header","layout":{"type":"flex","justifyContent":"space-between","verticalAlignment":"center"}} -->' )
+        ->toContain( '<!-- wp:heading {"level":2,"className":"ec-pattern__title"} -->' . "\n" . '<h2 class="wp-block-heading ec-pattern__title">Featured products</h2>' )
+        ->toContain( '<!-- wp:artisanpack-commerce/product-grid {"source":"featured","limit":4,"columns":4} /-->' )
+        ->and( $link )->not->toBeEmpty()
+        ->and( $link[1] )->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.catalog', [], false ) . '"' )
+        ->not->toContain( 'href="http' )
+        ->toContain( 'class="apui-link"' )
+        ->toContain( 'data-standalone' )
+        ->toContain( 'Shop all' )
+        ->toContain( 'data-part="iconEnd"' )
+        ->toContain( 'data-mirror' )
+        ->not->toContain( 'wire:navigate' )
+        ->not->toContain( "\n" )
+        // The heading row comes before the grid.
+        ->and( strpos( $content, 'ec-pattern__header' ) )->toBeLessThan( strpos( $content, 'wp:artisanpack-commerce/product-grid' ) )
+        ->and( classTokens( $content ) )->not->toContain( 'flex', 'flex-col', 'gap-6', 'text-2xl', 'font-bold', 'rounded-box', 'bg-base-200', 'link', 'link-primary' );
+} );
+
+it( 'leaves "Shop all" out of the featured products pattern without the storefront routes', function (): void {
+    app( 'router' )->setRoutes( new Illuminate\Routing\RouteCollection() );
+
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/featured-products']['content'];
+
+    expect( $content )->toContain( 'ec-pattern__header' )
+        ->toContain( '>Featured products</h2>' )
+        ->not->toContain( 'ec-pattern__link' )
+        ->not->toContain( 'Shop all' );
+} );
+
+it( 'builds the shop by category pattern from a heading over three columns of top-level categories', function (): void {
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/shop-by-category']['content'];
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-pattern"} -->' )
+        ->toContain( '<h2 class="wp-block-heading ec-pattern__title">Shop by category</h2>' )
+        ->toContain( '<!-- wp:artisanpack-commerce/category-grid {"limit":6,"columns":3} /-->' )
+        ->not->toContain( '"parent"' )
+        ->and( classTokens( $content ) )->not->toContain( 'flex', 'flex-col', 'gap-6', 'text-2xl', 'font-bold' );
+} );
+
+it( 'translates the pattern copy', function (): void {
+    app()->setLocale( 'fr' );
+    app( 'translator' )->addLines( [
+        '*.Featured products' => 'Produits phares',
+        '*.Shop all'          => 'Tout voir',
+        '*.Shop by category'  => 'Acheter par catégorie',
+    ], 'fr', '*' );
+
+    $patterns = StorefrontTemplates::patterns();
+
+    expect( $patterns['artisanpack-commerce/featured-products']['title'] )->toBe( 'Produits phares' )
+        ->and( $patterns['artisanpack-commerce/featured-products']['content'] )->toContain( '>Produits phares</h2>' )->toContain( 'Tout voir' )
+        ->and( $patterns['artisanpack-commerce/shop-by-category']['content'] )->toContain( '>Acheter par catégorie</h2>' );
+} );
+
+it( 'styles the pattern title at the heading-xl type with tokens only', function (): void {
+    $css = file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/storefront.css' );
+
+    preg_match( '/\.ec-pattern__title \{([^}]+)\}/', $css, $rule );
+
+    expect( $rule )->not->toBeEmpty()
+        ->and( $rule[1] )->toContain( 'var(--apui-type-heading-xl-font-size)' )
+        ->toContain( 'var(--apui-type-heading-xl-font-weight)' )
+        ->toContain( 'var(--apui-text-default)' )
+        ->not->toMatch( '/#[0-9a-f]{3,8}\b|oklch\(|--color-base|--p\b/i' );
+} );
+
 it( 'lets hosts change the templates and patterns, dropping incomplete ones', function (): void {
     addFilter( 'ap.ecommerceStorefrontLivewire.templates', static fn ( array $templates ): array => [
         'single-product' => [ 'title' => 'Product', 'content' => '<!-- wp:artisanpack-commerce/product-price /-->' ],

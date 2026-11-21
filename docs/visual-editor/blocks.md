@@ -82,7 +82,7 @@ Related products, upsells, or cross-sells. Renders `artisanpack-ecommerce-storef
 | `productId` | number | `0` | See above |
 | `heading` | string | `''` | |
 
-With no product, `related` and `upsell` render nothing. `cross_sell` without a product shows cross-sells for the shopper's cart instead. On the site the section loads after the page (Livewire lazy loading); in an editor preview it renders straight away.
+With no product, `related` and `upsell` render nothing. `cross_sell` without a product shows cross-sells for the shopper's cart instead. On the site the section loads after the page (Livewire lazy loading), showing skeleton cards; in an editor preview it renders straight away. The section is the product page's: product cards under the heading, a grid of `columns` from 1024px, and a sideways-scrolling row with "Previous" and "Next" buttons on small screens. The block adds nothing around it but the commerce block wrapper, so block spacing comes from the editor.
 
 ### Recently Viewed (`artisanpack-commerce/recently-viewed`)
 
@@ -93,6 +93,8 @@ The products the shopper looked at last. Renders `artisanpack-ecommerce-storefro
 | `limit` | number | `4` | 1 to 12 |
 | `columns` | number | `4` | 1 to 6; the most rows side by side (each at least 240px wide) |
 | `heading` | string | `''` | |
+
+Each product is a compact row (a thumbnail, the name and the price). With no history the block renders nothing, and it adds nothing around the section but the commerce block wrapper, so block spacing comes from the editor.
 
 This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks Reference](Extending-Hooks-Reference).
 
@@ -115,7 +117,7 @@ All of these take `productId` (number, default `0`, minimum `0`) and find their 
 
 ### Single Product (`artisanpack-commerce/single-product`)
 
-The whole product: images, price, add to cart, details, and reviews. Renders `artisanpack-ecommerce-storefront-product-show`. No other attributes. A product view is recorded on the site, never in an editor preview.
+The whole product: images, price, add to cart, details, and reviews. Renders `artisanpack-ecommerce-storefront-product-show`. No other attributes. A product view is recorded on the site, never in an editor preview. In the editor, with no product, it shows the newest product under a "Sample product" notice. The block adds nothing around the product page but the commerce block wrapper.
 
 ### Product Gallery (`artisanpack-commerce/product-gallery`)
 
