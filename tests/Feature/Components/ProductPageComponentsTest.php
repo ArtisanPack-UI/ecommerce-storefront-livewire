@@ -34,6 +34,27 @@ describe( 'swatches', function (): void {
             ->assertDontSee( 'data-swatches-chosen', false );
     } );
 
+    it( 'marks a required group and links its error to the group', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-swatches name="size" legend="Size" id-prefix="ec-size" required error="Choose a size to add this to your cart." aria-describedby="other-error" :options="[ [ \'value\' => \'m\', \'label\' => \'M\' ] ]" />' );
+
+        expect( $html )->toContain( '<legend class="ec-swatches__legend">Size<span class="ec-swatches__required" aria-hidden="true">*</span></legend>' )
+            ->toContain( 'aria-describedby="other-error ec-size-error"' )
+            ->toContain( 'data-invalid' )
+            ->toContain( 'required' )
+            ->toContain( 'aria-invalid="true"' )
+            ->toContain( '<p id="ec-size-error" class="ec-swatches__error" data-swatches-error>' )
+            ->toContain( 'Choose a size to add this to your cart.' );
+    } );
+
+    it( 'shows no error or star by default', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-swatches name="size" legend="Size" error=" " :options="[ [ \'value\' => \'m\', \'label\' => \'M\' ] ]" />' );
+
+        expect( $html )->not->toContain( 'ec-swatches__required' )
+            ->not->toContain( 'data-swatches-error' )
+            ->not->toContain( 'aria-invalid' )
+            ->not->toContain( 'aria-describedby' );
+    } );
+
     it( 'drops unsafe swatches', function (): void {
         $this->blade( '<x-artisanpack-ec-swatches name="x" legend="X" :options="$options" />', [ 'options' => [
             [ 'value' => 'a', 'label' => 'A', 'swatch' => 'red; background:url(javascript:alert(1))' ],

@@ -187,9 +187,19 @@ it( 'points the engine\'s guest order links at the signed page', function (): vo
 } );
 
 it( 'ships a "find your order" link for the host\'s sign-in screen', function (): void {
-    expect( view( 'ecommerce-storefront::partials.order-lookup-link' )->render() )
-        ->toContain( 'data-order-lookup-link' )
-        ->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.lookup' ) . '"' );
+    $html = view( 'ecommerce-storefront::partials.order-lookup-link' )->render();
+
+    expect( $html )
+        ->toContain( 'class="ec-order-lookup-link" data-order-lookup-link' )
+        ->toContain( 'Ordered as a guest?' )
+        ->toContain( 'Find your order' )
+        ->toContain( 'class="apui-link' )
+        ->toContain( 'data-tone="muted"' )
+        ->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.lookup' ) . '"' )
+        // A full page load: the lookup uses the storefront layout, not the host's.
+        ->not->toContain( 'wire:navigate' )
+        ->not->toContain( 'link-primary' )
+        ->not->toContain( 'text-sm' );
 } );
 
 it( 'announces a failed lookup assertively, as an error alert', function (): void {

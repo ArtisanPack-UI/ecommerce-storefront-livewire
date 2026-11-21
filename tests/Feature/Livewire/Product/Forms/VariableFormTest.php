@@ -31,21 +31,27 @@ function optionInput( string $html, int $valueId ): string
     return $match[0] ?? '';
 }
 
-it( 'renders one swatch group per variation attribute and blocks adding until a variant is matched', function (): void {
-    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+it( 'renders one required swatch group per variation attribute and lets the shopper press add before choosing', function (): void {
+    $html = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->assertOk()
+        ->assertSeeHtml( 'class="ec-purchase-form" data-purchase-form="variable"' )
         ->assertSeeHtml( 'data-variation-group="' . $this->colour . '"' )
         ->assertSeeHtml( 'data-variation-group="' . $this->size . '"' )
         ->assertSeeHtml( 'background-color: #ff0000' )
         ->assertSeeHtml( 'type="radio"' )
-        ->assertSee( 'Choose an option for Colour.' )
-        ->assertSeeHtml( 'data-add-blocked' );
+        ->assertSeeHtml( 'class="ec-swatches__required" aria-hidden="true">*</span>' )
+        ->assertDontSeeHtml( 'data-add-blocked' )
+        ->html();
+
+    expect( optionInput( $html, $this->values['red']->id ) )->toContain( 'required' )
+        ->and( $html )->not->toContain( 'bg-base' )
+        ->not->toContain( 'text-base-content' )
+        ->not->toContain( '--color-error' );
 } );
 
 it( 'disables a combination that does not exist after choosing blue, with a reason', function (): void {
     $html = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['blue']->id )
-        ->assertSee( 'Choose an option for Size.' )
         ->html();
 
     expect( optionInput( $html, $this->values['xl']->id ) )->toContain( 'disabled' )
@@ -134,25 +140,78 @@ it( 'ignores a variant in the query string from another product', function (): v
         ->assertSet( 'selected', [] );
 } );
 
-it( 'refuses to add without a variant and names the missing choice', function (): void {
-    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+it( 'refuses to add without a variant and shows a field error on the missing choice', function (): void {
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
         ->call( 'addToCart' )
-        ->assertHasErrors( [ 'variant' ] )
-        ->assertSee( 'Choose an option for Size.' )
+        ->assertHasErrors( [ "selected.{$this->size}" ] )
+        ->assertHasNoErrors( [ 'variant', "selected.{$this->colour}" ] )
+        ->assertSee( 'Choose a size to add this to your cart.' )
+        ->assertSeeHtml( 'data-swatches-error' )
         ->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    // Focus moves to the group to fix.
+    expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
+        ->toContain( '[data-variation-group=\\"' . $this->size . '\\"]' );
+
+    expect( Cart::query()->first()?->items()->count() ?? 0 )->toBe( 0 );
 } );
 
-it( 'announces a refused add in an alert and links the error to the swatches', function (): void {
+it( 'clears the missing-choice error once the shopper chooses', function (): void {
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->call( 'addToCart' )
+        ->assertHasErrors( [ "selected.{$this->colour}" ] )
+        ->call( 'choose', $this->colour, (string) $this->values['red']->id )
+        ->assertHasNoErrors()
+        ->assertDontSeeHtml( 'data-swatches-error' );
+} );
+
+it( 'keeps disabling add for a sold-out variant', function (): void {
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
+        ->set( "selected.{$this->size}", (string) $this->values['xl']->id )
+        ->assertSeeHtml( 'data-add-blocked' );
+} );
+
+it( 'uses a select for a group with more values than variation_select_after', function (): void {
+    config()->set( 'artisanpack.ecommerce-storefront-livewire.product.variation_select_after', 2 );
+
+    $form = 'ec-product-' . $this->made['product']->id;
+
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->assertSeeHtml( '<select' )
+        ->assertSeeHtml( 'id="' . $form . '-attribute-' . $this->size . '"' )
+        ->assertSee( 'Select a size' )
+        ->assertSeeHtml( 'data-variation-group="' . $this->colour . '"' );
+
+    expect( $component->html() )->toContain( '$wire.choose( ' . $this->size . ', $event.target.value )' );
+
+    $component->call( 'choose', $this->colour, (string) $this->values['blue']->id )
+        ->assertSee( 'XL (Not available with your other choices)' )
+        ->call( 'addToCart' )
+        ->assertSee( 'Choose a size to add this to your cart.' )
+        ->assertSeeHtml( 'id="' . $form . '-attribute-' . $this->size . '-error"' )
+        ->assertSeeHtml( 'aria-invalid="true"' );
+} );
+
+it( 'keeps an attribute name capitalized in German', function ( string $locale ): void {
+    app()->setLocale( $locale );
+
+    Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->call( 'addToCart' )
+        ->assertSee( 'Wähle eine Option für Colour, um den Artikel in den Warenkorb zu legen.' );
+} )->with( [ 'de', 'de_AT', 'de-CH' ] );
+
+it( 'announces a refused add in an alert and links the error to the missing group', function (): void {
     $form = 'ec-product-' . $this->made['product']->id;
 
     $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
         ->call( 'addToCart' )
-        ->assertSee( 'Not added to your cart: Choose an option for Size.' )
+        ->assertSee( 'Not added to your cart: Choose a size to add this to your cart.' )
         ->assertSeeHtml( 'role="alert" wire:key="' . $form . '-add-error-1"' )
-        ->assertSeeHtml( '<p id="' . $form . '-variant-error"' )
-        ->assertSeeHtml( 'aria-describedby="' . $form . '-variant-error"' );
+        ->assertSeeHtml( '<p id="' . $form . '-attribute-' . $this->size . '-error"' )
+        ->assertSeeHtml( 'aria-describedby="' . $form . '-attribute-' . $this->size . '-error"' );
 
     // A second refusal gets a new alert, so it is announced again.
     $component->call( 'addToCart' )->assertSeeHtml( 'wire:key="' . $form . '-add-error-2"' );
@@ -208,7 +267,7 @@ it( 'ignores a malformed variant in the query string', function ( mixed $variant
         ->assertOk()
         ->assertSet( 'variant', null )
         ->assertSet( 'selected', [] )
-        ->assertSee( 'Choose an option for Colour.' );
+        ->assertDontSeeHtml( 'data-add-blocked' );
 } )->with( [
     'text'     => 'abc',
     'array'    => [ [ '1' ] ],
@@ -230,6 +289,5 @@ it( 'clears a malformed variant set from the client', function (): void {
         ->set( 'variant', $this->made['variants']['blue/m']->id )
         ->set( 'variant', 'abc' )
         ->assertSet( 'variant', null )
-        ->assertSet( 'selected', [] )
-        ->assertSee( 'Choose an option for Colour.' );
+        ->assertSet( 'selected', [] );
 } );

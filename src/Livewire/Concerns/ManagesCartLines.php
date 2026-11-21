@@ -269,7 +269,12 @@ trait ManagesCartLines
         $this->syncQuantities();
         $this->linesChanged();
 
-        $this->toastSuccess( __( 'Removed from your cart' ), __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ) );
+        // The inverse toast with Undo (#97); a line that can't come back has no Undo.
+        $this->toastSuccess( __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ), null, [
+            'variant' => 'inverse',
+            'icon'    => 'trash',
+            'action'  => null === $this->removedLine ? null : [ 'label' => __( 'Undo' ), 'call' => 'undoRemove' ],
+        ] );
     }
 
     /**

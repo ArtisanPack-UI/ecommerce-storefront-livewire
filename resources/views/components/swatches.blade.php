@@ -8,17 +8,28 @@
     for text values such as sizes. The checked chip takes the selected
     background and border. An unavailable value stays in place, faded and
     struck through, with its reason in hidden text. With one value chosen,
-    the legend names it ("Glaze: Stoneware").
+    the legend names it ("Glaze: Stoneware"). A `required` group has a "*"
+    after the legend (hidden from screen readers, which hear the radios'
+    `required`), and an `error` shows under the chips with the error icon,
+    linked to the group and marking its inputs invalid.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-@php( $ecommerceModel = $attributes->whereStartsWith( 'wire:model' ) )
-@php( $ecommerceChosen = $multiple ? null : $chosenLabel() )
-<fieldset {{ $attributes->whereDoesntStartWith( 'wire:model' )->class( [ 'ec-swatches' ] ) }} data-swatches="{{ $name }}">
-    <legend class="ec-swatches__legend">{{ $legend }}@if ( null !== $ecommerceChosen )<span class="ec-swatches__chosen" data-swatches-chosen>: {{ $ecommerceChosen }}</span>@endif</legend>
+@php
+    $ecommerceModel       = $attributes->whereStartsWith( 'wire:model' );
+    $ecommerceChosen      = $multiple ? null : $chosenLabel();
+    $ecommerceDescribedBy = trim( implode( ' ', array_filter( [ $attributes->get( 'aria-describedby' ), null !== $error ? $errorId() : null ] ) ) );
+@endphp
+<fieldset
+    {{ $attributes->whereDoesntStartWith( 'wire:model' )->except( 'aria-describedby' )->class( [ 'ec-swatches' ] ) }}
+    data-swatches="{{ $name }}"
+    @if ( '' !== $ecommerceDescribedBy ) aria-describedby="{{ $ecommerceDescribedBy }}" @endif
+    @if ( null !== $error ) data-invalid @endif
+>
+    <legend class="ec-swatches__legend">{{ $legend }}@if ( null !== $ecommerceChosen )<span class="ec-swatches__chosen" data-swatches-chosen>: {{ $ecommerceChosen }}</span>@endif{!! $required ? '<span class="ec-swatches__required" aria-hidden="true">*</span>' : '' !!}</legend>
 
     <div class="ec-swatches__options">
         @foreach ( $items as $index => $item )
@@ -40,6 +51,8 @@
                     {{ $ecommerceModel }}
                     @checked( $item['selected'] )
                     @disabled( $item['disabled'] )
+                    @if ( $required && ! $multiple ) required @endif
+                    @if ( null !== $error ) aria-invalid="true" @endif
                     data-swatch-value="{{ $item['value'] }}"
                 >
 
@@ -61,4 +74,8 @@
             </label>
         @endforeach
     </div>
+
+    @if ( null !== $error )
+        <p id="{{ $errorId() }}" class="ec-swatches__error" data-swatches-error><x-artisanpack-icon name="circle-alert" aria-hidden="true" />{{ $error }}</p>
+    @endif
 </fieldset>

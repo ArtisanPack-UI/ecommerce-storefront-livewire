@@ -176,13 +176,13 @@ The host owns the sign-in screen, so the storefront can't add its "Ordered as a 
 @include( 'ecommerce-storefront::partials.order-lookup-link' )
 ```
 
-It renders nothing when the order lookup route isn't registered.
+It renders muted text with a muted design-system link, so it sits quietly under a sign-in form, and nothing at all when the order lookup route isn't registered.
 
 ## The global partial
 
 `ecommerce-storefront::partials.global` renders the storefront's page-wide pieces:
 
-- the toast container, plus any toast flashed for this page;
+- the toaster (`<x-artisanpack-ec-toaster>`: toasts stack at the top end from 768px and along the bottom on a phone), plus any toast flashed for this page;
 - the slide-out cart drawer (`cart.after_add` set to `drawer` opens it after "Add to cart");
 - the cart merge prompt, shown after sign-in when the cart built as a guest and the account's cart are in different currencies (same-currency carts merge on their own).
 

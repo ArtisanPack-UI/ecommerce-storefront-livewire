@@ -96,14 +96,15 @@ it( 'chooses a variant and adds it to the cart', function (): void {
     ], [ 'slug' => 'journey-shirt' ], 'JOURNEY' );
 
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'journey-shirt' ] ) )
-        ->assertButtonDisabled( '[data-add-to-cart]' )
+        // Pressing add before choosing asks for the first missing choice (#100).
+        ->click( '[data-add-to-cart]' )
+        ->assertSee( 'Choose a colour to add this to your cart.' )
         ->click( '[data-purchase-form] label >> internal:text="Blue"s' )
         ->assertScript( '[ ...document.querySelectorAll( "[data-purchase-form] label.ec-swatch" ) ].find( ( label ) => "Blue" === label.textContent.trim() )?.querySelector( "input" ).checked' )
         ->click( '[data-purchase-form] label >> internal:text="L"s' )
         // "$29.00" is already on the page in the price range, so wait for
-        // the variant to resolve: a disabled button would make the click
-        // wait for it to be enabled, with no timeout.
-        ->assertScript( '! document.querySelector( "[data-add-to-cart]" ).disabled' )
+        // the variant to resolve: both legends name their choice.
+        ->assertScript( '2 === document.querySelectorAll( "[data-purchase-form] [data-swatches-chosen]" ).length' )
         ->assertSeeIn( '[data-product-summary]', '$29.00' )
         ->click( '[data-add-to-cart]' )
         ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Blue / L' )

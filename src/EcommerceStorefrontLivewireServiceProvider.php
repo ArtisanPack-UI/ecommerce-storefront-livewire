@@ -127,6 +127,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'skeleton'        => Components\Skeleton::class,
         'stock-status'    => Components\StockStatus::class,
         'swatches'        => Components\Swatches::class,
+        'toaster'         => Components\Toaster::class,
     ];
 
     /**

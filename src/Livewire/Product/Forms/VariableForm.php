@@ -37,8 +37,13 @@ use Livewire\Attributes\Url;
  *   string (`?variant=`) so the link reopens it, and
  *   `ecommerce-product-variant-selected` (`productId`, `variantId`) tells
  *   the product page to show its price, stock, SKU, and image.
- * - "Add to cart" stays disabled, naming the missing choice, until a variant
- *   is matched.
+ * - "Add to cart" can be pressed before every choice is made (#100): it
+ *   then shows a field error on the first group still missing a choice
+ *   ("Choose a size to add this to your cart.") and moves focus there. It
+ *   is disabled only when nothing can be bought: no variants, a
+ *   combination that doesn't exist, or a sold-out variant.
+ * - A group with more values than `product.variation_select_after` is a
+ *   Select instead of swatches.
  *
  * Native radios: arrow keys move within a group, Tab moves between groups.
  *
@@ -49,6 +54,16 @@ use Livewire\Attributes\Url;
  */
 class VariableForm extends PurchaseForm
 {
+    /**
+     * Languages that capitalize every noun, so an attribute's name keeps
+     * its capital inside a sentence ({@see self::inSentence()}).
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const CAPITALIZED_NOUN_LANGUAGES = [ 'de', 'lb' ];
+
     /**
      * The matched variant's id.
      *
@@ -136,7 +151,7 @@ class VariableForm extends PurchaseForm
     public function updatedVariant(): void
     {
         $this->selectionNotice = '';
-        $this->resetErrorBag( 'variant' );
+        $this->clearChoiceErrors();
         $this->variant = self::normalizedVariant( $this->variant );
         $this->selectVariant( $this->variant );
         $this->resolveVariant();
@@ -185,7 +200,7 @@ class VariableForm extends PurchaseForm
     public function updatedSelected( mixed $value, int|string|null $key = null ): void
     {
         $this->selectionNotice = '';
-        $this->resetErrorBag( 'variant' );
+        $this->clearChoiceErrors();
 
         if ( null === $key ) {
             $this->selected = is_array( $value ) ? $value : [];
@@ -265,10 +280,12 @@ class VariableForm extends PurchaseForm
     }
 
     /**
-     * Why "Add to cart" is disabled: a missing choice, no variants, or the
-     * matched variant can't be bought.
+     * Why "Add to cart" is disabled: no variants, a combination that doesn't
+     * exist, or the matched variant can't be bought. A choice still to make
+     * doesn't disable it; {@see self::readyToAdd()} asks for it.
      *
      * @since 1.0.0
+     * @since 2.0.0 A missing choice no longer disables "Add to cart".
      *
      * @return string|null
      */
@@ -280,10 +297,8 @@ class VariableForm extends PurchaseForm
             return __( 'This product has no options to buy right now.' );
         }
 
-        $missing = $groups->first( fn ( ProductAttribute $group ): bool => ! isset( $this->selected[ (int) $group->id ] ) );
-
-        if ( null !== $missing ) {
-            return __( 'Choose an option for :name.', [ 'name' => (string) $missing->label ] );
+        if ( null !== $this->missingGroup() ) {
+            return null;
         }
 
         $variantId = self::normalizedVariant( $this->variant );
@@ -298,9 +313,11 @@ class VariableForm extends PurchaseForm
     }
 
     /**
-     * Requires a matched variant before adding.
+     * Requires a matched variant before adding: a missing choice is a field
+     * error on its group, anything else a form error.
      *
      * @since 1.0.0
+     * @since 2.0.0 A missing choice is an error on its group (`selected.{id}`).
      *
      * @return bool
      */
@@ -308,6 +325,17 @@ class VariableForm extends PurchaseForm
     {
         // The variant added must be the one the radios show.
         $this->resolveVariant( false );
+
+        $missing = $this->missingGroup();
+
+        if ( null !== $missing ) {
+            $this->addError( 'selected.' . $missing->id, $this->missingChoiceMessage( $missing ) );
+
+            // Takes the shopper to the group to fix (WCAG 3.3.1).
+            $this->js( '$wire.$el.querySelector( ' . json_encode( '[data-variation-group="' . (int) $missing->id . '"] :is(input:not(:disabled), select)' ) . ' )?.focus()' );
+
+            return false;
+        }
 
         $reason = $this->blockedReason();
 
@@ -318,6 +346,63 @@ class VariableForm extends PurchaseForm
         }
 
         return true;
+    }
+
+    /**
+     * The first variation attribute without a choice.
+     *
+     * @since 2.0.0
+     *
+     * @return ProductAttribute|null
+     */
+    protected function missingGroup(): ?ProductAttribute
+    {
+        return $this->groups()->first( fn ( ProductAttribute $group ): bool => ! isset( $this->selected[ (int) $group->id ] ) );
+    }
+
+    /**
+     * The field error for a missing choice ("Choose a size to add this to
+     * your cart.").
+     *
+     * @since 2.0.0
+     *
+     * @param  ProductAttribute  $group  The attribute.
+     *
+     * @return string
+     */
+    protected function missingChoiceMessage( ProductAttribute $group ): string
+    {
+        return __( 'Choose a :name to add this to your cart.', [ 'name' => self::inSentence( (string) $group->label ) ] );
+    }
+
+    /**
+     * An attribute's name inside a sentence: lower-cased ("Size" → "size"),
+     * except in languages that capitalize every noun, such as German.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $label  The attribute's name.
+     *
+     * @return string
+     */
+    protected static function inSentence( string $label ): string
+    {
+        $language = strtolower( preg_split( '/[-_]/', (string) app()->getLocale() )[0] ?? '' );
+
+        return in_array( $language, self::CAPITALIZED_NOUN_LANGUAGES, true ) ? $label : mb_strtolower( $label );
+    }
+
+    /**
+     * Clears the form's variant error and every group's missing-choice
+     * error, once the shopper changes a choice.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    protected function clearChoiceErrors(): void
+    {
+        $this->resetErrorBag( [ 'variant', ...$this->groups()->map( static fn ( ProductAttribute $group ): string => 'selected.' . $group->id )->all() ] );
     }
 
     /**
@@ -510,10 +595,11 @@ class VariableForm extends PurchaseForm
      * disabled, and why.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `control` (swatches or select) and `placeholder`.
      *
      * @param  ProductAttribute  $group  The attribute.
      *
-     * @return array{id: int, label: string, options: array<int, array<string, mixed>>}
+     * @return array{id: int, label: string, options: array<int, array<string, mixed>>, control: string, placeholder: string}
      */
     protected function groupData( ProductAttribute $group ): array
     {
@@ -550,7 +636,15 @@ class VariableForm extends PurchaseForm
             ];
         }
 
-        return [ 'id' => (int) $group->id, 'label' => (string) $group->label, 'options' => $options ];
+        $selectAfter = (int) config( 'artisanpack.ecommerce-storefront-livewire.product.variation_select_after', 8 );
+
+        return [
+            'id'          => (int) $group->id,
+            'label'       => (string) $group->label,
+            'options'     => $options,
+            'control'     => $selectAfter > 0 && count( $options ) > $selectAfter ? 'select' : 'swatches',
+            'placeholder' => __( 'Select a :name', [ 'name' => self::inSentence( (string) $group->label ) ] ),
+        ];
     }
 
     /**

@@ -147,6 +147,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Product page
+    |--------------------------------------------------------------------------
+    |
+    | `variation_select_after` is how many values a variation attribute can
+    | have and still be drawn as swatches on the variable product form;
+    | longer lists use a Select. 0 always uses swatches.
+    |
+    */
+    'product' => [
+        'variation_select_after' => 8,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Checkout
     |--------------------------------------------------------------------------
     |

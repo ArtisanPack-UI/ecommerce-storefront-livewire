@@ -18,6 +18,7 @@ use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductChild;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
+use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -30,6 +31,10 @@ use Illuminate\Support\Collection;
  * adds every product with a quantity as its own line. A product the engine
  * refuses (out of stock, too many) shows the reason next to its quantity;
  * the others are still added.
+ *
+ * Since 2.0.0 the products are a table (item, price, quantity) with a
+ * running "2 items · $56.00" line above "Add selected to cart" (#101); the
+ * quantities bind on change so the line follows them.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -66,7 +71,7 @@ class GroupedForm extends PurchaseForm
     public function addToCart(): void
     {
         $this->startAdding();
-        $children           = $this->children()->keyBy( 'id' );
+        $children = $this->children()->keyBy( 'id' );
 
         $this->validate(
             [ 'quantities.*' => [ 'nullable', 'integer', 'min:0', 'max:' . StorefrontCartService::MAX_LINE_QUANTITY ] ],
@@ -126,18 +131,69 @@ class GroupedForm extends PurchaseForm
             $price   = $prices->for( $subject, $currency );
 
             return [
-                'id'        => (int) $child->id,
-                'name'      => null !== $child->variant?->name ? $child->product->name . ' — ' . $child->variant->name : (string) $child->product->name,
-                'price'     => $price,
-                'stock'     => $stock,
-                'buyable'   => $stock->purchasable() && null !== $price,
+                'id'      => (int) $child->id,
+                'name'    => null !== $child->variant?->name ? $child->product->name . ' — ' . $child->variant->name : (string) $child->product->name,
+                'price'   => $price,
+                'stock'   => $stock,
+                'buyable' => $stock->purchasable() && null !== $price,
             ];
         } )->all();
 
         return view( 'ecommerce-storefront::livewire.product.forms.grouped', [
-            'rows'   => $rows,
-            'canAdd' => [] !== array_filter( $rows, static fn ( array $row ): bool => $row['buyable'] ),
+            'rows'    => $rows,
+            'canAdd'  => [] !== array_filter( $rows, static fn ( array $row ): bool => $row['buyable'] ),
+            'summary' => $this->selectionSummary( $rows ),
         ] );
+    }
+
+    /**
+     * The running line above "Add selected to cart": how many items have a
+     * quantity and what they cost together. The total is null when one of
+     * them has no single price (a range) or a quantity isn't a whole number
+     * in range; the count is then of the valid quantities only.
+     *
+     * @since 2.0.0
+     *
+     * @param  array<int, array<string, mixed>>  $rows  The rows from {@see self::render()}.
+     *
+     * @return array{count: int, total: string|null}
+     */
+    protected function selectionSummary( array $rows ): array
+    {
+        $count = 0;
+        $total = null;
+        $known = true;
+
+        foreach ( $rows as $row ) {
+            $quantity = filter_var( $this->quantities[ $row['id'] ] ?? null, FILTER_VALIDATE_INT );
+
+            if ( ! $row['buyable'] || false === $quantity || $quantity < 1 ) {
+                continue;
+            }
+
+            if ( $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
+                $known = false;
+
+                continue;
+            }
+
+            $count += $quantity;
+            $price  = $row['price'];
+
+            if ( $price->isRange() ) {
+                $known = false;
+
+                continue;
+            }
+
+            $line  = $price->price->multiply( (string) $quantity );
+            $total = null === $total ? $line : $total->add( $line );
+        }
+
+        return [
+            'count' => $count,
+            'total' => $known && null !== $total ? MoneyFormatter::formatMoney( $total ) : null,
+        ];
     }
 
     /**

@@ -338,7 +338,10 @@ it( 'follows cart.after_add after a quick add', function ( string $mode, bool $d
 
     $drawer ? $component->assertDispatched( 'ecommerce-cart-open' ) : $component->assertNotDispatched( 'ecommerce-cart-open' );
 
-    expect( str_contains( json_encode( $component->effects['xjs'] ?? [] ), 'Mug is in your cart.' ) )->toBe( $toast );
+    $script = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    expect( str_contains( $script, '"title":"Added to your cart","description":"Mug"' ) )->toBe( $toast )
+        ->and( str_contains( $script, 'label: ["View cart"][0], onClick: () => window.location.assign( ["\\/shop\\/cart"][0] )' ) )->toBe( $toast );
 } )->with( [
     'drawer' => [ 'drawer', true, false ],
     'toast'  => [ 'toast', false, true ],

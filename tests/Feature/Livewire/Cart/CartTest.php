@@ -167,7 +167,11 @@ it( 'removes a line at quantity 0 or with Remove, and can undo it', function ():
         ->assertSee( 'Undo' )
         ->assertSee( 'Your cart is empty' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Removed from your cart' );
+    // The inverse toast with Undo (#97).
+    expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
+        ->toContain( '"title":"Mug was removed from your cart."' )
+        ->toContain( '"variant":"inverse","icon":"trash"' )
+        ->toContain( 'label: ["Undo"][0], onClick: () => $wire.call( ["undoRemove"][0] )' );
 
     $component->call( 'undoRemove' )
         ->assertSet( 'removedLine', null )
