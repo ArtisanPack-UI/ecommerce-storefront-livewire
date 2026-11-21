@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Throwable;
 
 /**
@@ -45,7 +46,12 @@ use Throwable;
  * **Patterns** — "Featured products", "Shop by category", and "Sale banner +
  * grid", through `ap.visualEditor.patterns` (after
  * `ap.ecommerceStorefrontLivewire.patterns`) whenever the blocks are
- * registered.
+ * registered. "Featured products" (#125) is a heading row (the heading-xl
+ * title, and a standalone "Shop all" Link at the row's end) over a
+ * four-column grid of featured products; "Shop by category" (#126) is the
+ * heading-xl title over three columns of top-level categories (two on small
+ * screens). Their blocks are spaced by the editor; the only styling they
+ * carry is the `ec-pattern__title` class.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -98,6 +104,44 @@ final class StorefrontTemplates
      * @var string
      */
     public const PATTERN_CATEGORY = 'commerce';
+
+    /**
+     * The class on a pattern's outer group.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_CLASS = 'ec-pattern';
+
+    /**
+     * The class on a pattern's heading row (a flex group: the heading at
+     * the start, a link at the end).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_HEADER_CLASS = 'ec-pattern__header';
+
+    /**
+     * The class on a pattern's heading: the design system's heading-xl
+     * type (ec-pattern__title in resources/css/storefront.css).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_TITLE_CLASS = 'ec-pattern__title';
+
+    /**
+     * The class on a pattern's standalone link paragraph.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_LINK_CLASS = 'ec-pattern__link';
 
     /**
      * The default template slugs.
@@ -302,17 +346,20 @@ final class StorefrontTemplates
         $defaults = [
             StorefrontBlock::NAMESPACE . '/featured-products' => [
                 'title'       => __( 'Featured products' ),
-                'description' => __( 'A heading and a grid of featured products.' ),
-                'content'     => self::stack(
-                    self::heading( __( 'Featured products' ), 2 ),
+                'description' => __( 'A heading with a "Shop all" link and a grid of featured products.' ),
+                'content'     => self::section(
+                    self::row(
+                        self::heading( __( 'Featured products' ), 2, self::PATTERN_TITLE_CLASS ),
+                        ...array_filter( [ self::shopAllLink() ] ),
+                    ),
                     self::block( 'product-grid', [ 'source' => 'featured', 'limit' => 4, 'columns' => 4 ] ),
                 ),
             ],
             StorefrontBlock::NAMESPACE . '/shop-by-category' => [
                 'title'       => __( 'Shop by category' ),
                 'description' => __( 'A heading and the top-level categories.' ),
-                'content'     => self::stack(
-                    self::heading( __( 'Shop by category' ), 2 ),
+                'content'     => self::section(
+                    self::heading( __( 'Shop by category' ), 2, self::PATTERN_TITLE_CLASS ),
                     self::block( 'category-grid', [ 'limit' => 6, 'columns' => 3 ] ),
                 ),
             ],
@@ -498,27 +545,106 @@ final class StorefrontTemplates
      */
     private static function group( string $class, string ...$blocks ): string
     {
-        return '<!-- wp:group ' . json_encode( [ 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
-            . '<div class="wp-block-group ' . e( $class ) . "\">\n" . implode( "\n\n", $blocks ) . "\n</div>\n"
+        return self::groupWith( [ 'className' => $class ], ...$blocks );
+    }
+
+    /**
+     * A core group block with the given attributes (`className` is
+     * required).
+     *
+     * @since 2.0.0
+     *
+     * @param  array<string, mixed>  $attrs      The group's attributes.
+     * @param  string                ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function groupWith( array $attrs, string ...$blocks ): string
+    {
+        return '<!-- wp:group ' . json_encode( $attrs, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<div class="wp-block-group ' . e( $attrs['className'] ) . "\">\n" . implode( "\n\n", $blocks ) . "\n</div>\n"
             . '<!-- /wp:group -->';
+    }
+
+    /**
+     * A pattern's outer group. Its blocks are spaced by the editor's block
+     * spacing (the group's default flow layout), so the pattern adds no
+     * spacing of its own.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function section( string ...$blocks ): string
+    {
+        return self::group( self::PATTERN_CLASS, ...$blocks );
+    }
+
+    /**
+     * A pattern's heading row: a flex group with the heading at the start
+     * and anything after it at the end (`space-between`, mirrored in
+     * right-to-left layouts), wrapping when the row is too narrow. The
+     * editor's flex layout lays it out, on the canvas and the site alike.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function row( string ...$blocks ): string
+    {
+        return self::groupWith(
+            [ 'className' => self::PATTERN_HEADER_CLASS, 'layout' => [ 'type' => 'flex', 'justifyContent' => 'space-between', 'verticalAlignment' => 'center' ] ],
+            ...$blocks,
+        );
+    }
+
+    /**
+     * The "Shop all" link to the catalog: a paragraph holding a standalone
+     * design-system Link with a forward arrow (mirrored in right-to-left
+     * layouts). The href is root-relative, since an inserted pattern is
+     * saved into the page and must survive a change of domain. Null when the
+     * storefront's catalog route isn't registered.
+     *
+     * @since 2.0.0
+     *
+     * @return string|null
+     */
+    private static function shopAllLink(): ?string
+    {
+        if ( ! Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ) {
+            return null;
+        }
+
+        $link = Blade::render(
+            '<x-artisanpack-link :href="$href" standalone trailing-icon="arrow-right" :navigate="false">{{ $label }}</x-artisanpack-link>',
+            [ 'href' => route( 'artisanpack.ecommerce.storefront.catalog', [], false ), 'label' => __( 'Shop all' ) ],
+        );
+
+        return self::paragraph( trim( (string) preg_replace( '/\s*\n\s*/', ' ', $link ) ), self::PATTERN_LINK_CLASS, false );
     }
 
     /**
      * A core heading block.
      *
      * @since 1.0.0
+     * @since 2.0.0 Takes the heading's class.
      *
-     * @param  string  $text   The heading.
-     * @param  int     $level  1–6.
+     * @param  string       $text   The heading.
+     * @param  int          $level  1–6.
+     * @param  string|null  $class  The heading's class; null for the templates' default.
      *
      * @return string
      */
-    private static function heading( string $text, int $level = 1 ): string
+    private static function heading( string $text, int $level = 1, ?string $class = null ): string
     {
-        $class = 1 === $level ? 'text-3xl font-bold' : 'text-2xl font-bold';
+        $class ??= 1 === $level ? 'text-3xl font-bold' : 'text-2xl font-bold';
 
         return '<!-- wp:heading ' . json_encode( [ 'level' => $level, 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
-            . '<h' . $level . ' class="wp-block-heading ' . $class . '">' . e( $text ) . '</h' . $level . ">\n"
+            . '<h' . $level . ' class="wp-block-heading ' . e( $class ) . '">' . e( $text ) . '</h' . $level . ">\n"
             . '<!-- /wp:heading -->';
     }
 
@@ -526,13 +652,23 @@ final class StorefrontTemplates
      * A core paragraph block.
      *
      * @since 1.0.0
+     * @since 2.0.0 Takes a class, and already-escaped HTML.
      *
-     * @param  string  $text  The text.
+     * @param  string       $text    The text (or HTML when `$escape` is false).
+     * @param  string|null  $class   The paragraph's class.
+     * @param  bool         $escape  Whether to escape `$text`.
      *
      * @return string
      */
-    private static function paragraph( string $text ): string
+    private static function paragraph( string $text, ?string $class = null, bool $escape = true ): string
     {
-        return "<!-- wp:paragraph -->\n<p>" . e( $text ) . "</p>\n<!-- /wp:paragraph -->";
+        $content = $escape ? e( $text ) : $text;
+
+        if ( null === $class ) {
+            return "<!-- wp:paragraph -->\n<p>" . $content . "</p>\n<!-- /wp:paragraph -->";
+        }
+
+        return '<!-- wp:paragraph ' . json_encode( [ 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<p class="' . e( $class ) . '">' . $content . "</p>\n<!-- /wp:paragraph -->";
     }
 }

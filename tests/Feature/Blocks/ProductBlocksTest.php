@@ -16,6 +16,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Reviews;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Show;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 
 /**
@@ -57,6 +58,44 @@ it( 'renders the full product component for the page\'s product', function (): v
         ->toContain( 'data-commerce-block="single-product"' )
         ->toContain( 'data-product-page="' . $this->lamp->id . '"' )
         ->toContain( 'Desk lamp' );
+} );
+
+it( 'wraps the product page in the commerce block frame without a sample notice or spacing of its own', function (): void {
+    app( StorefrontContext::class )->setProduct( $this->lamp );
+
+    $html = renderProductBlock( new SingleProductBlock() );
+
+    // The frame holds the product page and nothing else: the page itself is
+    // rebuilt with the Product page (#134).
+    expect( $html )->toStartWith( '<div class="ec-commerce-block" data-commerce-block="single-product">' )
+        ->not->toContain( 'data-commerce-sample' )
+        ->not->toContain( 'data-ecommerce-storefront-styles' )
+        ->and( substr_count( $html, 'data-product-page=' ) )->toBe( 1 );
+} );
+
+it( 'previews the newest product as a sample, framed, without counting a view', function (): void {
+    Route::post( '_test/single-product-preview', static function (): string {
+        $block = new SingleProductBlock();
+
+        return $block->render( $block->validateAttrs( [] ) );
+    } )->name( StorefrontBlock::PREVIEW_ROUTE );
+    app( 'router' )->getRoutes()->refreshNameLookups();
+
+    $views = 0;
+    addAction( 'ap.ecommerce.product.viewed', function () use ( &$views ): void {
+        $views++;
+    } );
+
+    $html = (string) $this->actingAs( makeUser() )->postJson( '_test/single-product-preview' )->assertOk()->getContent();
+
+    expect( $html )->toContain( 'data-commerce-block="single-product"' )
+        ->toContain( 'class="ec-block-notice ec-block-notice--sample" data-commerce-sample' )
+        ->toContain( 'Sample product' )
+        ->toContain( 'data-product-page="' . $this->mug->id . '"' )
+        ->and( strpos( $html, 'data-commerce-sample' ) )->toBeLessThan( strpos( $html, 'data-product-page=' ) )
+        ->and( $views )->toBe( 0 );
+
+    removeAllActions( 'ap.ecommerce.product.viewed' );
 } );
 
 it( 'renders a chosen product standalone, on any page', function ( string $class, string $marker ): void {

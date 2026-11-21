@@ -67,11 +67,13 @@ The storefront offers these patterns through `ap.visualEditor.patterns` whenever
 
 | Slug | Title | Content |
 | --- | --- | --- |
-| `artisanpack-commerce/featured-products` | Featured products | A heading and a 4-column Product Grid of 4 featured products |
-| `artisanpack-commerce/shop-by-category` | Shop by category | A heading and a 3-column Category Grid of 6 top-level categories |
+| `artisanpack-commerce/featured-products` | Featured products | A heading row (the title, and a "Shop all" link to the catalog at the row's end) above a 4-column Product Grid of 4 featured products |
+| `artisanpack-commerce/shop-by-category` | Shop by category | A heading above a 3-column Category Grid of 6 top-level categories (two to a row on small screens) |
 | `artisanpack-commerce/sale-banner-grid` | Sale banner + grid | A banner ("On sale now") above a 4-column Product Grid of 8 products on sale |
 
 A pattern you already have with the same slug is kept.
+
+The Featured products and Shop by category headings carry the `ec-pattern__title` class, which sets them at the design system's heading-xl type (it's in the storefront's stylesheet, so the page needs the storefront styles, as the commerce blocks do). The Featured products heading row is a flex group (`justifyContent: space-between`), so the editor lays it out, and the space between a pattern's blocks is the editor's block spacing. "Shop all" is a standalone design-system Link; it's left out when the storefront routes aren't registered.
 
 ## Changing the defaults
 

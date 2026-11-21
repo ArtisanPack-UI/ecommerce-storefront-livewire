@@ -3210,4 +3210,25 @@
         font-variant-numeric: tabular-nums;
         line-height: 1;
     }
+
+    /*
+     * Featured products and Shop by category patterns (#125, #126): the
+     * title is a core heading block with this class, at the heading-xl type.
+     * The heading row's layout (title at the start, "Shop all" at the end)
+     * and the space between the pattern's blocks come from the editor's
+     * layout, so the title and the "Shop all" paragraph only drop their
+     * default margins.
+     */
+    .ec-pattern__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-pattern__link {
+        margin: 0;
+    }
 }

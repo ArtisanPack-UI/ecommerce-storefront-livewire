@@ -253,6 +253,49 @@ it( 'shows the recently-viewed satellite\'s products, visible ones only, without
         ->and( $html )->toContain( 'Recently viewed' );
 } );
 
+it( 'frames related products on the design system with no outer margin', function (): void {
+    ProductRelation::query()->create( [ 'product_id' => $this->kettle->id, 'related_product_id' => $this->teapot->id, 'type' => ProductRelation::RELATED, 'position' => 0 ] );
+    app( StorefrontContext::class )->setProduct( $this->kettle );
+
+    Livewire::withoutLazyLoading();
+
+    $html = renderBlock( new RelatedProductsBlock(), [ 'columns' => 2, 'heading' => 'Pairs well with' ] );
+
+    expect( $html )->toStartWith( '<div class="ec-commerce-block" data-commerce-block="related-products">' )
+        ->toContain( 'class="ec-related"' )
+        ->toContain( 'class="ec-related__title">Pairs well with</h2>' )
+        ->toMatch( '/class="ec-related__list"\s+data-columns="2"/' )
+        ->toContain( 'data-product-card="' . $this->teapot->id . '"' )
+        ->not->toContain( 'data-commerce-sample' )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'grid', 'gap-4', 'gap-6', 'text-2xl', 'font-bold', 'mb-4', 'mt-8', 'btn', 'card', 'card-body', 'carousel', 'bg-base-200' );
+} );
+
+it( 'frames recently viewed as compact rows with no outer margin', function (): void {
+    addFilter( 'ap.ecommerceStorefrontLivewire.recentlyViewed.productIds', fn (): array => [ $this->mug->id, $this->teapot->id ] );
+
+    Livewire::withoutLazyLoading();
+
+    $html = renderBlock( new RecentlyViewedBlock(), [ 'columns' => 1, 'heading' => 'Still thinking it over?' ] );
+
+    expect( $html )->toStartWith( '<div class="ec-commerce-block" data-commerce-block="recently-viewed">' )
+        ->toContain( 'class="ec-recent"' )
+        ->toContain( '>Still thinking it over?</h2>' )
+        ->toContain( 'class="ec-recent__list" data-columns="1"' )
+        ->toContain( 'data-recently-viewed-product="' . $this->mug->id . '"' )
+        ->toContain( 'data-recently-viewed-product="' . $this->teapot->id . '"' )
+        ->not->toContain( 'data-product-card=' )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'grid', 'gap-4', 'text-2xl', 'font-bold', 'mb-4', 'card', 'card-body', 'bg-base-200' );
+} );
+
+it( 'renders an empty recently viewed block when the shopper has no history', function (): void {
+    Livewire::withoutLazyLoading();
+
+    expect( renderBlock( new RecentlyViewedBlock() ) )
+        ->toContain( 'data-commerce-block="recently-viewed"' )
+        ->not->toContain( 'ec-recent' )
+        ->not->toContain( 'Recently viewed' );
+} );
+
 it( 'renders no recently-viewed section without history', function (): void {
     Livewire::test( RecentlyViewed::class )->assertOk()->assertDontSee( 'Recently viewed' );
 } );
