@@ -36,6 +36,7 @@
     ":option: :value": ":option: :value",
     ":percent% off": ":percent% off",
     ":quantity × :name": ":quantity × :name",
+    ":rating of 5": ":rating of 5",
     ":rating out of 5": ":rating out of 5",
     ":section: :field": ":section: :field",
     ":stars: :reviews (:percent%)": ":stars: :reviews (:percent%)",
@@ -316,6 +317,7 @@
     "Licence": "Licence",
     "Licence keys": "Licence keys",
     "Line total:": "Line total:",
+    "Loading recently viewed products…": "Loading recently viewed products…",
     "Loading suggestions…": "Loading suggestions…",
     "Loading the payment form…": "Loading the payment form…",
     "Loading…": "Loading…",
@@ -712,7 +714,7 @@
     "You need an account to place an order with this store.": "You need an account to place an order with this store.",
     "You save :amount": "You save :amount",
     "You sign in with :email.": "You sign in with :email.",
-    "You'll go to :gateway to pay, then come back here to finish your order.": "You'll go to :gateway to pay, then come back here to finish your order.",
+    "You'll finish paying on :gateway's site, then come back here.": "You'll finish paying on :gateway's site, then come back here.",
     "You'll need an account to pay": "You'll need an account to pay",
     "You'll pay :total.": "You'll pay :total.",
     "You're searching faster than we can keep up. Try again in a moment.": "You're searching faster than we can keep up. Try again in a moment.",
@@ -799,6 +801,7 @@
     "shop": "shop",
     "store": "store",
     "the payment provider": "the payment provider",
+    "to": "to",
     "upsells": "upsells",
     "visual-editor is installed, but storefront pages don't use its templates (visual_editor.templates is off). Turn it on to design product, category, cart, and checkout pages in the editor; it is off by default so installing the editor doesn't change an existing store.": "visual-editor is installed, but storefront pages don't use its templates (visual_editor.templates is off). Turn it on to design product, category, cart, and checkout pages in the editor; it is off by default so installing the editor doesn't change an existing store."
 }

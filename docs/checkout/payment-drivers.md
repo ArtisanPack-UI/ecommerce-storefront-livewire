@@ -51,7 +51,7 @@ public function all(): array
 | Driver | Component | Used for |
 | --- | --- | --- |
 | `stripe-payment-element` | `artisanpack-ecommerce-storefront-payment-stripe` (`Livewire\Payment\StripePaymentElement`) | The engine's Stripe gateway. On-site card and wallet entry with Stripe's Payment Element. |
-| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. Says "You'll go to {gateway} to pay, then come back here to finish your order.", shows "Continue to {gateway}", and redirects to the session's `redirect_url`. |
+| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. A Card with an external-link icon tile, "Pay with {gateway}" and "You'll finish paying on {gateway}'s site, then come back here.", then a full-width "Continue to {gateway}" button that redirects to the session's `redirect_url`. |
 
 **Stripe Payment Element** loads Stripe.js from `https://js.stripe.com/v3` once per page and mounts the Payment Element with the session's client secret, the locale, and an appearance built from your daisyUI theme (`--color-primary`, `--color-base-100`, `--color-base-content`, `--color-error`, `--radius-field`), with the gateway's `appearance` config on top. "Pay now" calls `stripe.confirmPayment()` with `redirect: 'if_required'`, so 3-D Secure runs in the page, and methods that must redirect come back through the return route. A Stripe error shows under the form in an assertive live region. With a Content Security Policy, allow `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com`, and `connect-src https://api.stripe.com`.
 

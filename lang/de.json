@@ -36,6 +36,7 @@
     ":option: :value": ":option: :value",
     ":percent% off": ":percent % Rabatt",
     ":quantity × :name": ":quantity × :name",
+    ":rating of 5": ":rating von 5",
     ":rating out of 5": ":rating von 5",
     ":section: :field": ":section: :field",
     ":stars: :reviews (:percent%)": ":stars: :reviews (:percent %)",
@@ -316,6 +317,7 @@
     "Licence": "Lizenz",
     "Licence keys": "Lizenzschlüssel",
     "Line total:": "Zeilensumme:",
+    "Loading recently viewed products…": "Zuletzt angesehene Produkte werden geladen…",
     "Loading suggestions…": "Vorschläge werden geladen…",
     "Loading the payment form…": "Zahlungsformular wird geladen…",
     "Loading…": "Wird geladen…",
@@ -712,7 +714,7 @@
     "You need an account to place an order with this store.": "Sie benötigen ein Konto, um in diesem Shop zu bestellen.",
     "You save :amount": "Sie sparen :amount",
     "You sign in with :email.": "Sie melden sich mit :email an.",
-    "You'll go to :gateway to pay, then come back here to finish your order.": "Sie bezahlen bei :gateway und kehren dann hierher zurück, um Ihre Bestellung abzuschließen.",
+    "You'll finish paying on :gateway's site, then come back here.": "Sie schließen die Zahlung auf der Website von :gateway ab und kehren dann hierher zurück.",
     "You'll need an account to pay": "Zum Bezahlen benötigen Sie ein Konto",
     "You'll pay :total.": "Sie zahlen :total.",
     "You're searching faster than we can keep up. Try again in a moment.": "Sie suchen schneller, als wir mithalten können. Versuchen Sie es gleich noch einmal.",
@@ -799,6 +801,7 @@
     "shop": "shop",
     "store": "geschäft",
     "the payment provider": "den Zahlungsanbieter",
+    "to": "bis",
     "upsells": "upsells",
     "visual-editor is installed, but storefront pages don't use its templates (visual_editor.templates is off). Turn it on to design product, category, cart, and checkout pages in the editor; it is off by default so installing the editor doesn't change an existing store.": "visual-editor ist installiert, aber die Shopseiten nutzen seine Vorlagen nicht (visual_editor.templates ist aus). Schalten Sie es ein, um Produkt-, Kategorie-, Warenkorb- und Kassenseiten im Editor zu gestalten; es ist standardmäßig aus, damit die Installation des Editors einen bestehenden Shop nicht verändert."
 }

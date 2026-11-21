@@ -277,19 +277,45 @@ describe( 'empty state and skeleton', function (): void {
             ->assertSeeInOrder( [ 'apui-card', 'data-empty-state-card', 'apui-empty-state', 'data-cart-empty' ], false );
     } );
 
-    it( 'draws busy placeholders with a spoken loading message', function (): void {
-        $view = $this->blade( '<x-artisanpack-ec-skeleton variant="card" :count="3" />' );
+    it( 'draws product-card skeletons in a busy region hidden from screen readers, with a status beside it', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton variant="card" :count="3" />' );
 
-        $view->assertSee( 'aria-busy="true"', false )
-            ->assertSee( 'Loading…' );
+        expect( $html )
+            ->toMatch( '/<span class="apui-sr-only" role="status">Loading…<\/span>/' )
+            ->toMatch( '/<div class="ec-skeleton__shapes" data-variant="card" aria-busy="true" aria-hidden="true">/' )
+            ->and( substr_count( $html, 'class="apui-card ec-skeleton-card"' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__media' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__line' ) )->toBe( 9 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__button' ) )->toBe( 3 );
+    } );
 
-        expect( substr_count( (string) $view, 'skeleton aspect-square' ) )->toBe( 3 );
+    it( 'draws text lines with the last one shorter', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton :count="3" label="Loading reviews…" />' );
+
+        expect( $html )
+            ->toContain( 'data-skeleton="text"' )
+            ->toContain( 'Loading reviews…' )
+            ->and( substr_count( $html, 'data-shape="text"' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'data-last="data-last"' ) )->toBe( 1 );
+    } );
+
+    it( 'draws one square block for an image', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton variant="image" :count="5" />' );
+
+        expect( substr_count( $html, 'data-scope="skeleton"' ) )->toBe( 1 )
+            ->and( $html )->toContain( 'apui-skeleton ec-skeleton__image' )
+            ->toContain( 'data-shape="block"' );
     } );
 
     it( 'falls back to text lines for an unknown variant and clamps the count', function (): void {
         $view = $this->blade( '<x-artisanpack-ec-skeleton variant="bogus" :count="0" />' );
 
         $view->assertSee( 'data-skeleton="text"', false );
-        expect( substr_count( (string) $view, 'skeleton h-4' ) )->toBe( 1 );
+        expect( substr_count( (string) $view, 'data-shape="text"' ) )->toBe( 1 );
     } );
+
+    it( 'leaves no DaisyUI or Tailwind classes in the skeleton', function ( string $variant ): void {
+        expect( classTokens( (string) $this->blade( '<x-artisanpack-ec-skeleton :variant="$variant" />', [ 'variant' => $variant ] ) ) )
+            ->not->toContain( 'skeleton', 'w-full', 'h-4', 'w-2/3', 'grid-cols-2', 'aspect-square', 'sr-only' );
+    } )->with( [ 'text', 'card', 'image' ] );
 } );

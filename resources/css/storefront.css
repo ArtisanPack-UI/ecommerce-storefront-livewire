@@ -2398,4 +2398,294 @@
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
     }
+
+    /*
+     * Recently viewed (#107): compact rows, each a Card with a 64px
+     * thumbnail, the name (whose link stretches over the row) and the
+     * price, in an auto-fill grid of rows at least 240px wide and at most
+     * `data-columns` to a line.
+     */
+    .ec-recent {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-recent__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-recent__list {
+        --ec-recent-columns: 4;
+
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(max(240px, calc((100% - (var(--ec-recent-columns) - 1) * 16px) / var(--ec-recent-columns))), 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-recent__list[data-columns="1"] {
+        --ec-recent-columns: 1;
+    }
+
+    .ec-recent__list[data-columns="2"] {
+        --ec-recent-columns: 2;
+    }
+
+    .ec-recent__list[data-columns="3"] {
+        --ec-recent-columns: 3;
+    }
+
+    .ec-recent__list[data-columns="5"] {
+        --ec-recent-columns: 5;
+    }
+
+    .ec-recent__list[data-columns="6"] {
+        --ec-recent-columns: 6;
+    }
+
+    .ec-recent__item {
+        min-inline-size: 0;
+    }
+
+    .ec-recent__card {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        block-size: 100%;
+        padding: 10px;
+    }
+
+    .ec-recent__card[data-interactive]:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-recent__card:focus-within {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-recent__media {
+        display: grid;
+        flex: none;
+        place-items: center;
+        inline-size: 64px;
+        block-size: 64px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-recent__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-recent__body {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-recent__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-recent__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the row: one link per product. */
+    .ec-recent__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    /* The loading rows: a 64px block and two lines for the name and price. */
+    .ec-recent__skeleton-thumb {
+        flex: none;
+        inline-size: 64px;
+        block-size: 64px;
+        border-radius: var(--apui-radius-md);
+    }
+
+    .ec-recent__body--skeleton {
+        flex: 1;
+        gap: 10px;
+    }
+
+    .ec-recent__skeleton-line[data-length="long"] {
+        inline-size: 75%;
+    }
+
+    .ec-recent__skeleton-line[data-length="short"] {
+        inline-size: 35%;
+    }
+
+    .ec-recent__price .ec-price__amount:not([data-tone]) {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /*
+     * Price range filter (#108): the two-thumb Range, then the lowest and
+     * highest price inputs with "to" between them.
+     */
+    .ec-price-range {
+        display: grid;
+        gap: 12px;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-price-range__legend {
+        margin-block-end: 4px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-price-range__inputs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-price-range__input {
+        flex: 1 1 0;
+        min-inline-size: 0;
+    }
+
+    .ec-price-range__to {
+        flex: none;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Star rating input (#109): the stars, then "3 of 5" in label text
+     * (which follows the hovered star while the pointer is over them).
+     */
+    .ec-rating-input__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+    }
+
+    .ec-rating-input__value {
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Skeleton (#110): text lines (the last one shorter), product cards in
+     * the catalog grid, or a square image.
+     */
+    .ec-skeleton {
+        inline-size: 100%;
+    }
+
+    .ec-skeleton__shapes[data-variant="text"] {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-skeleton__line[data-last] {
+        inline-size: 66%;
+    }
+
+    .ec-skeleton__shapes[data-variant="card"] {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-skeleton__shapes[data-variant="card"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-skeleton__shapes[data-variant="card"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-skeleton__image {
+        display: block;
+        inline-size: 100%;
+        block-size: auto;
+        aspect-ratio: 1 / 1;
+    }
+
+    /*
+     * Redirect payment driver (#111): the icon tile beside the title and
+     * one line, then a full-width continue button.
+     */
+    .ec-redirect__card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-redirect__intro {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .ec-redirect__text {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-redirect__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-redirect__description {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-redirect__continue {
+        inline-size: 100%;
+    }
 }

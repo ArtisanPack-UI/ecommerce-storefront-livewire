@@ -19,14 +19,13 @@ use Illuminate\View\Component;
 /**
  * `<x-artisanpack-ec-skeleton variant="card" :count="4" />`
  *
- * A loading placeholder for lazy sections (related products, reviews).
- * livewire-ui-components has no standalone skeleton yet (spec §10, U5,
- * livewire-ui-components#124), so this composes one from daisyUI's
- * `skeleton` class. When the library ships one, this is the one file to
- * swap.
+ * A loading placeholder for lazy sections (related products, reviews),
+ * composed from the design-system Skeleton's block and text shapes in the
+ * layout of what it stands in for: text lines, product cards in the
+ * catalog grid, or a square image.
  *
- * The placeholder is `aria-busy` with a "Loading…" status for screen
- * readers; the shapes themselves are hidden from them.
+ * The shapes sit in an `aria-busy` region hidden from screen readers, with
+ * a "Loading…" status beside it.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire

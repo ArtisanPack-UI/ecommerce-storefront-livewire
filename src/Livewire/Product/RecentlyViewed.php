@@ -15,10 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product;
 
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Product;
-use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart;
-use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
-use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
-use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\Ecommerce\Pricing\DisplayPrice;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
@@ -45,9 +42,10 @@ use Throwable;
  * ```
  *
  * Only storefront-visible products whose type is installed show (of the
- * first 50 ids), up to `limit`; with none, nothing renders. The
- * section loads after the page (`#[Lazy]`), showing skeleton cards until
- * then.
+ * first 50 ids), up to `limit`, as compact rows (a thumbnail, the name and
+ * the price) in a grid at most `columns` wide; with none, nothing renders. The
+ * section loads after the page (`#[Lazy]`), showing skeleton rows of the
+ * same size until then.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -57,11 +55,6 @@ use Throwable;
 #[Lazy]
 class RecentlyViewed extends Component
 {
-    use AddsToCart;
-    use InteractsWithStorefrontCart;
-    use RateLimitsStorefront;
-    use SendsToasts;
-
     /**
      * The recently-viewed satellite's package name.
      *
@@ -101,7 +94,7 @@ class RecentlyViewed extends Component
     public int $limit = 4;
 
     /**
-     * Columns from `lg` up (1–6).
+     * The most rows side by side (1–6); each row is at least 240px wide.
      *
      * @since 1.0.0
      *
@@ -134,9 +127,10 @@ class RecentlyViewed extends Component
     }
 
     /**
-     * Skeleton cards while the section loads.
+     * Skeleton rows the size of the real ones while the section loads.
      *
      * @since 1.0.0
+     * @since 2.0.0 Compact skeleton rows in the section's grid.
      *
      * @param  array<string, mixed>  $params  The mount parameters.
      *
@@ -147,9 +141,12 @@ class RecentlyViewed extends Component
         $heading = is_string( $params['heading'] ?? null ) && '' !== trim( $params['heading'] ) ? $params['heading'] : __( 'Recently viewed' );
         $limit   = is_int( $params['limit'] ?? null ) ? $params['limit'] : $this->limit;
 
-        return view( 'ecommerce-storefront::livewire.product.related-products-placeholder', [
-            'title' => $heading,
-            'count' => max( 1, min( 4, $limit ) ),
+        $columns = is_int( $params['columns'] ?? null ) ? $params['columns'] : $this->columns;
+
+        return view( 'ecommerce-storefront::livewire.product.recently-viewed-placeholder', [
+            'title'   => $heading,
+            'count'   => max( 1, min( 12, $limit ) ),
+            'columns' => GridColumns::clamp( $columns ),
         ] );
     }
 
@@ -162,13 +159,38 @@ class RecentlyViewed extends Component
      */
     public function render(): View
     {
+        $currency = app( StorefrontCart::class )->currency();
+
         return view( 'ecommerce-storefront::livewire.product.recently-viewed', [
-            'products'  => $this->products(),
-            'currency'  => app( StorefrontCart::class )->currency(),
-            'gridClass' => GridColumns::classes( $this->columns ),
+            'rows'      => $this->products()->map( fn ( Product $product ): array => $this->row( $product, $currency ) )->all(),
+            'columns'   => $this->columns,
             'headingId' => 'ec-recently-viewed-' . $this->getId(),
             'title'     => null === $this->heading || '' === trim( $this->heading ) ? __( 'Recently viewed' ) : $this->heading,
         ] );
+    }
+
+    /**
+     * One compact row: the product card's data (through the same
+     * `productCard` filter) cut to what the row shows.
+     *
+     * @since 2.0.0
+     *
+     * @param  Product  $product   The product.
+     * @param  string   $currency  The shopper's currency.
+     *
+     * @return array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: DisplayPrice|null}
+     */
+    protected function row( Product $product, string $currency ): array
+    {
+        $card = ( new ProductCard( $product, $currency, quickAdd: false ) )->card;
+
+        return [
+            'id'    => $card['id'],
+            'name'  => $card['name'],
+            'url'   => $card['url'],
+            'image' => $card['image'],
+            'price' => $card['price'],
+        ];
     }
 
     /**

@@ -212,7 +212,28 @@ it( 'shows where focus is in the rating input and the chosen rating in words', f
         ->click( '[data-review-open]' )
         ->keys( '#ec-review-form-' . $product->id . '-heading', 'Tab' )
         ->assertScript( 'document.activeElement?.closest( "[data-rating-input]" ) !== null' )
-        ->assertScript( 'getComputedStyle( document.activeElement.closest( ".rating" ) ).outlineStyle !== "none"' )
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( "[data-part=item]" ) ).boxShadow !== "none"' )
         ->keys( '#ec-review-form-' . $product->id . '-rating-1', 'ArrowRight' )
-        ->assertSeeIn( '[data-rating-input-value]', '2 out of 5' );
+        ->assertSeeIn( '[data-rating-input-value]', '2 of 5' )
+        ->assertScript( 'document.activeElement?.getAttribute( "aria-label" )', '2 stars' );
+} );
+
+it( 'keeps the price range thumbs and inputs in step', function (): void {
+    $dear  = makeProduct( 50000, [ 'name' => 'Dear vase' ] );
+    $end   = '[data-filters-sidebar] [data-price-slider][data-thumb="end"]';
+    $start = '[data-filters-sidebar] [data-price-slider][data-thumb="start"]';
+
+    $page = visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
+        ->assertPresent( '[data-product-card="' . $dear->id . '"]' )
+        ->assertAttribute( $end, 'aria-valuetext', '$500.00' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-max]" ).value', '500.00' );
+
+    $page->type( '[data-filters-sidebar] [data-price-max]', '50' )
+        ->keys( '[data-filters-sidebar] [data-price-max]', 'Tab' )
+        ->assertScript( 'document.querySelector( ' . json_encode( $end ) . ' ).value', '5000' )
+        ->assertAttribute( $end, 'aria-valuetext', '$50.00' )
+        ->assertNotPresent( '[data-product-card="' . $dear->id . '"]' );
+
+    $page->keys( $start, 'ArrowRight' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-min]" ).value === ( ( Number( document.querySelector( ' . json_encode( $start ) . ' ).min ) + 100 ) / 100 ).toFixed( 2 )' );
 } );

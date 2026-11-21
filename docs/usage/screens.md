@@ -120,7 +120,7 @@ Who may review and moderation are engine settings.
 
 Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. Below 768px the cards scroll sideways, two to a screen, with "Previous" and "Next" buttons; from 768px they are a grid of `columns` (4) from 1024px, two columns below that.
 
-Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit`.
+Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit` as compact rows (a 64px thumbnail, the name and the price) in a grid of rows at least 240px wide, at most `columns` (4) to a line. It renders nothing when there is nothing to show.
 
 ## Cart
 

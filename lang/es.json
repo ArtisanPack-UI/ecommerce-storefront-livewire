@@ -36,6 +36,7 @@
     ":option: :value": ":option: :value",
     ":percent% off": ":percent % de descuento",
     ":quantity × :name": ":quantity × :name",
+    ":rating of 5": ":rating de 5",
     ":rating out of 5": ":rating de 5",
     ":section: :field": ":section: :field",
     ":stars: :reviews (:percent%)": ":stars: :reviews (:percent%)",
@@ -316,6 +317,7 @@
     "Licence": "Licencia",
     "Licence keys": "Claves de licencia",
     "Line total:": "Total de la línea:",
+    "Loading recently viewed products…": "Cargando los productos vistos recientemente…",
     "Loading suggestions…": "Cargando sugerencias…",
     "Loading the payment form…": "Cargando el formulario de pago…",
     "Loading…": "Cargando…",
@@ -712,7 +714,7 @@
     "You need an account to place an order with this store.": "Necesitas una cuenta para hacer un pedido en esta tienda.",
     "You save :amount": "Ahorras :amount",
     "You sign in with :email.": "Inicias sesión con :email.",
-    "You'll go to :gateway to pay, then come back here to finish your order.": "Irás a :gateway para pagar y después volverás aquí para completar tu pedido.",
+    "You'll finish paying on :gateway's site, then come back here.": "Terminarás de pagar en el sitio de :gateway y después volverás aquí.",
     "You'll need an account to pay": "Necesitarás una cuenta para pagar",
     "You'll pay :total.": "Pagarás :total.",
     "You're searching faster than we can keep up. Try again in a moment.": "Estás buscando más rápido de lo que podemos responder. Inténtalo de nuevo en un momento.",
@@ -799,6 +801,7 @@
     "shop": "tienda",
     "store": "comercio",
     "the payment provider": "el proveedor de pago",
+    "to": "a",
     "upsells": "ventas adicionales",
     "visual-editor is installed, but storefront pages don't use its templates (visual_editor.templates is off). Turn it on to design product, category, cart, and checkout pages in the editor; it is off by default so installing the editor doesn't change an existing store.": "visual-editor está instalado, pero las páginas de la tienda no usan sus plantillas (visual_editor.templates está desactivado). Actívalo para diseñar en el editor las páginas de producto, categoría, carrito y pago; está desactivado por defecto para que instalar el editor no cambie una tienda existente."
 }
