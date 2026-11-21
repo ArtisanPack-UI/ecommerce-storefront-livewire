@@ -7,8 +7,9 @@
 
     Expects `$formId`, `$canAdd` (bool), and optionally `$blockedReason`
     (why the button is disabled), `$showQuantity` (default: the form's
-    own), and `$buttonLabel` (default: the form's `buttonText`, else "Add
-    to cart").
+    own), `$buttonLabel` (default: the form's `buttonText`, else "Add
+    to cart"), and `$priceOnButton` (default true; false when the form shows
+    the line price itself, as the bundled form's total does).
 
     The button is described by the blocked reason and by the form-level
     `variant`, `quantities`, or `options` error (rendered by the form with
@@ -28,7 +29,7 @@
 @php
     $ecommerceShowQuantity = $showQuantity ?? true;
     $ecommerceLiveQuantity = $canAdd && $ecommerceShowQuantity && $this->showsLinePrice();
-    $ecommerceLinePrice    = $canAdd ? $this->linePrice() : null;
+    $ecommerceLinePrice    = $canAdd && ( $priceOnButton ?? true ) ? $this->linePrice() : null;
     $ecommerceRowActions   = $this->addToCartActions();
     $ecommerceDescribedBy  = array_values( array_filter( [
         ! $canAdd && ! empty( $blockedReason ) ? $formId . '-blocked' : null,

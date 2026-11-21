@@ -99,17 +99,17 @@ Opening the page records a view through the engine (`ap.ecommerce.product.viewed
 | `simple` | Quantity and "Add to cart". Out of stock or unpriced disables the button and says why. |
 | `variable` | The variation picker: one swatch or pill group per attribute. An option no available variant offers with the earlier choices is disabled, with the reason ("Out of stock" or "Not available with your other choices"). A choice that rules out a later one clears it and says so. The matched variant goes in the query string as `?variant=`. An attribute with more values than `product.variation_select_after` (8) is a select instead of swatches. "Add to cart" can be pressed before every choice is made: it then shows a field error on the first group still missing a choice ("Choose a size to add this to your cart.") and moves focus there. It is disabled only when nothing can be bought (no variants, a combination that doesn't exist, or a sold-out variant). |
 | `grouped` | A table of the child products, each with its price and a quantity; one that can't be bought shows its stock badge and a dash. A running "2 items · $56.00" line sits above "Add selected to cart", which adds every product with a quantity as its own line. A refused product shows the reason next to its quantity; the others are still added. |
-| `bundled` | What the bundle includes and how many of each, then quantity and "Add to cart". The bundle is one line at its own price. |
-| `digital` | What the shopper gets: files, download limit and expiry, and a licence key when the product issues them. When the product offers licence types, the shopper picks one. |
-| Any other | A type with no registered form whose engine type implements `ProvidesStorefrontOptions` gets a generic form built from its fields. |
+| `bundled` | "In this set": each member as a checked, disabled checkbox marked "Included" ("2 × Brush" when the bundle holds more than one). Then the total for the quantity, with a "You save $26.00" badge when the members cost more on their own, and quantity and "Add set to cart". The bundle is one line at its own price. |
+| `digital` | When the product offers licence types, the shopper picks one from radio cards. Then what the shopper gets beside a download icon: files, download limit and expiry, and a licence key when the product issues them. "Add to cart" shows the line price. |
+| Any other | A type with no registered form whose engine type implements `ProvidesStorefrontOptions` gets a generic form built from its fields. A text field with a `max:N` rule gets a `maxlength` and a "12 of 20 characters" count under it. |
 
 ### Reviews
 
 Rendered under `#reviews`:
 
-- A histogram of approved reviews by rating. Each row filters the list to that rating (`?review-rating=`).
-- Approved reviews, newest first, `reviews.per_page` (5) a page (`?reviews-page=`), with a "Verified purchase" badge.
-- **Write a review** when the engine's `ReviewService::eligibility()` allows it, otherwise the reason. Guests also give a name and email.
+- A summary card beside the list from 1024px (stacked below it): the average, the stars, the count, and a 5★ to 1★ breakdown of approved reviews. Each breakdown row filters the list to that rating (`?review-rating=`).
+- Approved reviews, newest first, `reviews.per_page` (5) a page (`?reviews-page=`): the stars and title, the text, then the name, a "Verified purchase" badge, and the date. With no reviews, or none with the chosen rating, an empty state says so.
+- **Write a review** (beside the heading) when the engine's `ReviewService::eligibility()` allows it, otherwise the reason under the heading. The form opens above the list. Guests also give a name and email.
 - A signed-in shopper the engine can't link to a customer record (an unverified account whose email belongs to a guest customer, or a user with a non-numeric id) can't review. The reason is `Reviews::CUSTOMER_UNAVAILABLE`, shown as "Verify your email address to review this product." or "You can't review this product.", instead of the review being posted anonymously.
 
 The title and text are stored as plain text, with control characters removed, and printed escaped, so "Love it <3" is kept whole.
@@ -118,7 +118,7 @@ Who may review and moderation are engine settings.
 
 ### Related products
 
-Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. On small screens the cards scroll sideways with "Previous" and "Next" buttons.
+Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. Below 768px the cards scroll sideways, two to a screen, with "Previous" and "Next" buttons; from 768px they are a grid of `columns` (4) from 1024px, two columns below that.
 
 Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit`.
 

@@ -31,6 +31,42 @@ it( 'renders the type\'s fields from its option schema', function (): void {
         ->assertSet( 'options.engraving.font', 'serif' );
 } );
 
+it( 'builds the fields from design-system controls, with no utility classes', function (): void {
+    $html = Livewire::test( OptionsForm::class, [ 'product' => $this->product ] )
+        ->assertSeeHtml( 'class="ec-purchase-form" data-purchase-form="options"' )
+        ->assertSeeHtml( 'class="ec-option-info"' )
+        ->assertSeeHtml( 'apui-checkbox' )
+        ->html();
+
+    expect( $html )->not->toContain( 'text-sm' )
+        ->not->toContain( 'text-base-content' )
+        ->not->toContain( '--color-error' );
+} );
+
+it( 'counts the characters of a text field with a max rule', function (): void {
+    $id = 'ec-product-' . $this->product->id . '-option-engraving-text';
+
+    Livewire::test( OptionsForm::class, [ 'product' => $this->product ] )
+        ->assertSee( '0 of 20 characters' )
+        ->assertSeeHtml( 'id="' . $id . '-count"' )
+        ->assertSeeHtml( 'maxlength="20"' )
+        ->assertSeeHtml( 'aria-describedby="' . $id . '-count"' )
+        ->assertSeeHtml( 'data-character-count' )
+        ->set( 'options.engraving.text', 'Sam\'s coffee' )
+        ->assertSee( '12 of 20 characters' );
+} );
+
+it( 'shows the options error with the alert icon', function (): void {
+    $group = Product::factory()->grouped()->create();
+    $mug   = makeProduct( 900, [ 'name' => 'Mug' ] );
+    ProductChild::factory()->create( [ 'parent_product_id' => $group->id, 'child_product_id' => $mug->id ] );
+
+    Livewire::test( OptionsForm::class, [ 'product' => $group ] )
+        ->call( 'addToCart' )
+        ->assertSeeHtml( 'class="ec-purchase-form__error" data-form-error' )
+        ->assertSee( 'Choose a quantity for at least one product.' );
+} );
+
 it( 'is what the product page shows for a type with options and no registered form', function (): void {
     Livewire::test( Show::class, [ 'product' => $this->product ] )->assertSeeLivewire( OptionsForm::class );
 } );
