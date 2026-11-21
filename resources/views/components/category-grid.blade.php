@@ -1,5 +1,15 @@
 {{--
-    Category tiles. See CategoryGrid.
+    Category tiles (#115). See CategoryGrid.
+
+    An optional heading over a grid of up to `columns` tiles to a row
+    (`data-columns`; two to a row on small screens). Each tile is a
+    design-system Card (written out, so the name can be a heading with one
+    link): the 4:3 image on the sunken surface (a grid icon when the
+    category has none), then the name, the product count and an arrow that
+    points forward in either direction. The name's link stretches over the
+    tile, so the whole tile is clickable while there is one link per
+    category; hover raises its edge and focus inside draws the ring around
+    it.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -7,51 +17,54 @@
     @since      1.0.0
 --}}
 @if ( [] !== $tiles )
-    <section {{ $attributes->class( [ 'flex flex-col gap-4' ] ) }} @if ( null !== $heading ) aria-labelledby="{{ $headingId }}" @else aria-label="{{ __( 'Categories' ) }}" @endif data-category-grid>
+    <section {{ $attributes->class( [ 'ec-category-grid' ] ) }} @if ( null !== $heading ) aria-labelledby="{{ $headingId }}" @else aria-label="{{ __( 'Categories' ) }}" @endif data-category-grid>
         @if ( null !== $heading )
-            <h2 id="{{ $headingId }}" class="text-2xl font-bold">{{ $heading }}</h2>
+            <h2 id="{{ $headingId }}" class="ec-category-grid__title">{{ $heading }}</h2>
         @endif
 
-        <ul role="list" class="grid gap-4 {{ $gridClass }}">
+        <ul role="list" class="ec-category-grid__list" data-columns="{{ $columns }}">
             @foreach ( $tiles as $tile )
-                <li data-category-tile="{{ $tile['id'] }}">
-                    <x-artisanpack-card class="relative h-full border border-base-content/10 transition-shadow hover:shadow-md focus-within:shadow-md">
+                <li class="ec-category-grid__item" data-category-tile="{{ $tile['id'] }}">
+                    <article class="apui-card ec-category-tile" data-surface="default" @if ( null !== $tile['url'] ) data-interactive @endif>
                         @if ( $showImages )
-                            <x-slot:media class="aspect-[4/3] bg-base-200">
+                            <div class="ec-category-tile__media" data-scope="card" data-part="media" aria-hidden="true">
                                 @if ( null !== $tile['image'] )
                                     @php( $ecommerceSize = \ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::dimensions( $tile['image'], 800, 600 ) )
                                     <img
                                         src="{{ $tile['image']['url'] }}"
-                                        @if ( null !== $tile['image']['srcset'] ) srcset="{{ $tile['image']['srcset'] }}" sizes="(min-width: 1024px) 33vw, 50vw" @endif
+                                        @if ( null !== $tile['image']['srcset'] ) srcset="{{ $tile['image']['srcset'] }}" sizes="(min-width: 1024px) {{ (int) ceil( 100 / $columns ) }}vw, (min-width: 640px) 33vw, 50vw" @endif
                                         width="{{ $ecommerceSize['width'] }}"
                                         height="{{ $ecommerceSize['height'] }}"
                                         alt=""
                                         loading="lazy"
                                         decoding="async"
-                                        class="h-full w-full object-cover"
                                     >
                                 @else
-                                    <div class="flex h-full w-full items-center justify-center" aria-hidden="true">
-                                        <x-artisanpack-icon name="o-squares-2x2" class="h-10 w-10 opacity-30" />
-                                    </div>
+                                    <x-artisanpack-icon name="layout-grid" class="ec-category-tile__placeholder" />
                                 @endif
-                            </x-slot:media>
+                            </div>
                         @endif
 
-                        <div class="flex flex-col gap-1">
-                            <h3 class="font-semibold">
-                                @if ( null !== $tile['url'] )
-                                    <a href="{{ $tile['url'] }}" class="link-hover after:absolute after:inset-0 after:content-['']">{{ $tile['name'] }}</a>
-                                @else
-                                    {{ $tile['name'] }}
-                                @endif
-                            </h3>
+                        <div class="ec-category-tile__body">
+                            <div class="ec-category-tile__text">
+                                <h3 class="ec-category-tile__name">
+                                    @if ( null !== $tile['url'] )
+                                        <a href="{{ $tile['url'] }}">{{ $tile['name'] }}</a>
+                                    @else
+                                        {{ $tile['name'] }}
+                                    @endif
+                                </h3>
 
-                            @if ( $showCounts )
-                                <p class="text-sm text-base-content/70" data-category-count>{{ trans_choice( ':count product|:count products', $tile['count'], [ 'count' => $tile['count'] ] ) }}</p>
+                                @if ( $showCounts )
+                                    <p class="ec-category-tile__count" data-category-count>{{ trans_choice( ':count product|:count products', $tile['count'], [ 'count' => $tile['count'] ] ) }}</p>
+                                @endif
+                            </div>
+
+                            @if ( null !== $tile['url'] )
+                                <x-artisanpack-icon name="arrow-right" class="ec-category-tile__arrow" />
                             @endif
                         </div>
-                    </x-artisanpack-card>
+                    </article>
                 </li>
             @endforeach
         </ul>

@@ -44,7 +44,7 @@ The storefront composes its screens from a few store-specific Blade components b
 | --- | --- | --- |
 | `<x-artisanpack-ec-sf-product-card>` | `product`, `currency`, `price`, `stock` (pass the last three to skip their lookups), `quick-add` (default `true`), `heading-level` (default `3`), `show-price`, `show-rating` | The card every listing uses: image, name linked to the product page, price, rating, and stock. For a simple product that can be bought, an "Add to cart" button. |
 | `<x-artisanpack-ec-gallery>` | `images` (from `ProductImages::gallery( $product )`), `name`, `active` (index), `scope`, `thumbnails` (`bottom`, `start`, `end`, `none`), `zoom` (default `true`) | The product gallery: main image, thumbnails, zoom, and a lightbox (a native `<dialog>`) with previous and next |
-| `<x-artisanpack-ec-category-grid>` | `parent` (id or slug; null for the top level), `limit` (1 to 24, default 6), `columns` (1 to 6, default 3), `show-counts`, `show-images`, `heading` | Category tiles with images and product counts (sub-categories included) |
+| `<x-artisanpack-ec-category-grid>` | `parent` (id or slug; null for the top level), `limit` (1 to 24, default 6), `columns` (1 to 6, default 3: the most tiles to a row from 1024px), `show-counts`, `show-images`, `heading` | Category tiles with images and product counts (sub-categories included) |
 
 ```blade
 @php( $products = \ArtisanPackUI\Ecommerce\Models\Product::query()->storefrontVisible()->with( \ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard::relations() )->limit( 4 )->get() )

@@ -57,13 +57,13 @@ A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`
 
 ### Category Grid (`artisanpack-commerce/category-grid`)
 
-Category tiles with images and product counts. Renders `<x-artisanpack-ec-category-grid>`.
+Category tiles with images and product counts. Renders `<x-artisanpack-ec-category-grid>`: each tile is a Card with a 4:3 image, the name (one link, stretched over the tile), the product count and an arrow.
 
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `parent` | string | `''` | Parent category slug; shows its sub-categories. Empty shows the top-level categories. |
 | `limit` | number | `6` | 1 to 24 |
-| `columns` | number | `3` | 1 to 6 |
+| `columns` | number | `3` | 1 to 6: the most tiles to a row from 1024px (two to a row on small screens, three for 4–6 columns from 640px) |
 | `showCounts` | boolean | `true` | |
 | `showImages` | boolean | `true` | |
 | `heading` | string | `''` | |
@@ -139,7 +139,7 @@ The product's purchase form (the one registered for its type in `ProductFormRegi
 | `showQuantity` | boolean | `true` | |
 | `buttonText` | string | `''` | Empty shows "Add to cart". Cut to 60 characters. |
 
-When the product's type has no purchase form, the block shows "This product can't be purchased online".
+When the product's type has no purchase form, the block shows a neutral alert, "This product can't be purchased online".
 
 ### Reviews (`artisanpack-commerce/product-reviews`)
 
@@ -161,7 +161,7 @@ The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells. R
 | `showCrossSells` | boolean | `true` |
 | `showCoupon` | boolean | `true` |
 
-In an editor preview it shows a static cart with the two newest products that have a price, instead of the editor's own cart. With no such product, the preview says to add one.
+In an editor preview it shows a static cart with the two newest products that have a price, instead of the editor's own cart: a dashed "Sample cart" notice, the lines in a Card beside an order summary Card (subtotal, shipping "Calculated at checkout", a disabled coupon field and "Checkout"), and a note where the cross-sells go. Nothing in it is saved. With no such product, the preview says to add one.
 
 ### Checkout Steps (`artisanpack-commerce/checkout-steps`)
 
@@ -171,7 +171,7 @@ The checkout. Renders `artisanpack-ecommerce-storefront-checkout`.
 | --- | --- | --- | --- |
 | `layout` | string | `store` | `store` (the store's checkout layout setting), `multi_step`, or `single_page` |
 
-In an editor preview it shows the checkout steps in the chosen layout, without a cart. See [Checkout Layouts](Checkout-Layouts).
+In an editor preview it shows the checkout steps in the chosen layout, without a cart: multi-step shows the Steps with the first one current over that step's Card; single page shows one Card per step, the first open and the rest muted. See [Checkout Layouts](Checkout-Layouts).
 
 ## Removing or adding blocks
 

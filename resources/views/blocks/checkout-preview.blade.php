@@ -1,6 +1,14 @@
 {{--
-    The Checkout Steps block's editor preview: the steps in the chosen
-    layout, without a cart. See Blocks\CheckoutStepsBlock.
+    The Checkout Steps block's editor preview (#116): the steps in the
+    chosen layout, without a cart. See Blocks\CheckoutStepsBlock.
+
+    The commerce block frame's dashed notice (#91: a soft info badge naming
+    the layout and one line of help), then:
+
+    - multi-step: the design-system Steps with the first step current, over
+      a Card for that step holding skeletons of a field and a button;
+    - single page: one Card per step, a numbered marker beside its title;
+      the first one open, the rest on the sunken surface in muted text.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -9,30 +17,42 @@
 --}}
 @php
     use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
+
+    $ecommerceSinglePage = CheckoutLayout::SINGLE_PAGE === $layout;
 @endphp
-<div class="flex flex-col gap-4" data-checkout-preview="{{ $layout }}">
-    <div class="flex flex-col items-start gap-1 rounded-box border border-dashed border-base-content/30 p-3 text-sm" data-commerce-sample>
-        <span class="badge badge-neutral badge-sm">
-            {{ CheckoutLayout::SINGLE_PAGE === $layout ? __( 'Single page' ) : __( 'Multi-step' ) }}
-        </span>
-        <span>{{ __( 'Shoppers check out their own cart here.' ) }}</span>
+<div class="ec-checkout-preview" data-checkout-preview="{{ $layout }}">
+    <div class="ec-block-notice ec-block-notice--sample" data-commerce-sample>
+        <x-artisanpack-badge color="info">{{ $ecommerceSinglePage ? __( 'Single page' ) : __( 'Multi-step' ) }}</x-artisanpack-badge>
+        <p class="ec-block-notice__message">{{ __( 'Shoppers check out their own cart here.' ) }}</p>
     </div>
 
-    @if ( CheckoutLayout::SINGLE_PAGE === $layout )
-        @foreach ( $steps as $index => $step )
-            <section class="rounded-box border border-base-content/10 p-4 {{ 0 === $index ? '' : 'opacity-60' }}" data-checkout-preview-step="{{ $step['key'] }}">
-                <p class="font-semibold">{{ $index + 1 }}. {{ $step['label'] }}</p>
-            </section>
-        @endforeach
-    @else
-        <ol class="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="{{ __( 'Checkout steps' ) }}">
+    @if ( $ecommerceSinglePage )
+        <ol role="list" class="ec-checkout-preview__sections" aria-label="{{ __( 'Checkout steps' ) }}">
             @foreach ( $steps as $index => $step )
-                <li class="{{ 0 === $index ? 'font-semibold' : 'text-base-content/60' }}" data-checkout-preview-step="{{ $step['key'] }}">{{ $index + 1 }}. {{ $step['label'] }}</li>
+                <li data-checkout-preview-step="{{ $step['key'] }}" @if ( 0 === $index ) aria-current="step" @endif>
+                    <x-artisanpack-card :surface="0 === $index ? 'default' : 'sunken'" class="ec-checkout-preview__section" :data-upcoming="0 !== $index">
+                        <p class="ec-checkout-preview__section-title">
+                            <span class="ec-checkout-preview__marker" aria-hidden="true">{{ $index + 1 }}</span>
+                            <span>{{ $step['label'] }}</span>
+                        </p>
+                    </x-artisanpack-card>
+                </li>
             @endforeach
         </ol>
+    @else
+        <x-artisanpack-steps :value="1" :label="__( 'Checkout steps' )" class="ec-checkout-preview__steps">
+            @foreach ( $steps as $step )
+                <x-artisanpack-step :title="$step['label']" data-checkout-preview-step="{{ $step['key'] }}" />
+            @endforeach
+        </x-artisanpack-steps>
 
-        <section class="rounded-box border border-base-content/10 p-4">
-            <p class="font-semibold">{{ $steps[0]['label'] ?? '' }}</p>
-        </section>
+        @if ( [] !== $steps )
+            <x-artisanpack-card class="ec-checkout-preview__current" :title="$steps[0]['label']">
+                <div class="ec-checkout-preview__placeholder" aria-hidden="true">
+                    <x-artisanpack-skeleton class="ec-checkout-preview__field" />
+                    <x-artisanpack-skeleton class="ec-checkout-preview__button" />
+                </div>
+            </x-artisanpack-card>
+        @endif
     @endif
 </div>

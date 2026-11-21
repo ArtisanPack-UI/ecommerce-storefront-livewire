@@ -91,3 +91,39 @@ it( 'counts every tile in one query, however many categories there are', functio
 
     expect( pivotQueries( static fn (): string => Blade::render( '<x-artisanpack-ec-category-grid :limit="24" />' ) ) )->toBe( 1 );
 } );
+
+it( 'tiles each category as a Card with one link, its count and an arrow', function (): void {
+    makeProduct( 1000, [ 'name' => 'Kettle' ] )->categories()->attach( $this->kitchen->id );
+
+    $html = Blade::render( '<x-artisanpack-ec-category-grid heading="Shop by category" />' );
+
+    preg_match( '#data-category-tile="' . $this->kitchen->id . '">(.*?)</li>#s', $html, $tile );
+
+    expect( $html )->toMatch( '#<section class="ec-category-grid"\s+aria-labelledby="(ec-category-grid-[a-z0-9]+)"[^>]*>\s*<h2 id="\1" class="ec-category-grid__title">Shop by category</h2>#' )
+        ->and( $tile[1] ?? '' )->toMatch( '#<article class="apui-card ec-category-tile" data-surface="default"\s+data-interactive#' )
+        ->toContain( 'class="ec-category-tile__media" data-scope="card" data-part="media" aria-hidden="true"' )
+        ->toMatch( '#<h3 class="ec-category-tile__name">\s*<a href="[^"]+/kitchen">Kitchen</a>#' )
+        ->toContain( '1 product' )
+        ->toMatch( '#apui-icon[^"]*ec-category-tile__arrow"[^>]*data-mirror[^>]*aria-hidden="true"#s' )
+        ->and( substr_count( $tile[1] ?? '', '<a ' ) )->toBe( 1 );
+} );
+
+it( 'shows the grid icon on the sunken surface for a category without an image', function (): void {
+    expect( Blade::render( '<x-artisanpack-ec-category-grid />' ) )
+        ->toMatch( '#ec-category-tile__media[^>]*>\s*<span[^>]*apui-icon ec-category-tile__placeholder#s' );
+} );
+
+it( 'lays the grid out by data-columns, clamped to 1–6', function ( int $columns, int $expected ): void {
+    expect( Blade::render( '<x-artisanpack-ec-category-grid :columns="$columns" />', [ 'columns' => $columns ] ) )
+        ->toContain( 'class="ec-category-grid__list" data-columns="' . $expected . '"' );
+} )->with( [
+    'default'  => [ 3, 3 ],
+    'one'      => [ 1, 1 ],
+    'too few'  => [ 0, 1 ],
+    'too many' => [ 9, 6 ],
+] );
+
+it( 'leaves no DaisyUI or Tailwind classes', function (): void {
+    expect( classTokens( Blade::render( '<x-artisanpack-ec-category-grid heading="Shop" />' ) ) )
+        ->not->toContain( 'flex', 'flex-col', 'gap-4', 'grid', 'grid-cols-2', 'lg:grid-cols-3', 'text-2xl', 'font-bold', 'link-hover', 'bg-base-200', 'aspect-[4/3]', 'text-base-content/70', 'border-base-content/10', 'relative', 'h-full' );
+} );

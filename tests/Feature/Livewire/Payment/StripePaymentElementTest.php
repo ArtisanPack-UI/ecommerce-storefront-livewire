@@ -77,6 +77,60 @@ it( 'renders the Payment Element mount point, the pay button, and its script', f
         ] );
 } );
 
+it( 'lays the form out in a Card with the reassurance line and a full-width pay button', function (): void {
+    $html = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->html();
+
+    preg_match( '#<button[^>]*data-stripe-pay[^>]*>#s', $html, $button );
+
+    expect( $html )->toContain( 'apui-card ec-stripe__card' )
+        ->toContain( 'class="ec-stripe__reassurance"' )
+        ->toContain( 'Your card details go straight to Stripe. This store never sees or stores them.' )
+        ->toMatch( '#ec-stripe__reassurance">\s*<span[^>]*apui-icon[^>]*aria-hidden="true"#' )
+        ->and( $button[0] ?? '' )->toContain( 'ec-stripe__pay' )
+        ->toContain( 'disabled' )
+        ->toContain( 'data-color="primary"' );
+} );
+
+it( 'loads with field skeletons under the glass Loading overlay', function (): void {
+    $html = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->html();
+
+    preg_match( '#<div class="ec-stripe__loading" data-stripe-loading>(.*?)<div class="ec-stripe__element"#s', $html, $loading );
+
+    expect( $loading[1] ?? '' )->not->toBe( '' )
+        ->and( substr_count( $loading[1], 'apui-skeleton' ) )->toBe( 3 )
+        ->and( $loading[1] )->toContain( 'class="ec-stripe__skeletons" aria-hidden="true"' )
+        ->toMatch( '#<span[^>]*apui-loading[^>]*role="status"[^>]*data-overlay#s' )
+        ->toContain( 'Loading the payment form…' )
+        ->and( $html )->toContain( 'class="ec-stripe__field" data-loading' );
+} );
+
+it( 'builds Stripe\'s appearance from the design-system tokens, not DaisyUI', function (): void {
+    $script = implode( "\n", (array) ( Livewire::test( StripePaymentElement::class, stripeDriverProps() )->effects['scripts'] ?? [] ) );
+
+    expect( $script )->toContain( '--apui-color-primary' )
+        ->toContain( '--apui-surface-default' )
+        ->toContain( '--apui-text-default' )
+        ->toContain( '--apui-color-error-text' )
+        ->toContain( '--apui-radius-field' )
+        ->toContain( '--apui-border-default' )
+        ->toContain( '--apui-focus-ring-color' )
+        ->toContain( "'.Input:focus'" )
+        ->toContain( '0 0 0 ${ spread }px ${ ring }' )
+        ->toContain( 'px solid transparent`' )
+        ->not->toContain( "outline: 'none'" )
+        ->toContain( '$wire.__instance?.addCleanup?.( teardown )' )
+        ->not->toContain( 'calc(${' )
+        ->toContain( 'elements.update( { appearance: appearance() } )' )
+        ->not->toContain( '--color-primary' )
+        ->not->toContain( '--color-base-100' )
+        ->not->toContain( '--radius-field\'' );
+} );
+
+it( 'leaves no DaisyUI or Tailwind classes', function ( array $config ): void {
+    expect( classTokens( Livewire::test( StripePaymentElement::class, stripeDriverProps( $config ) )->html() ) )
+        ->not->toContain( 'flex', 'flex-col', 'gap-3', 'text-sm', 'text-xs', 'text-base-content/70', 'empty:hidden' );
+} )->with( [ 'available' => [ [] ], 'unavailable' => [ [ 'publishable_key' => '' ] ] ] );
+
 it( 'says the method isn\'t available without a publishable key or client secret', function ( array $config ): void {
     $component = Livewire::test( StripePaymentElement::class, stripeDriverProps( $config ) )
         ->assertSeeHtml( 'data-payment-unavailable' )
