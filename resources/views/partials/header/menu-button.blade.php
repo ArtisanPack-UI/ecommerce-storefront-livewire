@@ -1,8 +1,9 @@
 {{--
     The header's menu button (#129): a ghost icon-only Button before the
     store's mark, below 768px, that opens the store navigation drawer
-    (`partials.header.menu`, through `ecommerce-menu-open`). Focus comes back
-    to it when the drawer closes (`ecommerce-menu-closed`).
+    (`partials.header.menu`, through `ecommerce-menu-open`); it controls
+    the drawer's dialog (`ecommerce-storefront-menu-content`). Focus comes
+    back to it when the drawer closes (`ecommerce-menu-closed`).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -18,7 +19,7 @@
         leading-icon="menu"
         :aria-label="__( 'Menu' )"
         aria-haspopup="dialog"
-        aria-controls="ecommerce-storefront-menu"
+        aria-controls="ecommerce-storefront-menu-content"
         x-ref="menuButton"
         x-on:click="$dispatch( 'ecommerce-menu-open' )"
         data-storefront-menu-open

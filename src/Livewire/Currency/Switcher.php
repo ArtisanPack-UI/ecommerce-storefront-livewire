@@ -82,7 +82,7 @@ class Switcher extends Component
     /**
      * Where the switcher sits (`header`, `footer`, …): the header's menu is
      * `ecommerce-currency-switcher`, any other's
-     * `ecommerce-currency-switcher-{placement}`.
+     * `ecommerce-currency-switcher-{placement}` (see {@see self::menuId()}).
      *
      * @since 2.0.0
      *
@@ -193,8 +193,34 @@ class Switcher extends Component
                 'checked'  => $code === $this->currency,
             ], $enabled ),
             'show'   => count( $enabled ) > 1,
-            'menuId' => 'ecommerce-currency-switcher' . ( 'header' === $this->placement ? '' : '-' . ( preg_replace( '/[^a-z0-9_-]/i', '', $this->placement ) ?: 'other' ) ),
+            'menuId' => $this->menuId(),
         ] );
+    }
+
+    /**
+     * The menu's id: `ecommerce-currency-switcher` in the header, else
+     * `ecommerce-currency-switcher-{placement}`. A placement with characters
+     * an id can't hold is stripped to the safe ones and given a short hash
+     * of the original, so two placements never share an id (`footer.left`
+     * and `footerleft` differ).
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    protected function menuId(): string
+    {
+        if ( 'header' === $this->placement ) {
+            return 'ecommerce-currency-switcher';
+        }
+
+        $safe = (string) preg_replace( '/[^a-z0-9_-]/i', '', $this->placement );
+
+        if ( '' === $safe || $safe !== $this->placement ) {
+            $safe = ( '' === $safe ? 'other' : $safe ) . '-' . substr( hash( 'sha256', $this->placement ), 0, 8 );
+        }
+
+        return 'ecommerce-currency-switcher-' . $safe;
     }
 
     /**

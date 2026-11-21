@@ -83,7 +83,10 @@ it( 'puts the sidebar "Clear all", the chips and the drawer\'s count behind acti
         ->toContain( 'aria-label="Remove filter: On sale"' )
         ->toContain( 'Filters (2)' )
         ->toContain( '2 applied' )
-        ->toContain( 'Show 1 product' );
+        ->toContain( 'Show 1 product' )
+        // The Filters button controls the drawer's dialog, not its wrapper.
+        ->toContain( 'aria-controls="ecommerce-catalog-filters-drawer-content"' )
+        ->toMatch( '#id="ecommerce-catalog-filters-drawer-content"\s+role="dialog"#' );
 } );
 
 it( 'stands skeleton cards in for the cards while the results load', function (): void {

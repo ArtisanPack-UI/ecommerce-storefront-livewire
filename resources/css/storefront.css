@@ -118,7 +118,11 @@
         }
     }
 
-    /* The store's mark (its initials on the inverse surface) and name. */
+    /*
+     * The store's mark (its initials on the inverse surface) and name. Like
+     * the other custom controls here, its focus ring is a box shadow over a
+     * transparent outline, which forced-colors mode draws instead.
+     */
     .ec-brand {
         display: inline-flex;
         align-items: center;
@@ -133,6 +137,7 @@
     }
 
     .ec-brand:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
             0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
@@ -188,6 +193,7 @@
     }
 
     .ec-menu-list__link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
             0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
@@ -311,6 +317,7 @@
 
     .ec-footer__link:focus-visible {
         color: var(--apui-text-default);
+        outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
             0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
@@ -3648,6 +3655,7 @@
     }
 
     .ec-chip:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
             0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);

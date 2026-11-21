@@ -100,7 +100,8 @@ it( 'opens the store navigation in a drawer from the menu button below 768px', f
     $html = (string) $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->getContent();
 
     expect( $html )->toContain( 'data-storefront-menu-open' )
-        ->toContain( 'aria-controls="ecommerce-storefront-menu"' )
+        ->toContain( 'aria-controls="ecommerce-storefront-menu-content"' )
+        ->toMatch( '#id="ecommerce-storefront-menu-content"\s+role="dialog"#' )
         ->toContain( 'aria-label="Menu"' )
         ->toContain( 'id="ecommerce-storefront-menu"' )
         ->toMatch( '#class="ec-menu-list__link"\s+aria-current="page"\s*>Shop all</a>#' )
@@ -217,8 +218,33 @@ it( 'gives each currency switcher on a page its own menu id', function (): void 
 
     Livewire::test( Switcher::class )->assertSeeHtml( 'id="ecommerce-currency-switcher"' )->assertSeeHtml( 'data-currency-placement="header"' );
     Livewire::test( Switcher::class, [ 'placement' => 'footer' ] )->assertSeeHtml( 'id="ecommerce-currency-switcher-footer"' );
-    Livewire::test( Switcher::class, [ 'placement' => '"><script>' ] )->assertSeeHtml( 'id="ecommerce-currency-switcher-script"' )->assertDontSeeHtml( '<script>' );
+    Livewire::test( Switcher::class, [ 'placement' => '"><script>' ] )->assertSeeHtml( 'id="ecommerce-currency-switcher-script-' )->assertDontSeeHtml( '<script>' );
 } );
+
+it( 'keeps placements that differ only in stripped characters apart', function (): void {
+    config()->set( 'artisanpack.ecommerce.currency.enabled', [ 'USD', 'EUR' ] );
+
+    $ids = static function ( string $placement ): array {
+        preg_match_all( '/\sid="(ecommerce-currency-switcher[^"]*)"/', Livewire::test( Switcher::class, [ 'placement' => $placement ] )->html(), $matches );
+
+        return $matches[1];
+    };
+
+    $dotted = $ids( 'footer.left' );
+    $plain  = $ids( 'footerleft' );
+
+    expect( $plain )->toContain( 'ecommerce-currency-switcher-footerleft', 'ecommerce-currency-switcher-footerleft-trigger', 'ecommerce-currency-switcher-footerleft-content' )
+        ->and( $dotted[0] )->toMatch( '/^ecommerce-currency-switcher-footerleft-[0-9a-f]{8}$/' )
+        ->and( array_intersect( $dotted, $plain ) )->toBe( [] );
+} );
+
+it( 'keeps a focus outline in forced-colors mode on the layout\'s own controls', function ( string $selector ): void {
+    $css = file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/storefront.css' );
+
+    preg_match( '/' . preg_quote( $selector, '/' ) . ':focus-visible \{([^}]+)\}/', $css, $rule );
+
+    expect( $rule[1] )->toContain( 'outline: var(--apui-focus-ring-width) solid transparent;' )->toContain( 'box-shadow:' );
+} )->with( [ '.ec-brand', '.ec-menu-list__link', '.ec-footer__link', '.ec-chip' ] );
 
 it( 'builds the catalog page with no Tailwind or DaisyUI classes of its own', function (): void {
     makeProduct( 2800, [ 'name' => 'Oxbow mug' ] )->categories()->attach( $this->mugs->id );

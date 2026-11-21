@@ -66,7 +66,7 @@
                                 x-ref="trigger"
                                 leading-icon="sliders-horizontal"
                                 aria-haspopup="dialog"
-                                aria-controls="ecommerce-catalog-filters-drawer"
+                                aria-controls="ecommerce-catalog-filters-drawer-content"
                                 x-on:click="$dispatch( 'ecommerce-filters-open' )"
                                 data-filters-open>{{ 0 === $ecommerceActiveCount ? __( 'Filters' ) : __( 'Filters (:count)', [ 'count' => $ecommerceActiveCount ] ) }}</x-artisanpack-button>
                         </div>
