@@ -61,6 +61,10 @@ addFilter( 'ap.ecommerceStorefrontLivewire.layout.footerLinks', function ( array
 
 Links without a label or URL are dropped, and so is a column with no links. Both filters only affect the package layout.
 
+### Checkout header
+
+A page that sets `@section( 'storefront-chrome', 'checkout' )` gets a slim secure header in place of the store header (`ecommerce-storefront::partials.header.checkout`: the store's mark and name, "Secure checkout" from 640px, and "Back to cart") and no store navigation or footer. The checkout page sets it. A host layout can read the same section to do the same.
+
 ### Header actions
 
 The header's action buttons run through the `ap.ecommerceStorefrontLivewire.header.actions` filter. Each entry is `key => view name` or an `Htmlable`. The defaults:

@@ -535,6 +535,17 @@ class Index extends Component
     public string $layoutOverride = '';
 
     /**
+     * Show the "Checkout" title (the checkout page does; the Checkout
+     * Steps block, under its template's own heading, doesn't).
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * The open step's number, for the multi-step progress bar.
      *
      * @since 1.0.0

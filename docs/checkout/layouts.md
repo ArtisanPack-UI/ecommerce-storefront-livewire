@@ -4,12 +4,14 @@ title: Checkout Layouts
 
 # Checkout Layouts
 
-The checkout comes in two layouts. Both use the same step partials, and the order summary collapses on small screens.
+The checkout comes in two layouts. Both use the same step partials. Each step is a card: a finished step collapses to what it chose with "Edit", the open step shows its form, and the steps still to come sit on the page color with muted titles. The order summary (the lines with thumbnails and quantities, then the totals) is a sticky card beside the steps from 1024px; below that it is a "Show order summary" bar with the total above the title.
 
 | Layout | Value | What the shopper sees |
 | --- | --- | --- |
-| Multi-step | `multi_step` (default) | A progress bar, summaries of the completed steps, and the open step. |
+| Multi-step | `multi_step` (default) | The design-system Steps from 768px ("Step 2 of 5 · Address" below that), then every step: finished, open, or still to come. |
 | Single page | `single_page` | Every section at once. Sections after an unfinished step are disabled and say why. |
+
+On the checkout page the standalone layout swaps the store header for a slim secure one (the store's name, "Secure checkout", and "Back to cart") and leaves out the store navigation and footer, so nothing leads away from the order. See [Layouts](Installation-Layouts#checkout-header). The page passes `show-title` so the component shows the "Checkout" title; the Checkout Steps block, under its template's heading, doesn't.
 
 ## Choosing the layout
 

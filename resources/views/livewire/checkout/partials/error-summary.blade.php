@@ -1,9 +1,13 @@
 {{--
-    The checkout's error summary: every problem on the step, each linked to
-    its field. It is re-created (and takes focus) after each failed submit.
+    The checkout's error summary (#136): the design-system
+    ValidationSummary listing every problem on the step, each prefixed with
+    its field's label (`$errorLabels`) and linked to the field. It is an
+    alert keyed on `$errorSummary`, so it is re-created, announced and
+    focused after each failed submit. Also used by the unpaid order screen.
 
-    Fields are found by their `data-field` wrapper, since the form
-    components generate their own input ids.
+    A link moves focus to the control with the field's id, name or
+    `wire:model` (the library), else to the first control inside the
+    field's `data-field-key` or `data-field` wrapper.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -11,36 +15,24 @@
     @since      1.0.0
 --}}
 @if ( $errors->any() )
-    <div
-        wire:key="checkout-errors-{{ $errorSummary }}"
-        tabindex="-1"
-        role="alert"
-        aria-labelledby="ec-checkout-errors-title"
-        x-init="$nextTick( () => $el.focus() )"
-        class="rounded-box border border-error bg-error/10 p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-error"
-        data-checkout-errors
-    >
-        <h2 id="ec-checkout-errors-title" class="font-semibold">
-            {{ trans_choice( 'There is :count problem to fix:|There are :count problems to fix:', count( $errors->keys() ), [ 'count' => count( $errors->keys() ) ] ) }}
-        </h2>
+    @php
+        $ecommerceCheckoutErrors = [];
 
-        <ul class="mt-2 list-disc ps-5 text-sm">
-            @foreach ( $errors->getMessages() as $ecommerceErrorField => $ecommerceErrorMessages )
-                <li>
-                    <a
-                        href="#"
-                        class="link"
-                        data-target="{{ $ecommerceErrorField }}"
-                        x-on:click.prevent="document.querySelector( '[data-field=&quot;' + $el.dataset.target + '&quot;]' )?.querySelector( 'input, select, textarea' )?.focus()"
-                        data-checkout-error="{{ $ecommerceErrorField }}"
-                    >
-                        @if ( isset( $errorLabels[ $ecommerceErrorField ] ) )
-                            <span class="font-semibold">{{ $errorLabels[ $ecommerceErrorField ] }}:</span>
-                        @endif
-                        {{ $ecommerceErrorMessages[0] ?? '' }}
-                    </a>
-                </li>
-            @endforeach
-        </ul>
-    </div>
+        foreach ( $errors->getMessages() as $ecommerceErrorField => $ecommerceErrorMessages ) {
+            $ecommerceErrorMessage = (string) ( $ecommerceErrorMessages[0] ?? '' );
+
+            $ecommerceCheckoutErrors[ $ecommerceErrorField ] = [ isset( $errorLabels[ $ecommerceErrorField ] ) ? __( ':field: :message', [ 'field' => $errorLabels[ $ecommerceErrorField ], 'message' => $ecommerceErrorMessage ] ) : $ecommerceErrorMessage ];
+        }
+
+        $ecommerceCheckoutErrorCount = count( $ecommerceCheckoutErrors );
+    @endphp
+    <x-artisanpack-validation-summary
+        :errors="$ecommerceCheckoutErrors"
+        :title="trans_choice( 'There is :count problem to fix:|There are :count problems to fix:', $ecommerceCheckoutErrorCount, [ 'count' => $ecommerceCheckoutErrorCount ] )"
+        wire:key="checkout-errors-{{ $errorSummary }}"
+        id="ec-checkout-errors"
+        class="ec-error-summary"
+        x-on:click="if ( $event.defaultPrevented ) { return; } const link = $event.target.closest( 'a' ); if ( ! link || ! link.hash ) { return; } const key = decodeURIComponent( link.hash.slice( 1 ) ); const field = [ ...document.querySelectorAll( '[data-field-key], [data-field]' ) ].find( ( el ) => ( el.dataset.fieldKey ?? el.dataset.field ) === key ); const control = field?.querySelector( 'input:not([type=hidden]), select, textarea' ); if ( control ) { $event.preventDefault(); control.focus(); control.scrollIntoView( { block: 'center' } ); }"
+        data-checkout-errors
+    />
 @endif

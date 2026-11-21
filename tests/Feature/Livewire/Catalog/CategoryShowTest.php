@@ -103,7 +103,7 @@ it( 'renders a tag page with the tag name and its products', function (): void {
 
     Livewire::test( TagShow::class, [ 'tag' => $tag ] )
         ->assertOk()
-        ->assertSeeHtml( '<h1 class="text-3xl font-bold">Summer</h1>' )
+        ->assertSeeHtml( '<h1 class="ec-category-hero__title">Summer</h1>' )
         ->assertSeeLivewire( Index::class );
 
     $this->get( route( 'artisanpack.ecommerce.storefront.tag', [ 'tag' => 'summer' ] ) )

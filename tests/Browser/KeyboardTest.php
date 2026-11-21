@@ -89,7 +89,7 @@ it( 'focuses the error summary, then the next step, and announces the step', fun
         ->keys( '[data-checkout-contact-submit]', 'Enter' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-checkout-errors" )' )
         ->assertSeeIn( '[data-checkout-errors]', 'There is 1 problem to fix:' )
-        ->keys( '[data-checkout-error="email"]', 'Enter' )
+        ->keys( '[data-checkout-errors] a[href="#email"]', 'Enter' )
         ->assertScript( focusIsIn( '[data-field="email"]' ) )
         ->type( Locators::label( 'Email' ), 'ada@example.test' )
         ->keys( Locators::label( 'Email' ), 'Enter' )

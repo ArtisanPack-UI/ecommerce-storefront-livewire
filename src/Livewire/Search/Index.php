@@ -28,6 +28,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginator
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Throwable;
 
@@ -83,6 +84,18 @@ class Index extends CatalogIndex
      * @var int
      */
     public const MAX_RESULTS = 10_000;
+
+    /**
+     * Show the title ("Results for “…”", else "Search"): the search page
+     * does; the Product Catalog block on a search template, under the
+     * template's own heading, doesn't.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
 
     /**
      * The search term.
@@ -215,7 +228,7 @@ class Index extends CatalogIndex
             'searched'     => $searched,
             'suggestions'  => $this->suggestions(),
             'resultsLabel' => $searched
-                ? trans_choice( ':count result for ":term"|:count results for ":term"', $total, [ 'count' => $total, 'term' => $this->q ] )
+                ? trans_choice( ':count result|:count results', $total, [ 'count' => $total ] )
                 : '',
             'emptyState'   => $this->emptyState( $data['filtered'] ),
         ] );
@@ -645,7 +658,7 @@ class Index extends CatalogIndex
         if ( $this->failed ) {
             return [
                 'key'         => 'unavailable',
-                'icon'        => 'o-exclamation-triangle',
+                'icon'        => 'triangle-alert',
                 'title'       => __( 'Search isn\'t available right now' ),
                 'description' => __( 'Please try again in a moment, or browse the shop instead.' ),
                 'tips'        => [],
@@ -655,7 +668,7 @@ class Index extends CatalogIndex
         if ( $this->throttled ) {
             return [
                 'key'         => 'throttled',
-                'icon'        => 'o-clock',
+                'icon'        => 'clock',
                 'title'       => __( 'Slow down' ),
                 'description' => __( 'You\'re searching faster than we can keep up. Try again in a moment.' ),
                 'tips'        => [],
@@ -665,7 +678,7 @@ class Index extends CatalogIndex
         if ( ! $this->searchable() ) {
             return [
                 'key'         => 'idle',
-                'icon'        => 'o-magnifying-glass',
+                'icon'        => 'search',
                 'title'       => __( 'What are you looking for?' ),
                 'description' => __( 'Search by product name, SKU, or description.' ),
                 'tips'        => [],
@@ -674,9 +687,9 @@ class Index extends CatalogIndex
 
         return [
             'key'         => 'no-results',
-            'icon'        => 'o-magnifying-glass',
-            'title'       => __( 'No results for ":term"', [ 'term' => $this->q ] ),
-            'description' => __( 'Try one of these:' ),
+            'icon'        => 'search',
+            'title'       => __( 'No results for “:term”', [ 'term' => $this->q ] ),
+            'description' => __( 'We couldn\'t find a product matching your search.' ),
             'tips'        => array_values( array_filter( [
                 __( 'Check the spelling.' ),
                 __( 'Use fewer or more general words.' ),

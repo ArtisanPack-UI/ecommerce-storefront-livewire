@@ -94,6 +94,17 @@ class Index extends Component
     public bool $showCoupon = true;
 
     /**
+     * Show the "Your cart" title with the item count (the cart page does;
+     * the Cart Contents block, under its template's own heading, doesn't).
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * The coupon code being entered.
      *
      * @since 1.0.0
