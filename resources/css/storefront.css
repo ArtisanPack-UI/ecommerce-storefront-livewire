@@ -2754,8 +2754,12 @@
         line-height: var(--apui-type-body-sm-line-height);
     }
 
+    /*
+     * The live region stays rendered before its first message, so that
+     * message is announced; while empty it takes back the form's row gap.
+     */
     .ec-stripe__error:empty {
-        display: none;
+        margin-block-start: -12px;
     }
 
     .ec-stripe__reassurance {

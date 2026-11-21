@@ -157,8 +157,10 @@
                     boxShadow: 'none',
                 } ),
                 '.Input:hover': declare( { borderColor: hover } ),
+                // A transparent outline is invisible until forced colors
+                // paints it, where the box-shadow ring is dropped.
                 '.Input:focus': declare( {
-                    outline: 'none',
+                    outline: `${ px( '--apui-focus-ring-width', 2 ) }px solid transparent`,
                     boxShadow: ring ? `0 0 0 ${ offset }px ${ ringOffset }, 0 0 0 ${ spread }px ${ ring }` : null,
                 } ),
                 '.Label': declare( { color: variables.colorText, fontWeight: token( '--apui-font-weight-medium' ) } ),
@@ -206,10 +208,13 @@
                 // Stripe the new token values.
                 const scheme   = window.matchMedia( '(prefers-color-scheme: dark)' );
                 const observer = new MutationObserver( () => retheme() );
+                const teardown = () => {
+                    observer.disconnect();
+                    scheme.removeEventListener( 'change', retheme );
+                };
                 const retheme  = () => {
                     if ( ! root.isConnected ) {
-                        observer.disconnect();
-                        scheme.removeEventListener( 'change', retheme );
+                        teardown();
 
                         return;
                     }
@@ -219,6 +224,9 @@
 
                 scheme.addEventListener( 'change', retheme );
                 observer.observe( document.documentElement, { attributes: true, attributeFilter: [ 'class', 'data-theme' ] } );
+
+                // Unsubscribe when Livewire removes the component (Livewire 3 and 4).
+                $wire.__instance?.addCleanup?.( teardown );
             } )
             .catch( () => {
                 doneLoading();
