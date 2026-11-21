@@ -1,6 +1,7 @@
 {{--
     Header action: the account link for signed-in shoppers, else a sign-in
-    link to the host's `auth.login_route`.
+    link to the host's `auth.login_route`. A ghost icon-only Button (the
+    user icon) named "Account" or "Sign in" (#129).
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -9,19 +10,19 @@
 --}}
 @php
     $ecommerceLoginRoute = (string) config( 'artisanpack.ecommerce-storefront-livewire.auth.login_route', 'login' );
+    $ecommerceAccount    = auth()->check()
+        ? ( \Illuminate\Support\Facades\Route::has( 'artisanpack.ecommerce.account.dashboard' ) ? [ route( 'artisanpack.ecommerce.account.dashboard' ), __( 'Account' ) ] : null )
+        : ( '' !== $ecommerceLoginRoute && \Illuminate\Support\Facades\Route::has( $ecommerceLoginRoute ) ? [ route( $ecommerceLoginRoute ), __( 'Sign in' ) ] : null );
 @endphp
-@auth
-    @if ( \Illuminate\Support\Facades\Route::has( 'artisanpack.ecommerce.account.dashboard' ) )
-        <a href="{{ route( 'artisanpack.ecommerce.account.dashboard' ) }}" class="apui-button" data-variant="ghost" data-color="neutral" data-size="sm" data-header-action="account">
-            <x-artisanpack-icon name="o-user" class="h-5 w-5" aria-hidden="true" />
-            <span class="sr-only sm:not-sr-only">{{ __( 'Account' ) }}</span>
-        </a>
-    @endif
-@else
-    @if ( '' !== $ecommerceLoginRoute && \Illuminate\Support\Facades\Route::has( $ecommerceLoginRoute ) )
-        <a href="{{ route( $ecommerceLoginRoute ) }}" class="apui-button" data-variant="ghost" data-color="neutral" data-size="sm" data-header-action="account">
-            <x-artisanpack-icon name="o-user" class="h-5 w-5" aria-hidden="true" />
-            <span class="sr-only sm:not-sr-only">{{ __( 'Sign in' ) }}</span>
-        </a>
-    @endif
-@endauth
+@if ( null !== $ecommerceAccount )
+    <x-artisanpack-button
+        variant="ghost"
+        color="neutral"
+        size="sm"
+        icon-only
+        leading-icon="user"
+        :href="$ecommerceAccount[0]"
+        :aria-label="$ecommerceAccount[1]"
+        data-header-action="account"
+    />
+@endif

@@ -31,11 +31,11 @@ beforeEach( function (): void {
     app( 'router' )->getRoutes()->refreshNameLookups();
 } );
 
-it( 'opts every library menu item and breadcrumb trail in the views out of wire:navigate', function (): void {
+it( 'opts every library menu item, navbar link and breadcrumb trail in the views out of wire:navigate', function (): void {
     $missing = [];
 
     foreach ( Finder::create()->files()->in( __DIR__ . '/../../../resources/views' )->name( '*.blade.php' ) as $file ) {
-        preg_match_all( '/<x-artisanpack-(?:menu-item|breadcrumbs|link|list-item)\b(?:[^>]|(?<=[-=])>)*>/s', $file->getContents(), $tags );
+        preg_match_all( '/<x-artisanpack-(?:menu-item|navbar-item|breadcrumbs|link|list-item)\b(?:[^>]|(?<=[-=])>)*>/s', $file->getContents(), $tags );
 
         foreach ( $tags[0] as $tag ) {
             if ( 1 === preg_match( '/\s:?(?:link|href|items)=/', $tag ) && 1 !== preg_match( '/\s:navigate="false"/', $tag ) ) {

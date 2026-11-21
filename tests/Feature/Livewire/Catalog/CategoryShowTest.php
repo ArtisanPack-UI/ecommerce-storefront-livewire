@@ -21,12 +21,46 @@ beforeEach( function (): void {
 it( 'renders the header, breadcrumbs, and sub-category chips', function (): void {
     Livewire::test( CategoryShow::class, [ 'category' => $this->shirts ] )
         ->assertOk()
-        ->assertSeeHtml( '<h1 class="text-3xl font-bold">Shirts</h1>' )
+        ->assertSeeHtml( '<h1 class="ec-category-hero__title">Shirts</h1>' )
         ->assertSeeHtml( 'aria-label="Breadcrumb"' )
         ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing' ] ) . '"' )
         ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing/shirts/linen' ] ) . '"' )
         ->assertSeeHtml( 'data-subcategories' )
         ->assertSeeLivewire( Index::class );
+} );
+
+it( 'heads the category with a design-system card: eyebrow, display name, description and chips', function (): void {
+    $html = Livewire::test( CategoryShow::class, [ 'category' => $this->clothing ] )->html();
+
+    preg_match( '#<div class="apui-card ec-category-hero" data-surface="default"\s*data-category-header>.*?<livewire#s', preg_replace( '/<!--\[if (?:END)?BLOCK\]><!\[endif\]-->/', '', $html ) . '<livewire', $card );
+
+    expect( $card )->not->toBeEmpty()
+        ->and( $card[0] )->toContain( '<p class="ec-category-hero__eyebrow">Category</p>' )
+        ->toContain( '<h1 class="ec-category-hero__title">Clothing</h1>' )
+        ->toContain( 'class="ec-category-hero__description" data-category-description' )
+        ->toMatch( '#<a href="' . preg_quote( route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing' ] ), '#' ) . '" class="ec-chip" data-variant="select" aria-current="page" data-subcategory-all>All Clothing</a>#' )
+        ->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'clothing/shirts' ] ) . '" class="ec-chip" data-variant="select" data-subcategory="' . $this->shirts->id . '">Shirts</a>' )
+        ->not->toContain( 'data-with-image' )
+        // One banner landmark per page: the card is no <header>.
+        ->and( $html )->not->toContain( '<header' )
+        ->and( classTokens( $html ) )->not->toContain( 'text-3xl', 'font-bold', 'prose', 'rounded-box', 'sm:flex-row', 'sm:w-48', 'object-cover', 'flex', 'flex-col', 'gap-6' );
+} );
+
+it( 'puts the category image on the end half of the card', function (): void {
+    $html = view( 'ecommerce-storefront::livewire.catalog.category-show', [
+        'category'      => $this->clothing,
+        'breadcrumbs'   => [ [ 'label' => 'Clothing' ] ],
+        'url'           => null,
+        'subcategories' => [],
+        'description'   => null,
+        'image'         => [ 'url' => 'https://cdn.example.test/clothing.jpg', 'srcset' => null, 'alt' => 'Folded shirts', 'width' => 1200, 'height' => 800 ],
+    ] )->render();
+
+    expect( $html )->toMatch( '#class="apui-card ec-category-hero" data-surface="default"\s+data-with-image#' )
+        ->toContain( '<div class="ec-category-hero__media">' )
+        ->toContain( 'alt="Folded shirts"' )
+        ->toContain( 'data-category-image' )
+        ->not->toContain( 'data-subcategories' );
 } );
 
 it( 'renders the description through kses', function (): void {

@@ -41,7 +41,10 @@ use Throwable;
  * page renders as it does without templates, which is what the default
  * templates show. Templates are rendered by visual-editor's
  * `<x-ve-template>` and looked up through cms-framework's template
- * resolver, so both must be installed.
+ * resolver, so both must be installed. Each template is a group of its
+ * blocks, spaced by the editor; the archive, cart, checkout and search
+ * templates start with their page heading (`ec-template__title`, the page
+ * header's heading-xl type, #128).
  *
  * **Patterns** — "Featured products", "Shop by category", and "Sale banner +
  * grid", through `ap.visualEditor.patterns` (after
@@ -50,8 +53,12 @@ use Throwable;
  * title, and a standalone "Shop all" Link at the row's end) over a
  * four-column grid of featured products; "Shop by category" (#126) is the
  * heading-xl title over three columns of top-level categories (two on small
- * screens). Their blocks are spaced by the editor; the only styling they
- * carry is the `ec-pattern__title` class.
+ * screens). "Sale banner + grid" (#127) is a banner on the accent soft
+ * fill (a "Sale" Badge, the heading, a line of text and a "Shop the sale"
+ * Button, beside an image the editor picks) over four products on sale.
+ * Their blocks are spaced by the editor, and their layout comes from block
+ * attributes; their classes (`ec-pattern__*`, `ec-sale-banner*`) only
+ * carry tokens.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -142,6 +149,35 @@ final class StorefrontTemplates
      * @var string
      */
     public const PATTERN_LINK_CLASS = 'ec-pattern__link';
+
+    /**
+     * The class on the sale banner's group; its parts are `__copy`,
+     * `__badge`, `__title`, `__text`, `__action` and `__media`.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const SALE_BANNER_CLASS = 'ec-sale-banner';
+
+    /**
+     * The class on a default template's group.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const TEMPLATE_CLASS = 'ec-template';
+
+    /**
+     * The class on a default template's page heading: the page header's
+     * heading-xl type (ec-template__title in resources/css/storefront.css).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const TEMPLATE_TITLE_CLASS = 'ec-template__title';
 
     /**
      * The default template slugs.
@@ -301,32 +337,32 @@ final class StorefrontTemplates
             'product-archive'  => [
                 'title'       => __( 'Product Catalog' ),
                 'description' => __( 'The shop page, and category and tag pages without their own template.' ),
-                'content'     => self::stack( self::heading( __( 'Shop' ) ), $catalog ),
+                'content'     => self::template( self::heading( __( 'Shop' ), 1, self::TEMPLATE_TITLE_CLASS ), $catalog ),
             ],
             'product-category' => [
                 'title'       => __( 'Product Category' ),
                 'description' => __( 'Every category page. Add product-category-{slug} for one category.' ),
-                'content'     => self::stack( $catalog ),
+                'content'     => self::template( $catalog ),
             ],
             'product-tag'      => [
                 'title'       => __( 'Product Tag' ),
                 'description' => __( 'Every tag page. Add product-tag-{slug} for one tag.' ),
-                'content'     => self::stack( $catalog ),
+                'content'     => self::template( $catalog ),
             ],
             'cart'             => [
                 'title'       => __( 'Cart' ),
                 'description' => __( 'The cart page.' ),
-                'content'     => self::stack( self::heading( __( 'Cart' ) ), self::block( 'cart-contents' ) ),
+                'content'     => self::template( self::heading( __( 'Cart' ), 1, self::TEMPLATE_TITLE_CLASS ), self::block( 'cart-contents' ) ),
             ],
             'checkout'         => [
                 'title'       => __( 'Checkout' ),
                 'description' => __( 'The checkout page.' ),
-                'content'     => self::stack( self::heading( __( 'Checkout' ) ), self::block( 'checkout-steps' ) ),
+                'content'     => self::template( self::heading( __( 'Checkout' ), 1, self::TEMPLATE_TITLE_CLASS ), self::block( 'checkout-steps' ) ),
             ],
             'search-results'   => [
                 'title'       => __( 'Product Search Results' ),
                 'description' => __( 'The product search page.' ),
-                'content'     => self::stack( self::heading( __( 'Search' ) ), $catalog ),
+                'content'     => self::template( self::heading( __( 'Search' ), 1, self::TEMPLATE_TITLE_CLASS ), $catalog ),
             ],
         ];
 
@@ -366,13 +402,9 @@ final class StorefrontTemplates
             StorefrontBlock::NAMESPACE . '/sale-banner-grid' => [
                 'title'       => __( 'Sale banner + grid' ),
                 'description' => __( 'A sale banner above a grid of products on sale.' ),
-                'content'     => self::stack(
-                    self::group(
-                        'rounded-box bg-base-200 p-8 text-center',
-                        self::heading( __( 'On sale now' ), 2 ),
-                        self::paragraph( __( 'Save on these favourites while they last.' ) ),
-                    ),
-                    self::block( 'product-grid', [ 'source' => 'on_sale', 'limit' => 8, 'columns' => 4 ] ),
+                'content'     => self::section(
+                    self::saleBanner(),
+                    self::block( 'product-grid', [ 'source' => 'on_sale', 'limit' => 4, 'columns' => 4 ] ),
                 ),
             ],
         ];
@@ -520,17 +552,18 @@ final class StorefrontTemplates
     }
 
     /**
-     * Blocks stacked in a group, spaced like the storefront pages.
+     * A template's blocks in a group, spaced by the editor's block spacing
+     * (the group's default flow layout).
      *
-     * @since 1.0.0
+     * @since 2.0.0
      *
      * @param  string  ...$blocks  Block markup.
      *
      * @return string
      */
-    private static function stack( string ...$blocks ): string
+    private static function template( string ...$blocks ): string
     {
-        return self::group( 'flex flex-col gap-6', ...$blocks );
+        return self::group( self::TEMPLATE_CLASS, ...$blocks );
     }
 
     /**
@@ -619,30 +652,115 @@ final class StorefrontTemplates
             return null;
         }
 
-        $link = Blade::render(
+        $link = self::component(
             '<x-artisanpack-link :href="$href" standalone trailing-icon="arrow-right" :navigate="false">{{ $label }}</x-artisanpack-link>',
             [ 'href' => route( 'artisanpack.ecommerce.storefront.catalog', [], false ), 'label' => __( 'Shop all' ) ],
         );
 
-        return self::paragraph( trim( (string) preg_replace( '/\s*\n\s*/', ' ', $link ) ), self::PATTERN_LINK_CLASS, false );
+        return self::paragraph( $link, self::PATTERN_LINK_CLASS, false );
+    }
+
+    /**
+     * The sale banner (#127): a flex group on the accent soft fill (the one
+     * place a page uses the accent), the copy on the start half and an image
+     * on the end half, stacking below 640px. The copy is a solid accent
+     * "Sale" Badge, the heading, a line of text and, with the storefront
+     * routes, a large solid neutral "Shop the sale" Button to the catalog's
+     * on-sale products. The image block starts empty for the editor to
+     * fill; the banner's copy spans it until it has an image.
+     *
+     * The group's flex layout and zero block gap are block attributes, so
+     * the editor and the renderer lay the banner out; `ec-sale-banner*`
+     * (resources/css/storefront.css) only adds the fill, radius, padding,
+     * type and column sizes.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    private static function saleBanner(): string
+    {
+        $copy = [
+            self::paragraph(
+                self::component( '<x-artisanpack-badge variant="solid" color="accent" leading-icon="tag">{{ $label }}</x-artisanpack-badge>', [ 'label' => __( 'Sale' ) ] ),
+                self::SALE_BANNER_CLASS . '__badge',
+                false,
+            ),
+            self::heading( __( 'On sale now' ), 2, self::SALE_BANNER_CLASS . '__title' ),
+            self::paragraph( __( 'Save on these favourites while they last.' ), self::SALE_BANNER_CLASS . '__text' ),
+        ];
+
+        if ( Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ) {
+            $copy[] = self::paragraph(
+                self::component(
+                    '<x-artisanpack-button :href="$href" color="neutral" size="lg">{{ $label }}</x-artisanpack-button>',
+                    [ 'href' => route( 'artisanpack.ecommerce.storefront.catalog', [ 'on_sale' => 1 ], false ), 'label' => __( 'Shop the sale' ) ],
+                ),
+                self::SALE_BANNER_CLASS . '__action',
+                false,
+            );
+        }
+
+        return self::groupWith(
+            [
+                'className' => self::SALE_BANNER_CLASS,
+                'layout'    => [ 'type' => 'flex', 'flexWrap' => 'wrap', 'verticalAlignment' => 'stretch' ],
+                'style'     => [ 'spacing' => [ 'blockGap' => '0' ] ],
+            ],
+            self::group( self::SALE_BANNER_CLASS . '__copy', ...$copy ),
+            self::image( self::SALE_BANNER_CLASS . '__media' ),
+        );
+    }
+
+    /**
+     * An empty core image block for the editor to fill: full width, cropped
+     * to 4:3, with no bottom margin.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $class  The block's class.
+     *
+     * @return string
+     */
+    private static function image( string $class ): string
+    {
+        $attrs = [ 'width' => '100%', 'aspectRatio' => '4/3', 'scale' => 'cover', 'className' => $class, 'style' => [ 'spacing' => [ 'margin' => [ 'bottom' => '0' ] ] ] ];
+
+        return '<!-- wp:image ' . json_encode( $attrs, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<figure class="wp-block-image ' . e( $class ) . "\" style=\"margin-bottom:0\"><img alt=\"\"/></figure>\n"
+            . '<!-- /wp:image -->';
+    }
+
+    /**
+     * A design-system component rendered to one line of HTML, for a
+     * paragraph's content.
+     *
+     * @since 2.0.0
+     *
+     * @param  string                $template  Blade.
+     * @param  array<string, mixed>  $data      Its data (escaped where it is echoed).
+     *
+     * @return string
+     */
+    private static function component( string $template, array $data ): string
+    {
+        return trim( (string) preg_replace( '/\s*\n\s*/', ' ', Blade::render( $template, $data ) ) );
     }
 
     /**
      * A core heading block.
      *
      * @since 1.0.0
-     * @since 2.0.0 Takes the heading's class.
+     * @since 2.0.0 Takes the heading's class (no more Tailwind default).
      *
-     * @param  string       $text   The heading.
-     * @param  int          $level  1–6.
-     * @param  string|null  $class  The heading's class; null for the templates' default.
+     * @param  string  $text   The heading.
+     * @param  int     $level  1–6.
+     * @param  string  $class  The heading's class.
      *
      * @return string
      */
-    private static function heading( string $text, int $level = 1, ?string $class = null ): string
+    private static function heading( string $text, int $level, string $class ): string
     {
-        $class ??= 1 === $level ? 'text-3xl font-bold' : 'text-2xl font-bold';
-
         return '<!-- wp:heading ' . json_encode( [ 'level' => $level, 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
             . '<h' . $level . ' class="wp-block-heading ' . e( $class ) . '">' . e( $text ) . '</h' . $level . ">\n"
             . '<!-- /wp:heading -->';

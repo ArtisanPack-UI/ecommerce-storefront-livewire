@@ -9,19 +9,79 @@
  */
 
 @layer apui.components {
-    /* Layout */
+    /*
+     * Layout (#129): the page fills the viewport so the footer sits at the
+     * bottom. Header, content and footer share one 1232px column with 24px
+     * gutters (16px below 768px).
+     */
     .ec-storefront {
+        --ec-content-max: 1232px;
+        --ec-gutter: 16px;
+
+        display: flex;
+        flex-direction: column;
+        min-block-size: 100vh;
+        min-block-size: 100dvh;
         margin: 0;
         background: var(--apui-surface-page);
         color: var(--apui-text-default);
         font-family: var(--apui-font-family-sans);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    @media (min-width: 768px) {
+        .ec-storefront {
+            --ec-gutter: 24px;
+        }
+    }
+
+    /* "Skip to content": hidden until focused, then above the sticky header. */
+    .ec-skip-link:not(:focus) {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .ec-skip-link:focus {
+        position: fixed;
+        inset-block-start: 8px;
+        inset-inline-start: 8px;
+        z-index: calc(var(--apui-z-sticky) + 1);
     }
 
     /*
-     * Header (until the layout rebuild, #129): the actions wrap rather than
+     * Header: the Navbar's content in the page column. The search sits at the
+     * end, before the actions. Below 768px the store links give way to the
+     * menu button, the search is an icon, and the actions wrap rather than
      * scroll the page sideways on a 320px screen (WCAG 1.4.10).
      */
-    .ec-storefront [data-scope="navbar"][data-part="actions"] {
+    .ec-storefront .ec-header.apui-navbar {
+        padding-inline: max(var(--ec-gutter), calc((100% - var(--ec-content-max)) / 2));
+    }
+
+    .ec-header [data-scope="navbar"][data-part="brand"] {
+        flex: 0 1 auto;
+        gap: 4px;
+        min-inline-size: 0;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="links"] {
+        display: none;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="search"] {
+        display: flex;
+        justify-content: flex-end;
+        margin-inline-start: auto;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="actions"] {
         flex: 0 1 auto;
         flex-wrap: wrap;
         justify-content: flex-end;
@@ -29,9 +89,259 @@
         min-inline-size: 0;
     }
 
-    .ec-storefront [data-scope="navbar"][data-part="brand"] {
-        flex: 0 1 auto;
+    /* The search takes the end of the bar; the actions follow it (without a search, they keep the end themselves). */
+    .ec-header [data-scope="navbar"][data-part="search"] + [data-scope="navbar"][data-part="actions"] {
+        margin-inline-start: 0;
+    }
+
+    .ec-header__menu {
+        display: inline-flex;
+    }
+
+    @media (max-width: 767.98px) {
+        .ec-header [data-scope="navbar"][data-part="search"] {
+            flex: none;
+        }
+
+        .ec-header .ec-currency {
+            display: none;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .ec-header [data-scope="navbar"][data-part="links"] {
+            display: flex;
+        }
+
+        .ec-header__menu {
+            display: none;
+        }
+    }
+
+    /*
+     * The store's mark (its initials on the inverse surface) and name. Like
+     * the other custom controls here, its focus ring is a box shadow over a
+     * transparent outline, which forced-colors mode draws instead.
+     */
+    .ec-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
         min-inline-size: 0;
+        border-radius: var(--apui-radius-xs);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-brand:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-brand__mark {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        inline-size: 32px;
+        block-size: 32px;
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-inverse);
+        color: var(--apui-text-inverse);
+        font-size: var(--apui-type-label-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        letter-spacing: 0.02em;
+    }
+
+    .ec-brand__name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* The store navigation in the menu drawer, below 768px. */
+    .ec-menu-list {
+        display: grid;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-menu-list__link {
+        display: flex;
+        align-items: center;
+        min-block-size: 44px;
+        padding-inline: 12px;
+        border-radius: var(--apui-radius-md);
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-menu-list__link:hover {
+        background: var(--apui-state-hover);
+    }
+
+    .ec-menu-list__link[aria-current="page"] {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-menu-list__link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    /* The page content. */
+    .ec-main {
+        flex: 1 0 auto;
+    }
+
+    .ec-main__content {
+        box-sizing: border-box;
+        inline-size: 100%;
+        max-inline-size: calc(var(--ec-content-max) + 2 * var(--ec-gutter));
+        margin-inline: auto;
+        padding-block: 24px 64px;
+        padding-inline: var(--ec-gutter);
+        outline: none;
+    }
+
+    /*
+     * Footer: the brand and tagline beside the link columns (the brand
+     * above them, two columns to a row, below 768px), then the copyright and
+     * the currency and theme controls after a divider.
+     */
+    .ec-footer {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-footer__inner {
+        box-sizing: border-box;
+        display: grid;
+        gap: 32px;
+        inline-size: 100%;
+        max-inline-size: calc(var(--ec-content-max) + 2 * var(--ec-gutter));
+        margin-inline: auto;
+        padding-block: 48px 32px;
+        padding-inline: var(--ec-gutter);
+    }
+
+    .ec-footer__top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 32px 24px;
+    }
+
+    .ec-footer__about {
+        display: grid;
+        flex: 1 1 100%;
+        align-content: start;
+        justify-items: start;
+        gap: 12px;
+    }
+
+    .ec-footer__nav {
+        display: flex;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        gap: 32px 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-footer__column {
+        flex: 1 1 calc(50% - 12px);
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 768px) {
+        .ec-footer__about {
+            flex: 0 1 36%;
+            margin-inline-end: auto;
+        }
+
+        .ec-footer__nav {
+            flex: 1 1 0;
+            flex-wrap: nowrap;
+        }
+
+        .ec-footer__column {
+            flex: 1 1 0;
+        }
+    }
+
+    .ec-footer__tagline {
+        max-inline-size: 36ch;
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-footer__title {
+        margin: 0 0 12px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-footer__links {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-footer__link {
+        border-radius: var(--apui-radius-xs);
+        color: var(--apui-text-muted);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-footer__link:hover {
+        color: var(--apui-text-default);
+        text-decoration: underline;
+    }
+
+    .ec-footer__link:focus-visible {
+        color: var(--apui-text-default);
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-footer__bottom {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-block-start: 24px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-footer__copyright {
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-footer__settings {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     /* Money (#75): tabular figures that never wrap, each isolated left to right. */
@@ -3217,9 +3527,11 @@
      * The heading row's layout (title at the start, "Shop all" at the end)
      * and the space between the pattern's blocks come from the editor's
      * layout, so the title and the "Shop all" paragraph only drop their
-     * default margins.
+     * default margins. The default templates' page heading (#128) shares
+     * the title's type.
      */
-    .ec-pattern__title {
+    .ec-pattern__title,
+    .ec-template__title {
         margin: 0;
         color: var(--apui-text-default);
         font-size: var(--apui-type-heading-xl-font-size);
@@ -3230,5 +3542,527 @@
 
     .ec-pattern__link {
         margin: 0;
+    }
+
+    /*
+     * Sale banner (#127): the accent soft fill, the copy on the start half
+     * and the image on the end half (stacked below 640px). The flex layout
+     * and the zero gap are the group's block attributes; this sets the
+     * columns, padding and type. Until the editor picks an image, the copy
+     * spans the banner.
+     */
+    .ec-sale-banner {
+        overflow: hidden;
+        border-radius: var(--apui-radius-surface);
+        background: var(--apui-color-accent-soft);
+        color: var(--apui-text-default);
+    }
+
+    .ec-sale-banner__copy {
+        display: grid;
+        flex: 1 1 320px;
+        align-content: center;
+        justify-items: start;
+        gap: 16px;
+        box-sizing: border-box;
+        min-inline-size: 0;
+        padding: 32px 24px;
+    }
+
+    @media (min-width: 768px) {
+        .ec-sale-banner__copy {
+            padding: 48px 40px;
+        }
+    }
+
+    .ec-sale-banner__media {
+        flex: 1 1 320px;
+        min-inline-size: 0;
+    }
+
+    .ec-sale-banner__media:not(:has(img[src])) {
+        display: none;
+    }
+
+    .ec-sale-banner__media img {
+        display: block;
+        inline-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-sale-banner__badge,
+    .ec-sale-banner__action {
+        margin: 0;
+    }
+
+    .ec-sale-banner__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-family: var(--apui-type-display-lg-font-family);
+        font-size: var(--apui-type-display-lg-font-size);
+        font-weight: var(--apui-type-display-lg-font-weight);
+        line-height: var(--apui-type-display-lg-line-height);
+        letter-spacing: var(--apui-type-display-lg-letter-spacing);
+    }
+
+    .ec-sale-banner__text {
+        max-inline-size: 48ch;
+        margin: 0;
+        color: var(--apui-color-accent-soft-foreground);
+        font-size: var(--apui-type-body-lg-font-size);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    @media (forced-colors: active) {
+        .ec-sale-banner {
+            border: var(--apui-border-width) solid CanvasText;
+        }
+    }
+
+    /*
+     * Pages (#130, #131): the breadcrumbs and page header (or category
+     * card) above the listing.
+     */
+    .ec-page {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    /*
+     * Chips: pill-shaped controls on the tokens. `filter` (an active
+     * filter on the sunken fill, with a remove icon) and `select` (an
+     * outlined choice; the current one on the primary soft fill).
+     */
+    .ec-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-sizing: border-box;
+        min-block-size: 28px;
+        padding-inline: 12px;
+        border: var(--apui-border-width) solid transparent;
+        border-radius: var(--apui-radius-full);
+        background: none;
+        color: var(--apui-text-default);
+        font: inherit;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .ec-chip:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-chip[data-variant="filter"] {
+        padding-inline: 10px 8px;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-chip[data-variant="filter"]:hover {
+        border-color: var(--apui-border-default);
+    }
+
+    .ec-chip__icon {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-chip[data-variant="select"] {
+        min-block-size: 32px;
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-chip[data-variant="select"]:hover {
+        background: var(--apui-state-hover);
+    }
+
+    .ec-chip[data-variant="select"][aria-current] {
+        border-color: var(--apui-color-primary-border);
+        background: var(--apui-color-primary-soft);
+        color: var(--apui-color-primary-soft-foreground);
+    }
+
+    @media (forced-colors: active) {
+        .ec-chip {
+            border-color: ButtonText;
+        }
+
+        .ec-chip[aria-current] {
+            border-color: Highlight;
+            outline: var(--apui-border-width) solid Highlight;
+        }
+    }
+
+    /*
+     * Catalog listing (#130): the 240px filter sidebar from 1024px beside
+     * the results; below that, the toolbar's Filters button opens the
+     * drawer.
+     */
+    .ec-catalog {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-catalog__layout {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__sidebar {
+        display: none;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-catalog__layout[data-with-filters] {
+            grid-template-columns: 240px minmax(0, 1fr);
+            align-items: start;
+            gap: 32px;
+        }
+
+        .ec-catalog__sidebar {
+            display: block;
+        }
+
+        .ec-catalog__filters-button {
+            display: none;
+        }
+    }
+
+    .ec-catalog__sidebar-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-block-end: 16px;
+    }
+
+    .ec-catalog__sidebar-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+    }
+
+    .ec-catalog__main {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .ec-catalog__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-catalog__controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* "Sort by" and "Per page": the label beside the select. */
+    .ec-catalog__select.apui-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-catalog__select [data-scope="select"][data-part="label"] {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767.98px) {
+        .ec-catalog__sort [data-scope="select"][data-part="label"] {
+            position: absolute;
+            inline-size: 1px;
+            block-size: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        .ec-catalog__per-page.apui-select {
+            display: none;
+        }
+    }
+
+    .ec-catalog__chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-catalog__results {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    @media (min-width: 640px) {
+        .ec-catalog__grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .ec-catalog__grid[data-wide] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-catalog__item {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    /* Loading: skeleton cards stand in for the cards while the results are busy. */
+    .ec-catalog__skeleton {
+        display: none;
+    }
+
+    .ec-catalog__results[aria-busy="true"] > .ec-catalog__grid:not(.ec-catalog__skeleton) {
+        display: none;
+    }
+
+    .ec-catalog__results[aria-busy="true"] > .ec-catalog__skeleton {
+        display: grid;
+    }
+
+    .ec-catalog__pagination {
+        padding-block-start: 16px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-catalog__pagination .apui-pagination {
+        display: flex;
+        inline-size: 100%;
+    }
+
+    .ec-catalog__pagination [data-scope="pagination"][data-part="summary"] {
+        margin-inline-end: auto;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-catalog__tips {
+        margin: 0;
+        padding-inline-start: 1.25em;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        text-align: start;
+    }
+
+    /*
+     * Filters (#130): the groups between dividers. Radio rows put the count
+     * at the end, and sub-categories step in by depth. Toggles that follow
+     * each other share a group.
+     */
+    .ec-filters {
+        display: grid;
+    }
+
+    .ec-filters__group {
+        padding-block: 20px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-filters__group:first-child {
+        padding-block-start: 0;
+        border-block-start: 0;
+    }
+
+    .ec-filters__group:has(.ec-filters__toggle):has(+ .ec-filters__group .ec-filters__toggle) {
+        padding-block-end: 6px;
+    }
+
+    .ec-filters__group:has(.ec-filters__toggle) + .ec-filters__group:has(.ec-filters__toggle) {
+        padding-block-start: 6px;
+        border-block-start: 0;
+    }
+
+    .ec-filters__options [data-scope="radio-group"][data-part="items"] {
+        display: grid;
+        gap: 4px;
+    }
+
+    .ec-filters__option[data-scope="radio-group"][data-part="item"] {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        min-block-size: 28px;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-filters__option [data-scope="radio-group"][data-part="box"] {
+        grid-row: auto;
+        margin-block-start: 0;
+    }
+
+    .ec-filters__option[data-depth="1"] {
+        padding-inline-start: 24px;
+    }
+
+    .ec-filters__option[data-depth="2"] {
+        padding-inline-start: 48px;
+    }
+
+    .ec-filters__option[data-depth="3"] {
+        padding-inline-start: 72px;
+    }
+
+    .ec-filters__option[data-depth="4"] {
+        padding-inline-start: 96px;
+    }
+
+    .ec-filters__count[data-scope="radio-group"][data-part="item-meta"] {
+        grid-column: 3;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Category header card (#131): the eyebrow, the display-lg name, the
+     * description and the sub-category chips, with the image on the end
+     * half from 768px (above the text below that).
+     */
+    .ec-category-hero.apui-card {
+        display: grid;
+        overflow: hidden;
+    }
+
+    .ec-category-hero__body {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        gap: 12px;
+        min-inline-size: 0;
+        padding: 24px;
+    }
+
+    .ec-category-hero__media {
+        order: -1;
+        min-inline-size: 0;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-category-hero__media img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+    }
+
+    @media (min-width: 768px) {
+        .ec-category-hero[data-with-image] {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .ec-category-hero__body {
+            padding: 48px 32px;
+        }
+
+        .ec-category-hero__media {
+            order: 0;
+        }
+
+        .ec-category-hero__media img {
+            min-block-size: 280px;
+            aspect-ratio: auto;
+        }
+    }
+
+    .ec-category-hero__eyebrow {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-label-xs-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-label-xs-line-height);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .ec-category-hero__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-family: var(--apui-type-display-lg-font-family);
+        font-size: var(--apui-type-display-lg-font-size);
+        font-weight: var(--apui-type-display-lg-font-weight);
+        line-height: var(--apui-type-display-lg-line-height);
+        letter-spacing: var(--apui-type-display-lg-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-category-hero__description {
+        max-inline-size: 60ch;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-category-hero__description > :first-child {
+        margin-block-start: 0;
+    }
+
+    .ec-category-hero__description > :last-child {
+        margin-block-end: 0;
+    }
+
+    .ec-category-hero__chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 4px 0 0;
+        padding: 0;
+        list-style: none;
     }
 }

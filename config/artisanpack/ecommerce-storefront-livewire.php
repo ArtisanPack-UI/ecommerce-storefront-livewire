@@ -25,6 +25,12 @@ return [
     | `rtl_locales` lists the languages written right to left: the standalone
     | layout sets `<html dir="rtl">` for them (see Support\TextDirection).
     |
+    | `tagline` is the line under the store name in the standalone layout's
+    | footer (null leaves it out). `nav_categories` is how many top-level
+    | categories the header and footer list after "Shop all" (0 for none);
+    | change the links with the `ap.ecommerceStorefrontLivewire.layout.*`
+    | filters (see Support\StorefrontNavigation).
+    |
     */
     'storefront' => [
         'routes_enabled' => true,
@@ -32,6 +38,8 @@ return [
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
         'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
+        'tagline'        => null,
+        'nav_categories' => 3,
     ],
 
     /*
@@ -88,6 +96,9 @@ return [
     | `filter_attributes` lists the attribute keys shoppers can filter by
     | (e.g. [ 'colour', 'size' ]); null offers every attribute.
     |
+    | `description` is the line under the catalog page's "All products"
+    | title (null leaves it out).
+    |
     */
     'catalog' => [
         'per_page'          => 24,
@@ -95,6 +106,7 @@ return [
         'default_sort'      => 'newest',
         'show_stock_count'  => false,
         'filter_attributes' => null,
+        'description'       => null,
     ],
 
     /*

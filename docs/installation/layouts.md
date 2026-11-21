@@ -29,15 +29,37 @@ When `artisanpack-ui/seo` is installed, the storefront hands its JSON-LD to the 
 
 ## 1. Standalone layout
 
-`ecommerce-storefront::layouts.app` is used unless you configure another. It is built from `x-artisanpack-nav` and a plain `<main>` (the storefront has no sidebar, so it doesn't use `x-artisanpack-main` and its drawer toggle) and includes:
+`ecommerce-storefront::layouts.app` is used unless you configure another. It is built on the design system: the sticky `x-artisanpack-navbar`, a plain `<main>`, and a footer. Header, content, and footer share one column 1232px wide, with 24px gutters (16px below 768px). It includes:
 
 - `<html dir>` set from the app locale (see [Right-to-left languages](#right-to-left-languages));
-- a "Skip to content" link;
-- a sticky header with the store name (`app.name`) linking to the catalog, a "Shop" link, the search box (a search icon linking to the search page on phones), the header actions, and the theme toggle. On a 320px screen the actions wrap instead of scrolling sideways;
-- a footer with the copyright line and a "Find an order" link to the order lookup;
+- "Skip to content", the first focusable element on the page, shown when it has focus;
+- the header: the store's mark (the initials of `app.name`) and name linking to the catalog, the store navigation (see [Store navigation](#store-navigation)), the search box, and the header actions. Below 768px a menu button before the mark opens the store navigation in a drawer, the search box becomes a search icon linking to the search page, and the currency switcher moves to the footer. On a 320px screen the actions wrap instead of scrolling sideways;
+- the footer: the mark, name, and `storefront.tagline` (when set), the Shop, Help, and Account link columns, then the copyright line, the currency switcher, and the theme toggle;
 - your Vite entries (see [Front-End Setup](Installation-Front-End#which-entries-the-storefront-loads)), `@livewireStyles`, `@livewireScripts`, the `head`, `styles`, and `scripts` stacks, and the global partial.
 
-Links to routes that aren't registered (catalog, search, lookup) are left out. The page title is the page's `title` section followed by `· {app.name}`.
+Links to routes that aren't registered (catalog, search, lookup, sign-in, account) are left out. The page title is the page's `title` section followed by `· {app.name}`.
+
+### Store navigation
+
+The header lists "Shop all" (the catalog), then the first `storefront.nav_categories` top-level categories (3 by default; 0 for none). The link for the page the shopper is on is marked current: "Shop all" on the catalog, and a category on its own page or any page under it. The footer's Shop column lists "All products" and the same categories; Help has "Find an order"; Account has "Sign in" (or "Account" when signed in), "Orders", and "Addresses".
+
+Change the header links with `ap.ecommerceStorefrontLivewire.layout.navigation` (a list of `label`, `url`, and `current`), and the footer columns with `ap.ecommerceStorefrontLivewire.layout.footerLinks` (`key => [ 'title' => …, 'links' => [ [ 'label' => …, 'url' => … ], … ] ]`):
+
+```php
+addFilter( 'ap.ecommerceStorefrontLivewire.layout.navigation', function ( array $links ): array {
+    $links[] = [ 'label' => __( 'Journal' ), 'url' => url( '/journal' ), 'current' => request()->is( 'journal*' ) ];
+
+    return $links;
+} );
+
+addFilter( 'ap.ecommerceStorefrontLivewire.layout.footerLinks', function ( array $columns ): array {
+    $columns['help']['links'][] = [ 'label' => __( 'Shipping & returns' ), 'url' => url( '/shipping' ) ];
+
+    return $columns;
+} );
+```
+
+Links without a label or URL are dropped, and so is a column with no links. Both filters only affect the package layout.
 
 ### Header actions
 
@@ -46,7 +68,7 @@ The header's action buttons run through the `ap.ecommerceStorefrontLivewire.head
 | Key | View | Shows |
 | --- | --- | --- |
 | `currency` | `ecommerce-storefront::partials.header.currency` | The currency switcher, only when the store sells in more than one currency |
-| `account` | `ecommerce-storefront::partials.header.account` | "Account" for signed-in shoppers, else "Sign in" to `auth.login_route` |
+| `account` | `ecommerce-storefront::partials.header.account` | A user icon named "Account" for signed-in shoppers, else "Sign in" to `auth.login_route` |
 | `cart` | `ecommerce-storefront::partials.header.cart` | The cart button and count; opens the cart drawer |
 
 Add, replace, or remove entries from a service provider's `boot()`:

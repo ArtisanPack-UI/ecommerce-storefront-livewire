@@ -284,13 +284,13 @@ it( 'hides the filters when the listing is not filterable', function (): void {
         ->assertDontSeeHtml( 'data-filters-drawer' );
 } );
 
-it( 'offers a mobile drawer with a "Show N results" button that closes it', function (): void {
+it( 'offers a mobile drawer with a "Show N products" button that closes it', function (): void {
     Livewire::test( Index::class )
         ->set( 'onSale', true )
         ->assertSeeHtml( 'id="ecommerce-catalog-filters-drawer"' )
         ->assertSeeHtml( 'x-on:ecommerce-filters-open.window="open = true"' )
         ->assertSeeHtml( 'x-on:ecommerce-filters-close.window="open = false"' )
-        ->assertSee( 'Show 1 result' )
+        ->assertSee( 'Show 1 product' )
         ->assertSee( 'Filters (1)' );
 } );
 
