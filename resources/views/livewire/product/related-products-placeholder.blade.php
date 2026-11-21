@@ -1,6 +1,5 @@
 {{--
-    Product suggestions while they load (#90). See Product\RelatedProducts
-    and Product\RecentlyViewed.
+    Product suggestions while they load (#90). See Product\RelatedProducts.
 
     The section's heading, then `$count` (1–4) skeleton cards the size of a
     product card in the same grid: a square image, three text lines and a

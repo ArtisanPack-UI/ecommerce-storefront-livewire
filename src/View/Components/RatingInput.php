@@ -13,21 +13,18 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
+use ArtisanPack\LivewireUiComponents\Support\IconRegistry;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Component;
 
 /**
  * `<x-artisanpack-ec-rating-input id="rating" :label="__( 'Your rating' )" wire:model="rating" :error="$errors->first( 'rating' )" />`
  *
- * A 1–5 star picker: a fieldset of radio buttons drawn as daisyUI rating
- * stars, each named for screen readers ("4 stars"), so arrow keys move
- * between ratings. An error is linked to the group with
- * `aria-describedby`.
- *
- * Local stand-in for `x-artisanpack-rating`, which fails to render in
- * livewire-ui-components 2.1 (its `size()` returns a `Stringable` where
- * `?string` is declared) and doesn't label its stars. When that is fixed,
- * this is the one file to swap.
+ * A 1–5 star picker on the design-system Rating: a radiogroup fieldset of
+ * native radios, each named for screen readers ("4 stars"), so arrow keys
+ * move between ratings. Hover previews the value and the choice shows as
+ * "3 of 5". An error is linked to the group with `aria-describedby`.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -36,6 +33,24 @@ use Illuminate\View\Component;
  */
 class RatingInput extends Component
 {
+    /**
+     * The star's `<svg>`, from the design system's icon registry.
+     *
+     * @since 2.0.0
+     *
+     * @var HtmlString
+     */
+    public HtmlString $starIcon;
+
+    /**
+     * The error's alert `<svg>`, from the design system's icon registry.
+     *
+     * @since 2.0.0
+     *
+     * @var HtmlString
+     */
+    public HtmlString $errorIcon;
+
     /**
      * @since 1.0.0
      *
@@ -50,6 +65,8 @@ class RatingInput extends Component
         public ?string $error = null,
         public bool $required = false,
     ) {
+        $this->starIcon  = new HtmlString( IconRegistry::render( 'star' ) );
+        $this->errorIcon = new HtmlString( IconRegistry::render( 'circle-alert' ) );
     }
 
     /**

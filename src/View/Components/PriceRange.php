@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CurrencyNames;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 use Money\Currencies\ISOCurrencies;
@@ -22,15 +23,12 @@ use Throwable;
 /**
  * `<x-artisanpack-ec-price-range :min="0" :max="12000" currency="EUR" from-model="priceMin" to-model="priceMax" />`
  *
- * Two labelled range inputs (lowest and highest price) bound to a parent
- * Livewire component's properties in minor units. The values are entangled
- * (deferred) and sent when a handle is released, so dragging doesn't send a
- * request per pixel. A handle at its end of the range sends null, which
- * keeps an unused bound out of the URL.
- *
- * Local stand-in for the library's dual-handle range slider
- * (livewire-ui-components#121, spec §10 U2); when it ships, this is the one
- * file to swap.
+ * The design-system Range with two thumbs (lowest and highest price) and
+ * an Input for each bound with the currency symbol as its prefix, bound to
+ * a parent Livewire component's properties in minor units. The values are
+ * entangled (deferred) and sent when a thumb is released or an input
+ * changes, so dragging doesn't send a request per pixel. A bound at its end
+ * of the range sends null, which keeps an unused bound out of the URL.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -49,6 +47,24 @@ class PriceRange extends Component
     public int $divisor;
 
     /**
+     * Decimal places in a major-unit amount (2 for EUR, 0 for JPY).
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public int $decimals;
+
+    /**
+     * The inputs' prefix: the currency's symbol ("€"), else its code.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public string $symbol;
+
+    /**
      * @since 1.0.0
      *
      * @param  int          $min        The lowest selectable amount (minor units).
@@ -59,6 +75,8 @@ class PriceRange extends Component
      * @param  int          $step       Step in minor units.
      * @param  string|null  $label      The group's visible label.
      * @param  string|null  $idPrefix   Prefix for the inputs' ids.
+     * @param  int|null     $from       The current lowest price, for the first render (null: `min`).
+     * @param  int|null     $to         The current highest price, for the first render (null: `max`).
      */
     public function __construct(
         public int $min,
@@ -69,16 +87,23 @@ class PriceRange extends Component
         public int $step = 100,
         public ?string $label = null,
         public ?string $idPrefix = null,
+        public ?int $from = null,
+        public ?int $to = null,
     ) {
         $this->max       = max( $this->min, $this->max );
         $this->step      = max( 1, $this->step );
         $this->idPrefix ??= 'ec-price-range';
+        $this->from       = null === $this->from ? null : max( $this->min, min( $this->max, $this->from ) );
+        $this->to         = null === $this->to ? null : max( $this->from ?? $this->min, min( $this->max, $this->to ) );
 
         try {
-            $this->divisor = 10 ** ( new ISOCurrencies() )->subunitFor( new Currency( strtoupper( $this->currency ) ) );
+            $this->decimals = ( new ISOCurrencies() )->subunitFor( new Currency( strtoupper( $this->currency ) ) );
         } catch ( Throwable ) {
-            $this->divisor = 100;
+            $this->decimals = 2;
         }
+
+        $this->divisor = 10 ** $this->decimals;
+        $this->symbol  = CurrencyNames::symbol( strtoupper( $this->currency ) ) ?? strtoupper( $this->currency );
     }
 
     /**

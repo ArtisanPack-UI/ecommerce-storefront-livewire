@@ -49,6 +49,8 @@
                         from-model="priceMin"
                         to-model="priceMax"
                         :id-prefix="$ecommerceGroupId"
+                        :from="$group['from']"
+                        :to="$group['to']"
                     />
                     @break
 

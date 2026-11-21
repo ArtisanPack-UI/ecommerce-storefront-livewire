@@ -36,6 +36,7 @@
     ":option: :value": ":option : :value",
     ":percent% off": "−:percent %",
     ":quantity × :name": ":quantity × :name",
+    ":rating of 5": ":rating sur 5",
     ":rating out of 5": ":rating sur 5",
     ":section: :field": ":section : :field",
     ":stars: :reviews (:percent%)": ":stars : :reviews (:percent %)",
@@ -316,6 +317,7 @@
     "Licence": "Licence",
     "Licence keys": "Clés de licence",
     "Line total:": "Total de la ligne :",
+    "Loading recently viewed products…": "Chargement des produits récemment consultés…",
     "Loading suggestions…": "Chargement des suggestions…",
     "Loading the payment form…": "Chargement du formulaire de paiement…",
     "Loading…": "Chargement…",
@@ -712,7 +714,7 @@
     "You need an account to place an order with this store.": "Vous avez besoin d'un compte pour commander dans cette boutique.",
     "You save :amount": "Vous économisez :amount",
     "You sign in with :email.": "Vous vous connectez avec :email.",
-    "You'll go to :gateway to pay, then come back here to finish your order.": "Vous serez redirigé vers :gateway pour payer, puis reviendrez ici pour finaliser votre commande.",
+    "You'll finish paying on :gateway's site, then come back here.": "Vous finaliserez le paiement sur le site de :gateway, puis reviendrez ici.",
     "You'll need an account to pay": "Vous aurez besoin d'un compte pour payer",
     "You'll pay :total.": "Vous paierez :total.",
     "You're searching faster than we can keep up. Try again in a moment.": "Vous recherchez plus vite que nous ne pouvons suivre. Réessayez dans un instant.",
@@ -799,6 +801,7 @@
     "shop": "boutique",
     "store": "magasin",
     "the payment provider": "le prestataire de paiement",
+    "to": "à",
     "upsells": "montées en gamme",
     "visual-editor is installed, but storefront pages don't use its templates (visual_editor.templates is off). Turn it on to design product, category, cart, and checkout pages in the editor; it is off by default so installing the editor doesn't change an existing store.": "visual-editor est installé, mais les pages de la boutique n'utilisent pas ses modèles (visual_editor.templates est désactivé). Activez-le pour concevoir dans l'éditeur les pages produit, catégorie, panier et paiement ; il est désactivé par défaut pour que l'installation de l'éditeur ne modifie pas une boutique existante."
 }

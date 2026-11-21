@@ -110,13 +110,106 @@ describe( 'quantity', function (): void {
 } );
 
 describe( 'price range', function (): void {
-    it( 'renders two labelled ranges in minor units', function (): void {
-        $this->blade( '<x-artisanpack-ec-price-range :min="1000" :max="9000" currency="EUR" from-model="priceMin" to-model="priceMax" label="Price" />' )
-            ->assertSee( 'Lowest price' )
-            ->assertSee( 'Highest price' )
-            ->assertSee( 'min="1000"', false )
-            ->assertSee( 'max="9000"', false )
-            ->assertSee( "entangle( 'priceMin' )", false );
+    it( 'renders the two-thumb design-system Range in minor units, named by the legend', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-price-range :min="1000" :max="9000" currency="EUR" from-model="priceMin" to-model="priceMax" label="Price" id-prefix="filters-price" />' );
+
+        expect( $html )
+            ->toContain( '<legend id="filters-price-legend" class="ec-price-range__legend">Price</legend>' )
+            ->toContain( 'class="apui-range ec-price-range__slider"' )
+            ->toContain( 'data-dual' )
+            ->toContain( 'data-show-value="never"' )
+            ->toContain( 'aria-labelledby="filters-price-legend filters-price-range-start-label"' )
+            ->toContain( 'aria-labelledby="filters-price-legend filters-price-range-end-label"' )
+            ->toContain( '<span class="apui-sr-only" id="filters-price-range-start-label">Lowest price</span>' )
+            ->toContain( '<span class="apui-sr-only" id="filters-price-range-end-label">Highest price</span>' )
+            ->toContain( 'x-bind:aria-valuetext="money(' )
+            ->toContain( "entangle( 'priceMin' )" )
+            ->toContain( "entangle( 'priceMax' )" )
+            ->and( substr_count( $html, 'min="1000"' ) )->toBe( 2 )
+            ->and( substr_count( $html, 'max="9000"' ) )->toBe( 2 );
+    } );
+
+    it( 'pairs the thumbs with a prefixed input for each bound in major units, "to" between them', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-price-range :min="1050" :max="9000" currency="USD" from-model="priceMin" to-model="priceMax" label="Price" id-prefix="p" />' );
+
+        expect( $html )
+            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Lowest price"[^>]*x-bind:value="major\( low\(\) \)"[^>]*data-price-min/' )
+            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Highest price"[^>]*x-bind:value="major\( high\(\) \)"[^>]*data-price-max/' )
+            ->toContain( 'min="10.5" max="90" step="1"' )
+            ->toMatch( '/data-price-min.*<span class="ec-price-range__to" aria-hidden="true">to<\/span>.*data-price-max/s' );
+    } );
+
+    it( 'uses the currency\'s own symbol and minor units', function ( string $currency, string $prefix, string $bounds ): void {
+        expect( (string) $this->blade( '<x-artisanpack-ec-price-range :min="0" :max="5000" :currency="$currency" from-model="a" to-model="b" />', [ 'currency' => $currency ] ) )
+            ->toContain( '<span data-scope="input" data-part="prefix">' . $prefix . '</span>' )
+            ->toContain( $bounds );
+    } )->with( [
+        'euro'  => [ 'EUR', '€', 'divisor: 100, decimals: 2' ],
+        'yen'   => [ 'JPY', '¥', 'divisor: 1, decimals: 0' ],
+        'dinar' => [ 'KWD', 'KWD', 'divisor: 1000, decimals: 3' ],
+    ] );
+
+    it( 'places the thumbs and inputs at the current bounds for the first render', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-price-range :min="1000" :max="9000" currency="USD" from-model="a" to-model="b" :from="2500" :to="20000" />' );
+
+        expect( $html )
+            ->toContain( 'value: JSON.parse(\'[2500,9000]\')' )
+            ->toContain( 'value="2500"' )
+            ->toContain( 'value="9000"' )
+            ->toMatch( '/data-price-min[^>]*value="25\.00"/' )
+            ->toMatch( '/data-price-max[^>]*value="90\.00"/' );
+    } );
+
+    it( 'leaves no DaisyUI or Tailwind classes in the price range', function (): void {
+        expect( classTokens( (string) $this->blade( '<x-artisanpack-ec-price-range :min="0" :max="9000" currency="EUR" from-model="priceMin" to-model="priceMax" label="Price" />' ) ) )
+            ->not->toContain( 'range', 'range-sm', 'flex', 'flex-col', 'gap-3', 'text-xs', 'text-sm', 'tabular-nums' );
+    } );
+} );
+
+describe( 'rating input', function (): void {
+    it( 'is a radiogroup named by its legend, with five radios from "1 star" to "5 stars"', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-input id="rate" label="Your rating" wire:model="rating" required />' );
+
+        expect( $html )
+            ->toMatch( '/<fieldset\s+class="apui-radio-group ec-rating-input"\s+id="rate"\s+role="radiogroup"\s+aria-required="true"/' )
+            ->toContain( '<legend data-scope="radio-group" data-part="label">Your rating<span data-scope="radio-group" data-part="required" aria-hidden="true">*</span></legend>' )
+            ->toContain( 'class="apui-rating ec-rating-input__stars" data-size="lg" data-interactive' )
+            ->toContain( 'aria-label="1 star"' )
+            ->toContain( 'aria-label="5 stars"' )
+            ->and( substr_count( $html, 'type="radio"' ) )->toBe( 5 )
+            ->and( substr_count( $html, 'name="rate"' ) )->toBe( 5 )
+            ->and( substr_count( $html, 'wire:model="rating"' ) )->toBe( 5 )
+            ->and( substr_count( $html, ' required ' ) )->toBe( 1 )
+            ->and( substr_count( $html, 'data-part="star" aria-hidden="true"><svg' ) )->toBe( 5 );
+    } );
+
+    it( 'shows the chosen or hovered value as ":rating of 5", hidden from screen readers', function (): void {
+        expect( (string) $this->blade( '<x-artisanpack-ec-rating-input id="rate" wire:model="rating" />' ) )
+            ->toContain( ':rating of 5' )
+            ->toContain( '.replace( \':rating\', preview || rating )' )
+            ->toMatch( '/<span\s+class="ec-rating-input__value"\s+aria-hidden="true"/' )
+            ->toContain( 'x-on:mouseenter="preview = 3"' )
+            ->toContain( 'x-on:mouseleave="preview = 0"' )
+            ->toContain( '<legend data-scope="radio-group" data-part="label">Rating</legend>' );
+    } );
+
+    it( 'links an error to the group and marks the radios invalid', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-input id="rate" wire:model="rating" error="Choose a rating." />' );
+
+        expect( $html )
+            ->toContain( 'data-invalid aria-describedby="rate-error"' )
+            ->toMatch( '/<p data-scope="radio-group" data-part="error" id="rate-error" data-rating-input-error><svg[^>]*>.*<\/svg>Choose a rating\.<\/p>/s' )
+            ->and( substr_count( $html, 'aria-invalid="true"' ) )->toBe( 5 );
+
+        expect( (string) $this->blade( '<x-artisanpack-ec-rating-input id="rate" wire:model="rating" />' ) )
+            ->not->toContain( 'aria-describedby' )
+            ->not->toContain( 'aria-invalid' )
+            ->not->toContain( 'data-rating-input-error' );
+    } );
+
+    it( 'leaves no DaisyUI or Tailwind classes in the rating input', function (): void {
+        expect( classTokens( (string) $this->blade( '<x-artisanpack-ec-rating-input id="rate" wire:model="rating" error="Oops" required />' ) ) )
+            ->not->toContain( 'rating', 'rating-lg', 'mask', 'mask-star-2', 'flex', 'gap-3', 'text-sm', 'rounded-box' );
     } );
 } );
 

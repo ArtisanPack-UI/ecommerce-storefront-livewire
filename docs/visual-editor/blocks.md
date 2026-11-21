@@ -91,7 +91,7 @@ The products the shopper looked at last. Renders `artisanpack-ecommerce-storefro
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `limit` | number | `4` | 1 to 12 |
-| `columns` | number | `4` | 1 to 6 |
+| `columns` | number | `4` | 1 to 6; the most rows side by side (each at least 240px wide) |
 | `heading` | string | `''` | |
 
 This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks Reference](Extending-Hooks-Reference).

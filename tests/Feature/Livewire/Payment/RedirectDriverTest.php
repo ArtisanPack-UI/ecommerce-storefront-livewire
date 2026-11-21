@@ -21,13 +21,32 @@ function redirectDriverProps( ?string $url ): array
     ];
 }
 
-it( 'offers to continue to the gateway', function (): void {
-    Livewire::test( RedirectDriver::class, redirectDriverProps( 'https://pay.example.test/session/1' ) )
+it( 'offers to continue to the gateway in a card with an icon tile and one line of explanation', function (): void {
+    $html = Livewire::test( RedirectDriver::class, redirectDriverProps( 'https://pay.example.test/session/1' ) )
         ->assertSeeHtml( 'data-payment-driver="redirect"' )
+        ->assertSee( 'Pay with Hosted pay' )
+        ->assertSee( 'You\'ll finish paying on Hosted pay\'s site, then come back here.' )
         ->assertSee( 'Continue to Hosted pay' )
-        ->assertSee( 'You\'ll go to Hosted pay to pay, then come back here to finish your order.' )
-        ->assertSeeHtml( 'data-payment-redirect' );
+        ->assertDontSeeHtml( 'data-payment-unavailable' )
+        ->html();
+
+    expect( $html )
+        ->toContain( 'class="apui-card ec-redirect__card"' )
+        ->toMatch( '/class="apui-icon apui-icon-tile[^"]*"/' )
+        ->toMatch( '/class="apui-button ec-redirect__continue"[^>]*data-variant="solid"[^>]*data-color="neutral"|data-variant="solid"[^>]*data-color="neutral"[^>]*class="apui-button ec-redirect__continue"/s' )
+        ->toContain( 'data-payment-redirect' );
 } );
+
+it( 'names the payment provider when the gateway has no label', function (): void {
+    Livewire::test( RedirectDriver::class, [ ...redirectDriverProps( 'https://pay.example.test/session/1' ), 'gatewayLabel' => '' ] )
+        ->assertSee( 'Continue to the payment provider' )
+        ->assertSee( 'You\'ll finish paying on the payment provider\'s site, then come back here.' );
+} );
+
+it( 'leaves no DaisyUI or Tailwind classes', function ( ?string $url ): void {
+    expect( classTokens( Livewire::test( RedirectDriver::class, redirectDriverProps( $url ) )->html() ) )
+        ->not->toContain( 'flex', 'flex-col', 'gap-3', 'text-sm', 'text-base-content/70' );
+} )->with( [ 'available' => [ 'https://pay.example.test/session/1' ], 'unavailable' => [ null ] ] );
 
 it( 'sends the shopper to the gateway', function (): void {
     Livewire::test( RedirectDriver::class, redirectDriverProps( 'https://pay.example.test/session/1' ) )

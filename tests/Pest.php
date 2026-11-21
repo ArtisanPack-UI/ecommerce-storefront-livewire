@@ -412,3 +412,17 @@ if ( ! function_exists( 'verifiedShopper' ) ) {
         return [ $user, $record ];
     }
 }
+
+if ( ! function_exists( 'classTokens' ) ) {
+    /**
+     * Every class name in the markup's `class` attributes, once each.
+     *
+     * @return array<int, string>
+     */
+    function classTokens( string $html ): array
+    {
+        preg_match_all( '/\sclass="([^"]*)"/', $html, $matches );
+
+        return array_values( array_unique( preg_split( '/\s+/', implode( ' ', $matches[1] ), -1, PREG_SPLIT_NO_EMPTY ) ) );
+    }
+}
