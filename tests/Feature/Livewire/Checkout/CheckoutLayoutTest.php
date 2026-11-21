@@ -14,7 +14,7 @@ beforeEach( function (): void {
     checkoutCart();
 } );
 
-it( 'shows the multi-step progress bar, the open step, and only finished steps by default', function (): void {
+it( 'shows the multi-step progress bar, the finished steps, the open step, and the steps to come', function (): void {
     $component = Livewire::test( Index::class )
         ->set( 'email', 'ada@example.test' )
         ->call( 'saveContact' )
@@ -27,8 +27,10 @@ it( 'shows the multi-step progress bar, the open step, and only finished steps b
         ->assertSeeHtml( 'data-checkout-step-summary="contact"' )
         ->assertSeeHtml( 'data-checkout-edit="contact"' )
         ->assertSeeHtml( 'data-checkout-step="address"' )
-        ->assertDontSeeHtml( 'data-checkout-step="shipping"' )
-        ->assertDontSeeHtml( 'data-checkout-step="review"' )
+        ->assertSeeHtml( 'data-checkout-step="shipping"' )
+        ->assertSeeHtml( 'data-checkout-step="review"' )
+        ->assertSeeHtml( 'data-checkout-step-state="upcoming"' )
+        ->assertDontSeeHtml( 'data-checkout-step-locked' )
         ->assertSet( 'announcement', 'Step 2 of 5: Address' );
 
     expect( $component->html() )->toContain( 'x-init="$nextTick( () => $el.focus() )"' );

@@ -201,7 +201,7 @@ it( 'validates the email', function ( string $email, string $message ): void {
         ->assertHasErrors( 'email' )
         ->assertSee( $message )
         ->assertSeeHtml( 'data-checkout-errors' )
-        ->assertSeeHtml( 'data-checkout-error="email"' )
+        ->assertSeeHtml( 'href="#email"' )
         ->assertSet( 'step', 'contact' )
         ->assertSet( 'errorSummary', 1 );
 } )->with( [

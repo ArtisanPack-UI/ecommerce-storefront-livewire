@@ -14,8 +14,9 @@
     no-match card (with "Clear filters") or the empty catalog.
 
     The search page (Search\Index) reuses it, passing `$resultsLabel` (the
-    live results count) and `$emptyState` (icon, title, description, and
-    tips) in place of the catalog's own.
+    live results count), `$emptyState` (icon, title, description, and
+    tips, shown in a card) and `$browseUrl` ("Browse all products" when
+    there are no results) in place of the catalog's own.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -120,9 +121,9 @@
             @if ( $products->isEmpty() )
                 {{-- From the filter state, not the chips, so "Clear filters" stays reachable when the panel can't be built. --}}
                 @if ( null !== ( $emptyState ?? null ) )
-                    <x-artisanpack-ec-empty-state :icon="$emptyState['icon']" :title="$emptyState['title']" :description="$emptyState['description']" data-empty-reason="{{ $emptyState['key'] }}">
+                    <x-artisanpack-ec-empty-state :icon="$emptyState['icon']" :title="$emptyState['title']" :description="$emptyState['description']" card data-empty-reason="{{ $emptyState['key'] }}">
                         @if ( [] !== $emptyState['tips'] )
-                            <ul role="list" class="ec-catalog__tips" data-search-tips>
+                            <ul class="ec-catalog__tips" data-search-tips>
                                 @foreach ( $emptyState['tips'] as $tip )
                                     <li>{{ $tip }}</li>
                                 @endforeach
@@ -131,6 +132,10 @@
 
                         @if ( $filtered )
                             <x-artisanpack-button color="primary" wire:click="clearFilters">{{ __( 'Clear filters' ) }}</x-artisanpack-button>
+                        @endif
+
+                        @if ( in_array( $emptyState['key'], [ 'no-results', 'unavailable' ], true ) && null !== ( $browseUrl ?? null ) )
+                            <x-artisanpack-button variant="outline" color="neutral" :href="$browseUrl" data-search-browse>{{ __( 'Browse all products' ) }}</x-artisanpack-button>
                         @endif
                     </x-artisanpack-ec-empty-state>
                 @elseif ( $filtered )

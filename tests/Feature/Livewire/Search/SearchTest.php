@@ -104,7 +104,7 @@ it( 'lists matching products in the catalog grid, by relevance', function (): vo
         ->assertSee( 'Linen shirt' )
         ->assertSee( 'Linen trousers' )
         ->assertDontSee( 'Stoneware mug' )
-        ->assertSee( '2 results for "linen"' )
+        ->assertSee( '2 results' )
         ->assertSeeHtml( 'data-product-card="' . $this->linen->id . '"' );
 } );
 
@@ -161,7 +161,7 @@ it( 'builds the filter panel from the provider\'s facets and narrows by them', f
     $component->set( 'attributeFilters.size', [ 'm' ] )
         ->assertSee( 'Linen shirt' )
         ->assertDontSee( 'Linen trousers' )
-        ->assertSee( '1 result for "linen"' )
+        ->assertSee( '1 result' )
         ->assertSeeHtml( 'data-active-filter="attr.size"' );
 
     $component->set( 'categoryFilter', 'shirts' )->assertSee( 'Linen shirt' );
@@ -196,7 +196,7 @@ it( 'shows "did you mean" suggestions and searches for one', function (): void {
 
     Livewire::withQueryParams( [ 'q' => 'lnen' ] )
         ->test( Index::class )
-        ->assertSee( 'No results for "lnen"' )
+        ->assertSee( 'No results for “lnen”' )
         ->assertSeeHtml( 'data-search-suggestions' )
         ->assertSeeInOrder( [ 'Did you mean:', 'linen' ] )
         ->call( 'useSuggestion', 'linen' )
@@ -210,7 +210,7 @@ it( 'punctuates "did you mean" for the shopper\'s language', function (): void {
 
     $html = Livewire::withQueryParams( [ 'q' => 'lnen' ] )->test( Index::class )->html();
 
-    expect( preg_replace( '/\s+/', ' ', strip_tags( (string) preg_replace( '/.*?(<p class="text-sm" data-search-suggestions>.*?<\/p>).*/s', '$1', $html ) ) ) )
+    expect( preg_replace( '/\s+/', ' ', strip_tags( (string) preg_replace( '/.*?(<p class="ec-search-page__suggestions" data-search-suggestions>.*?<\/p>).*/s', '$1', $html ) ) ) )
         ->toBe( ' ¿Quizás quisiste decir: linen, lino? ' );
 } );
 

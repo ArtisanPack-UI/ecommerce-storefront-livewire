@@ -162,7 +162,7 @@ it( 'summarises the problems at the top, linked to their fields', function (): v
         ->assertSet( 'errorSummary', 1 )
         ->assertSeeHtml( 'data-checkout-errors' )
         ->assertSee( 'There are 5 problems to fix:' )
-        ->assertSeeHtml( 'data-checkout-error="shipping.address1"' )
+        ->assertSeeHtml( 'href="#shipping.address1"' )
         ->assertSeeHtml( 'data-field="shipping.address1"' )
         ->assertSee( 'Shipping address: Address:' )
         ->assertSee( 'Enter the street address.' )

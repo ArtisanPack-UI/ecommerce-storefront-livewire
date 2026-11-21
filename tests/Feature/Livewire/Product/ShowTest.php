@@ -45,7 +45,7 @@ it( 'renders the gallery, summary, purchase form, and details', function (): voi
 
     Livewire::test( Show::class, [ 'product' => $product ] )
         ->assertOk()
-        ->assertSeeHtml( '<h1 id="ec-product-' . $product->id . '-name" class="text-3xl font-bold">Linen shirt</h1>' )
+        ->assertSeeHtml( '<h1 id="ec-product-' . $product->id . '-name" class="ec-product__name">Linen shirt</h1>' )
         ->assertSeeHtml( 'src="https://cdn.example.test/front.jpg"' )
         ->assertSeeHtml( 'alt="Back view"' )
         ->assertSeeHtml( 'data-gallery-thumbnail="1"' )
@@ -55,7 +55,7 @@ it( 'renders the gallery, summary, purchase form, and details', function (): voi
         ->assertSeeInOrder( [ 'Sale price', '$25.00', 'Original price', '$30.00' ] )
         ->assertSeeHtml( '<em>crisp</em>' )
         ->assertSee( 'In stock' )
-        ->assertSee( 'SKU: LIN-1' )
+        ->assertSeeHtml( '<code>LIN-1</code>' )
         ->assertSeeLivewire( SimpleForm::class )
         ->assertSee( 'Woven in Portugal.' )
         ->assertSee( 'Fabric' )
@@ -123,7 +123,7 @@ it( 'follows the variant the purchase form matches', function (): void {
 
     $component->call( 'variantSelected', $made['product']->id, $made['variants']['blue/l']->id )
         ->assertSet( 'variantId', $made['variants']['blue/l']->id )
-        ->assertSee( 'SKU: SHIRT-BLUE-L' )
+        ->assertSeeHtml( '<code>SHIRT-BLUE-L</code>' )
         ->assertSee( 'Out of stock' )
         ->assertDontSee( '$20.00' );
 
@@ -157,7 +157,7 @@ it( 'does not re-query the gallery or attributes when the variant changes', func
     expect( $tables )->not->toContain( 'product_images' )
         ->not->toContain( 'product_attributes' );
 
-    $component->assertSee( 'SKU: SHIRT-BLUE-L' )
+    $component->assertSeeHtml( '<code>SHIRT-BLUE-L</code>' )
         ->assertSeeHtml( 'src="https://cdn.example.test/shirt.jpg"' )
         ->assertSeeHtml( 'alt="Shirt front"' )
         ->assertSee( 'Woven in Portugal.' )
@@ -175,7 +175,7 @@ it( 'opens on the variant from the query string', function (): void {
     Livewire::withQueryParams( [ 'variant' => $made['variants']['blue/l']->id ] )
         ->test( Show::class, [ 'product' => $made['product'] ] )
         ->assertSet( 'variantId', $made['variants']['blue/l']->id )
-        ->assertSee( 'SKU: SHIRT-BLUE-L' );
+        ->assertSeeHtml( '<code>SHIRT-BLUE-L</code>' );
 } );
 
 it( 'shows prices in the currency of the shopper\'s open cart', function (): void {

@@ -82,14 +82,16 @@ Product cards show the image, name, price, rating, and stock. Prices are the sig
 
 Products whose type's satellite isn't installed are left out of every listing, search, and header suggestion. A malformed query string (`?per_page=abc`, `?sort[]=x`) is ignored rather than causing an error.
 
-The category page adds breadcrumbs, then a card with a "Category" eyebrow, the category's name, description, and sub-category chips ("All {category}" for the page itself, then each sub-category), with its image on the end half. The tag page has the catalog's filters, less the tag filter.
+The category page adds breadcrumbs, then a card with a "Category" eyebrow, the category's name, description, and sub-category chips ("All {category}" for the page itself, then each sub-category), with its image on the end half. The tag page has breadcrumbs, the same card with a "Tag" eyebrow and the tag's name (no image or chips), and the catalog's filters, less the tag filter.
 
 ## Product
 
-- **Gallery**: the featured image, gallery images, and variant images, with thumbnails, zoom, and a lightbox. It switches to the chosen variant's image.
-- **Summary**: name, rating summary linking to `#reviews`, price, short description, stock status, and SKU, all following the chosen variant.
-- **Purchase form**: the product type's form from `ProductFormRegistry`, or "can't be purchased online" when the type has none.
-- **Details**: description, an attributes table, and shipping and returns content from the `ap.ecommerceStorefrontLivewire.product.shippingReturns` filter, in an accordion.
+- **Breadcrumbs**: the shop, the trail to the product's first category, then the product.
+- **Gallery** (1.1fr beside the summary from 1024px, above it below that): the featured image, gallery images, and variant images, with thumbnails, zoom, and a lightbox. It switches to the chosen variant's image.
+- **Summary**: the category (a link to its page), the name, rating summary linking to `#reviews`, price, short description, stock status, and SKU, all following the chosen variant.
+- **Purchase form**: the product type's form from `ProductFormRegistry`, or "can't be purchased online" when the type has none. When the product or chosen variant is sold out, a notice follows it ("This item is sold out"); a satellite can swap it for a "Notify me" form through the `ap.ecommerceStorefrontLivewire.product.soldOut` filter (a view name or `Htmlable`).
+- **Delivery and returns**: a list under the form from the `ap.ecommerceStorefrontLivewire.product.highlights` filter (`icon`, `title`, optional `description`). By default it says "Free shipping over $75" when `cart.free_shipping_threshold` is set.
+- **Details**: "Product details" beside an accordion (from 1024px) of the description, a specifications table, and shipping and returns content from the `ap.ecommerceStorefrontLivewire.product.shippingReturns` filter.
 - **Sections** below the details, from the `ap.ecommerceStorefrontLivewire.product.sections` filter: `reviews` (position 10), `upsells` ("You may also like", 20), and `related` (30).
 
 Opening the page records a view through the engine (`ap.ecommerce.product.viewed`).
@@ -128,10 +130,13 @@ Recently viewed (`recently-viewed`) shows the products the recently-viewed satel
 
 **Cart page:**
 
-- Lines with image, name, options, unit price, a quantity stepper, line total, and "Remove" with "Undo".
-- A coupon field, with the engine's message under it.
+- "Your cart" with the number of items (the page passes `show-title`; the Cart Contents block, under its template's heading, doesn't).
+- Lines in a card with image, name, options, unit price, a quantity stepper, line total, and an icon "Remove" with "Undo" in a bar above them, then "Continue shopping".
+- The order summary, a 380px sticky card beside the lines from 1024px (below them on smaller screens).
+- A coupon field with its "Apply" button attached, the engine's message under it, and the applied coupon as a chip with a remove button.
 - Totals: subtotal, each promotion's discount, shipping (the chosen estimate, "Free", or "Calculated at checkout"), tax (marked estimated until the engine knows a destination), and total.
-- A shipping estimate by country, region, and postcode. The rate chosen here carries into checkout.
+- A shipping estimate by country, region, and postcode, in an "Estimate shipping" disclosure; the rates are radio cards with their prices. The rate chosen here carries into checkout.
+- "Checkout", the cart's one solid primary button.
 - Lines that can't be bought are flagged with the reason and a "Remove" button. A line whose quantity is more than the stock left says so ("Only 2 are left in stock.") and keeps its quantity stepper. "Checkout" is disabled, saying why, until the lines are removed or lowered.
 - Sections below the cart from the `ap.ecommerceStorefrontLivewire.cart.sections` filter: cross-sells by default.
 
@@ -157,7 +162,7 @@ Prices are shown in the open cart's currency when there is one, so a shopper who
 
 ## Search
 
-**Search page:** the term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". Each search counts against the engine's `ecommerce.catalog.read` limiter; over it, the page shows "Slow down" until the shopper can search again. The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
+**Search page:** breadcrumbs and the title ("Results for “linen”" when there are results, else "Search"; the page passes `show-title`), then the term in a large search field with a "Search" button. With no results, a card lists tips and links to "Browse all products". The term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". Each search counts against the engine's `ecommerce.catalog.read` limiter; over it, the page shows "Slow down" until the shopper can search again. The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
 
 **Header search** (`search-box`): as the shopper types, up to five products (image, name, price) and five categories open in a popover. It is an ARIA combobox: arrow keys move through results, Enter opens the highlighted one or the search page, Escape closes. Without JavaScript it is a plain form to the search page. Embed it with `<x-artisanpack-ec-search-box />`.
 

@@ -35,6 +35,12 @@
       the Shop / Help / Account link columns, then the copyright, the
       currency switcher and the theme toggle.
 
+    A page that sets `@section( 'storefront-chrome', 'checkout' )` (the
+    checkout, #136) gets the slim secure header instead
+    (`partials.header.checkout`: the mark and name, "Secure checkout" and
+    "Back to cart") and no store navigation or footer, so nothing leads
+    away from the order.
+
     Publish with `php artisan vendor:publish --tag=ecommerce-storefront-views`.
 
     @package    ArtisanPack_UI
@@ -56,6 +62,7 @@
     $ecommerceHomeUrl    = Route::has( StorefrontNavigation::CATALOG_ROUTE ) ? route( StorefrontNavigation::CATALOG_ROUTE ) : url( '/' );
     $ecommerceNavigation = StorefrontNavigation::header();
     $ecommerceHasSearch  = Route::has( 'artisanpack.ecommerce.storefront.search' );
+    $ecommerceCheckout   = 'checkout' === trim( $__env->yieldContent( 'storefront-chrome' ) );
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" dir="{{ \ArtisanPackUI\EcommerceStorefrontLivewire\Support\TextDirection::for() }}">
@@ -74,44 +81,48 @@
     @endif
     @stack( 'styles' )
 </head>
-<body class="ec-storefront">
+<body class="ec-storefront" @if ( $ecommerceCheckout ) data-storefront-chrome="checkout" @endif>
     <a href="#ecommerce-storefront-content" class="apui-button ec-skip-link" data-variant="solid" data-color="primary" data-size="sm" data-skip-link>{{ __( 'Skip to content' ) }}</a>
 
-    <x-artisanpack-navbar sticky :label="__( 'Store' )" class="ec-header" data-storefront-header>
-        <x-slot:brand>
-            @if ( [] !== $ecommerceNavigation )
-                @include( 'ecommerce-storefront::partials.header.menu-button' )
+    @if ( $ecommerceCheckout )
+        @include( 'ecommerce-storefront::partials.header.checkout', [ 'storeName' => $ecommerceStoreName, 'homeUrl' => $ecommerceHomeUrl ] )
+    @else
+        <x-artisanpack-navbar sticky :label="__( 'Store' )" class="ec-header" data-storefront-header>
+            <x-slot:brand>
+                @if ( [] !== $ecommerceNavigation )
+                    @include( 'ecommerce-storefront::partials.header.menu-button' )
+                @endif
+
+                <a href="{{ $ecommerceHomeUrl }}" class="ec-brand" data-storefront-brand>
+                    <span class="ec-brand__mark" aria-hidden="true">{{ StorefrontNavigation::mark( $ecommerceStoreName ) }}</span>
+                    <span class="ec-brand__name">{{ $ecommerceStoreName }}</span>
+                </a>
+            </x-slot:brand>
+
+            @foreach ( $ecommerceNavigation as $ecommerceLink )
+                <x-artisanpack-navbar-item :href="$ecommerceLink['url']" :current="$ecommerceLink['current']" :navigate="false" data-storefront-nav-link>{{ $ecommerceLink['label'] }}</x-artisanpack-navbar-item>
+            @endforeach
+
+            @if ( $ecommerceHasSearch )
+                <x-slot:search>
+                    @include( 'ecommerce-storefront::partials.header.search' )
+                </x-slot:search>
             @endif
 
-            <a href="{{ $ecommerceHomeUrl }}" class="ec-brand" data-storefront-brand>
-                <span class="ec-brand__mark" aria-hidden="true">{{ StorefrontNavigation::mark( $ecommerceStoreName ) }}</span>
-                <span class="ec-brand__name">{{ $ecommerceStoreName }}</span>
-            </a>
-        </x-slot:brand>
+            <x-slot:actions>
+                @foreach ( $ecommerceHeaderActions as $ecommerceActionKey => $ecommerceAction )
+                    @if ( $ecommerceAction instanceof Htmlable )
+                        {{ $ecommerceAction }}
+                    @elseif ( is_string( $ecommerceAction ) && view()->exists( $ecommerceAction ) )
+                        @include( $ecommerceAction )
+                    @endif
+                @endforeach
+            </x-slot:actions>
+        </x-artisanpack-navbar>
 
-        @foreach ( $ecommerceNavigation as $ecommerceLink )
-            <x-artisanpack-navbar-item :href="$ecommerceLink['url']" :current="$ecommerceLink['current']" :navigate="false" data-storefront-nav-link>{{ $ecommerceLink['label'] }}</x-artisanpack-navbar-item>
-        @endforeach
-
-        @if ( $ecommerceHasSearch )
-            <x-slot:search>
-                @include( 'ecommerce-storefront::partials.header.search' )
-            </x-slot:search>
+        @if ( [] !== $ecommerceNavigation )
+            @include( 'ecommerce-storefront::partials.header.menu', [ 'navigation' => $ecommerceNavigation ] )
         @endif
-
-        <x-slot:actions>
-            @foreach ( $ecommerceHeaderActions as $ecommerceActionKey => $ecommerceAction )
-                @if ( $ecommerceAction instanceof Htmlable )
-                    {{ $ecommerceAction }}
-                @elseif ( is_string( $ecommerceAction ) && view()->exists( $ecommerceAction ) )
-                    @include( $ecommerceAction )
-                @endif
-            @endforeach
-        </x-slot:actions>
-    </x-artisanpack-navbar>
-
-    @if ( [] !== $ecommerceNavigation )
-        @include( 'ecommerce-storefront::partials.header.menu', [ 'navigation' => $ecommerceNavigation ] )
     @endif
 
     <main class="ec-main">
@@ -120,7 +131,9 @@
         </div>
     </main>
 
-    @include( 'ecommerce-storefront::partials.footer', [ 'storeName' => $ecommerceStoreName, 'homeUrl' => $ecommerceHomeUrl ] )
+    @unless ( $ecommerceCheckout )
+        @include( 'ecommerce-storefront::partials.footer', [ 'storeName' => $ecommerceStoreName, 'homeUrl' => $ecommerceHomeUrl ] )
+    @endunless
 
     @include( 'ecommerce-storefront::partials.global' )
 
