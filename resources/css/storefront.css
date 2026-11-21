@@ -2402,8 +2402,8 @@
     /*
      * Recently viewed (#107): compact rows, each a Card with a 64px
      * thumbnail, the name (whose link stretches over the row) and the
-     * price, in an auto-fill grid of rows at least 240px wide and at most
-     * `data-columns` to a line.
+     * price, in an auto-fill grid of rows at least 240px wide (or the whole
+     * width, when that is narrower) and at most `data-columns` to a line.
      */
     .ec-recent {
         display: grid;
@@ -2424,7 +2424,7 @@
         --ec-recent-columns: 4;
 
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(max(240px, calc((100% - (var(--ec-recent-columns) - 1) * 16px) / var(--ec-recent-columns))), 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - (var(--ec-recent-columns) - 1) * 16px) / var(--ec-recent-columns)))), 1fr));
         gap: 16px;
         margin: 0;
         padding: 0;

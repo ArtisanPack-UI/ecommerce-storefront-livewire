@@ -4,8 +4,10 @@
     The legend, the design-system Range with two thumbs, then the lowest
     and highest price as Inputs with the currency symbol as their prefix and
     "to" between them. The thumbs and inputs stay in sync: dragging a thumb
-    rewrites its input, and a typed amount (rounded to the step, kept inside
-    the range and on its side of the other bound) moves its thumb.
+    rewrites its input, and a typed amount (rounded to the step counted from
+    `min`, kept inside the range and on its side of the other bound) moves
+    its thumb. A bound from the URL outside the range shows at the range's
+    end, without changing the parent's value until the shopper moves it.
 
     Prices are in minor units on the server and the thumbs, and in major
     units in the inputs. `from` and `to` place them for the first render,
@@ -39,6 +41,12 @@
         major( amount ) {
             return ( amount / this.bounds.divisor ).toFixed( this.bounds.decimals );
         },
+        low() {
+            return Math.min( this.bounds.max, Math.max( this.bounds.min, Number( this.from ?? this.bounds.min ) ) );
+        },
+        high() {
+            return Math.max( this.low(), Math.min( this.bounds.max, Number( this.to ?? this.bounds.max ) ) );
+        },
         slider() {
             return Alpine.$data( this.$root.querySelector( '.apui-range' ) );
         },
@@ -46,15 +54,15 @@
             const slider = this.slider();
 
             if ( slider ) {
-                slider.value = [ this.from ?? this.bounds.min, this.to ?? this.bounds.max ];
+                slider.value = [ this.low(), this.high() ];
             }
         },
         setFrom( value ) {
-            value = Math.max( this.bounds.min, Math.min( Number( value ), this.to ?? this.bounds.max ) );
+            value = Math.max( this.bounds.min, Math.min( Number( value ), this.high() ) );
             this.from = value <= this.bounds.min ? null : value;
         },
         setTo( value ) {
-            value = Math.min( this.bounds.max, Math.max( Number( value ), this.from ?? this.bounds.min ) );
+            value = Math.min( this.bounds.max, Math.max( Number( value ), this.low() ) );
             this.to = value >= this.bounds.max ? null : value;
         },
         slid( event ) {
@@ -68,12 +76,12 @@
             const amount = Number.parseFloat( String( event.target.value ).replace( ',', '.' ) );
 
             if ( Number.isFinite( amount ) ) {
-                const minor = Math.round( amount * this.bounds.divisor / this.bounds.step ) * this.bounds.step;
+                const minor = this.bounds.min + Math.round( ( amount * this.bounds.divisor - this.bounds.min ) / this.bounds.step ) * this.bounds.step;
 
                 'from' === bound ? this.setFrom( minor ) : this.setTo( minor );
             }
 
-            event.target.value = this.major( 'from' === bound ? ( this.from ?? this.bounds.min ) : ( this.to ?? this.bounds.max ) );
+            event.target.value = this.major( 'from' === bound ? this.low() : this.high() );
             this.sync();
             this.send();
         },
@@ -123,7 +131,7 @@
             :aria-label="__( 'Lowest price' )"
             :value="number_format( ( $from ?? $min ) / $divisor, $decimals, '.', '' )"
             class="ec-price-range__input"
-            x-bind:value="major( from ?? bounds.min )"
+            x-bind:value="major( low() )"
             x-on:change="typed( $event, 'from' )"
             data-price-min
         />
@@ -142,7 +150,7 @@
             :aria-label="__( 'Highest price' )"
             :value="number_format( ( $to ?? $max ) / $divisor, $decimals, '.', '' )"
             class="ec-price-range__input"
-            x-bind:value="major( to ?? bounds.max )"
+            x-bind:value="major( high() )"
             x-on:change="typed( $event, 'to' )"
             data-price-max
         />

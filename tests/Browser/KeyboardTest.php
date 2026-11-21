@@ -237,3 +237,13 @@ it( 'keeps the price range thumbs and inputs in step', function (): void {
     $page->keys( $start, 'ArrowRight' )
         ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-min]" ).value === ( ( Number( document.querySelector( ' . json_encode( $start ) . ' ).min ) + 100 ) / 100 ).toFixed( 2 )' );
 } );
+
+it( 'shows a price bound from the URL outside the range at the range\'s end', function (): void {
+    makeProduct( 50000, [ 'name' => 'Dear vase' ] );
+    $end = '[data-filters-sidebar] [data-price-slider][data-thumb="end"]';
+
+    visit( route( 'artisanpack.ecommerce.storefront.catalog', [ 'price_max' => 999999 ] ) )
+        ->assertScript( 'document.querySelector( ' . json_encode( $end ) . ' ).value', '50000' )
+        ->assertAttribute( $end, 'aria-valuetext', '$500.00' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-max]" ).value', '500.00' );
+} );

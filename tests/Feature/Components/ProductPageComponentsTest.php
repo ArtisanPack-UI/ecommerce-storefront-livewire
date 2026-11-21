@@ -133,8 +133,8 @@ describe( 'price range', function (): void {
         $html = (string) $this->blade( '<x-artisanpack-ec-price-range :min="1050" :max="9000" currency="USD" from-model="priceMin" to-model="priceMax" label="Price" id-prefix="p" />' );
 
         expect( $html )
-            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Lowest price"[^>]*x-bind:value="major\( from \?\? bounds.min \)"[^>]*data-price-min/' )
-            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Highest price"[^>]*x-bind:value="major\( to \?\? bounds.max \)"[^>]*data-price-max/' )
+            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Lowest price"[^>]*x-bind:value="major\( low\(\) \)"[^>]*data-price-min/' )
+            ->toMatch( '/<span data-scope="input" data-part="prefix">\$<\/span>\s*<input[^>]*aria-label="Highest price"[^>]*x-bind:value="major\( high\(\) \)"[^>]*data-price-max/' )
             ->toContain( 'min="10.5" max="90" step="1"' )
             ->toMatch( '/data-price-min.*<span class="ec-price-range__to" aria-hidden="true">to<\/span>.*data-price-max/s' );
     } );
