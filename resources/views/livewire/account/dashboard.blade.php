@@ -60,7 +60,7 @@
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <x-artisanpack-badge :value="$row['status']" class="{{ $row['color'] }}" />
+                            <x-artisanpack-badge variant="soft" :color="$row['color']" data-order-status>{{ $row['status'] }}</x-artisanpack-badge>
                             <x-artisanpack-ec-money :amount="$row['total']" :currency="$row['currency']" class="font-semibold" />
                         </div>
                     </li>

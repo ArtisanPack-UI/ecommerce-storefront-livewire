@@ -21,7 +21,7 @@
 
             <div>
                 <dt class="text-base-content/70">{{ __( 'Status' ) }}</dt>
-                <dd><x-artisanpack-badge :value="$status" class="{{ $statusColor }}" data-order-status /></dd>
+                <dd><x-artisanpack-badge variant="soft" :color="$statusColor" data-order-status>{{ $status }}</x-artisanpack-badge></dd>
             </div>
         </dl>
 

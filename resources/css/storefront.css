@@ -969,4 +969,411 @@
     .ec-add-to-cart__error {
         color: var(--apui-color-error-text);
     }
+
+    /*
+     * Order details (#87): the Items card (and Downloads) runs its rows edge
+     * to edge under a ruled header; below it, Addresses and payment beside
+     * the Order summary, stacking below 768px.
+     */
+    .ec-order-details {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-details__pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-order-details__pair {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-order-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 20px;
+    }
+
+    .ec-order-card--flush [data-scope="card"][data-part="body"] {
+        gap: 0;
+        padding: 0;
+    }
+
+    .ec-order-card__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+        letter-spacing: var(--apui-type-heading-sm-letter-spacing);
+    }
+
+    .ec-order-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: var(--apui-card-padding);
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-order-card__aside {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-card__footnote {
+        margin: 0;
+        padding: 12px var(--apui-card-padding) var(--apui-card-padding);
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-line.apui-list-item {
+        align-items: start;
+        padding-block: 14px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="title"],
+    .ec-order-line [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="description"] {
+        display: grid;
+        gap: 2px;
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="trailing"] {
+        align-self: center;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-line__thumb {
+        display: grid;
+        place-items: center;
+        inline-size: 64px;
+        block-size: 64px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-order-line__thumb > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-order-line__meta {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-order-line__sku {
+        font-family: var(--apui-font-family-mono);
+    }
+
+    .ec-order-line__total {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /* The Addresses and payment <dl>: two columns from 480px, one below. */
+    .ec-order-meta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px 24px;
+        margin: 0;
+    }
+
+    @media (min-width: 30rem) {
+        .ec-order-meta {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-order-meta__item {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        min-inline-size: 0;
+    }
+
+    .ec-order-meta__item > dt {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-meta__item > dd {
+        margin: 0;
+        min-inline-size: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-meta__with-icon {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-order-meta__with-icon > .apui-icon {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-order-meta__email {
+        overflow-wrap: anywhere;
+    }
+
+    /* The shopper's note on a sunken panel. */
+    .ec-order-note {
+        display: grid;
+        gap: 4px;
+        padding: 14px 16px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-order-note__label {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-note__body {
+        margin: 0;
+        color: var(--apui-text-default);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * Order totals (#88): muted labels, values at the end in tabular
+     * figures, a discount in the success tone, and the total at heading-lg
+     * weight 500 after a Divider.
+     */
+    .ec-totals {
+        display: grid;
+        gap: 14px;
+    }
+
+    .ec-totals__list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .ec-totals__row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-totals__row > dt {
+        min-inline-size: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-totals__row > dd {
+        flex: none;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
+    .ec-totals__row > dd.ec-totals__discount {
+        color: var(--apui-color-success-text);
+    }
+
+    .ec-totals__pending {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-totals__total {
+        align-items: center;
+    }
+
+    .ec-totals__total > dt {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-totals__total > dd {
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    /*
+     * Product suggestions placeholder (#90): skeleton cards the size of a
+     * product card, in the same grid as the list they stand in for.
+     */
+    .ec-suggestions {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-suggestions__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-suggestions__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-suggestions__grid[data-columns="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 48rem) {
+        .ec-suggestions__grid[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-suggestions__grid[data-columns="4"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-suggestions__grid[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-suggestions__item {
+        min-inline-size: 0;
+    }
+
+    .ec-skeleton-card {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-skeleton-card [data-scope="card"][data-part="media"] {
+        aspect-ratio: 1 / 1;
+    }
+
+    .ec-skeleton-card__media {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 0;
+    }
+
+    .ec-skeleton-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 8px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-skeleton-card__line[data-length="short"] {
+        inline-size: 30%;
+    }
+
+    .ec-skeleton-card__line[data-length="medium"] {
+        inline-size: 45%;
+    }
+
+    .ec-skeleton-card__line[data-length="long"] {
+        inline-size: 80%;
+    }
+
+    .ec-skeleton-card__button {
+        block-size: 40px;
+        margin-block-start: 8px;
+        border-radius: var(--apui-radius-full);
+    }
+
+    /*
+     * Commerce block frame (#91): editor-only notices in a 1px dashed frame
+     * so they never read as storefront content; an error one takes the
+     * error border and an error-toned title.
+     */
+    .ec-block-notice {
+        display: grid;
+        gap: 6px;
+        padding: 16px 20px;
+        border: var(--apui-border-width) dashed var(--apui-border-default);
+        border-radius: var(--apui-radius-lg);
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-sans);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-block-notice--sample {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        margin-block-end: 16px;
+        padding: 10px 14px;
+        border-radius: var(--apui-radius-md);
+    }
+
+    .ec-block-notice--error {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-block-notice__title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-block-notice__title > .apui-icon {
+        flex: none;
+    }
+
+    .ec-block-notice--error .ec-block-notice__title {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-block-notice__message {
+        flex: 1 1 20rem;
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
 }
