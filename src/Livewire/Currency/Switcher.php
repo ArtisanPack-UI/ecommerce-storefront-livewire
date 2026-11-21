@@ -29,8 +29,10 @@ use Livewire\Component;
  * `<livewire:artisanpack-ecommerce-storefront-currency-switcher />`
  *
  * Lets the shopper pick a currency (spec §7.3, S16). It renders only when
- * the store sells in more than one (the engine's `StoreCurrencies`); each
- * option names the currency, its code, and its symbol ("Euro (EUR, €)").
+ * the store sells in more than one (the engine's `StoreCurrencies`), as a
+ * design-system DropdownMenu: the trigger shows the current code, and each
+ * radio item names the currency in the shopper's language with its code
+ * ("Euro", EUR).
  *
  * A choice is stored through the engine's `CurrencyResolver` (the default
  * keeps it in the session) and in the engine's `currency.cookie` cookie,
@@ -159,6 +161,7 @@ class Switcher extends Component
      * Renders the component.
      *
      * @since 1.0.0
+     * @since 2.0.0 Passes the menu's radio `items` instead of select `options`.
      *
      * @return View
      */
@@ -167,8 +170,14 @@ class Switcher extends Component
         $enabled = app( StoreCurrencies::class )->enabled();
 
         return view( 'ecommerce-storefront::livewire.currency.switcher', [
-            'options' => array_map( static fn ( string $code ): array => [ 'id' => $code, 'name' => CurrencyNames::label( $code ) ], $enabled ),
-            'show'    => count( $enabled ) > 1,
+            'items' => array_map( fn ( string $code ): array => [
+                'type'     => 'radio',
+                'value'    => $code,
+                'label'    => CurrencyNames::name( $code ),
+                'shortcut' => $code,
+                'checked'  => $code === $this->currency,
+            ], $enabled ),
+            'show'  => count( $enabled ) > 1,
         ] );
     }
 

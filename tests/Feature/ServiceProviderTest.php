@@ -46,7 +46,7 @@ it( 'merges the config under the artisanpack key', function (): void {
             'show_stock_count'  => false,
             'filter_attributes' => null,
         ] )
-        ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add' ) )->toBe( 'drawer' )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart' ) )->toBe( [ 'after_add' => 'drawer', 'free_shipping_threshold' => null ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.checkout.layout' ) )->toBe( 'multi_step' )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.payments.drivers' ) )->toBe( [] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.visual_editor' ) )->toBe( [ 'blocks' => true, 'templates' => false ] );
