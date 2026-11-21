@@ -55,6 +55,9 @@ final class ToastPayload
      * `$options` takes the design's extras (#97):
      *
      * - `variant`: `inverse` for the dark toast; anything else is dropped.
+     * - `id`: a toast id (letters, digits, `-`, `_`, `:` and `.`). A toast
+     *   sent with the id of one still showing replaces it, so only the
+     *   latest of a kind stays (the removal toast's Undo).
      * - `icon`: an icon name (letters, digits and hyphens) in place of the
      *   color's status icon.
      * - `action`: one button, `[ 'label' => …, 'url' => … ]` to open a page
@@ -66,12 +69,12 @@ final class ToastPayload
      * @since 2.0.0 The payload is the toaster's event detail (`title`,
      *              `description`, `color`); the alert class is gone and
      *              the text is no longer HTML-escaped.
-     * @since 2.0.0 Added `$options` (variant, icon, action).
+     * @since 2.0.0 Added `$options` (id, variant, icon, action).
      *
      * @param  string                                                                   $type         The toast type.
      * @param  string                                                                   $title        The title.
      * @param  string|null                                                              $description  The description.
-     * @param  array{variant?: string, icon?: string, action?: array<string, string>}  $options      The variant, icon and action.
+     * @param  array{id?: string, variant?: string, icon?: string, action?: array<string, string>}  $options      The variant, icon and action.
      *
      * @return array{toast: array<string, mixed>}
      */
@@ -87,6 +90,12 @@ final class ToastPayload
 
         if ( is_string( $variant ) && 'default' !== $variant && in_array( $variant, self::VARIANTS, true ) ) {
             $toast['variant'] = $variant;
+        }
+
+        $id = $options['id'] ?? null;
+
+        if ( is_string( $id ) && 1 === preg_match( '/^[a-z0-9][a-z0-9:._-]*$/i', $id ) ) {
+            $toast['id'] = $id;
         }
 
         $icon = $options['icon'] ?? null;

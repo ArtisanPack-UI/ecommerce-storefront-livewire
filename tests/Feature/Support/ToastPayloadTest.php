@@ -33,10 +33,17 @@ it( 'adds the inverse variant, an icon and an action from the options', function
     ] ] );
 } );
 
+it( 'keeps a toast id so a later toast can replace it', function (): void {
+    expect( ToastPayload::make( 'success', 'Removed', null, [ 'id' => 'ecommerce-cart-line-removed' ] )['toast']['id'] )
+        ->toBe( 'ecommerce-cart-line-removed' );
+} );
+
 it( 'drops options it does not know or trust', function ( array $options ): void {
     expect( ToastPayload::make( 'error', 'Oops', null, $options ) )
         ->toBe( [ 'toast' => [ 'title' => 'Oops', 'description' => null, 'color' => 'error' ] ] );
 } )->with( [
+    'id with a quote'      => [ [ 'id' => 'a"b' ] ],
+    'id with a space'      => [ [ 'id' => 'a b' ] ],
     'default variant'      => [ [ 'variant' => 'default' ] ],
     'unknown variant'      => [ [ 'variant' => 'glass' ] ],
     'icon with markup'     => [ [ 'icon' => '<svg onload=x>' ] ],

@@ -69,8 +69,28 @@ it( 'keeps a running count and total of the chosen quantities', function (): voi
         ->set( "quantities.{$this->potRow->id}", 1 )
         ->assertSee( '3 items' )
         ->assertSee( '$46.00' )
-        ->set( "quantities.{$this->potRow->id}", 'abc' )
-        ->assertSee( '2 items' );
+        ->set( "quantities.{$this->potRow->id}", 0 )
+        ->assertSee( '2 items' )
+        ->assertSee( '$16.00' );
+} );
+
+it( 'hides the total while a filled-in quantity is invalid', function ( mixed $quantity ): void {
+    Livewire::test( GroupedForm::class, [ 'product' => $this->group ] )
+        ->set( "quantities.{$this->cupRow->id}", 2 )
+        ->set( "quantities.{$this->potRow->id}", $quantity )
+        ->assertSee( '2 items' )
+        ->assertDontSeeHtml( 'data-grouped-total' );
+} )->with( [
+    'decimal'  => '1.5',
+    'text'     => 'abc',
+    'negative' => '-1',
+] );
+
+it( 'skips an empty quantity without hiding the total', function (): void {
+    Livewire::test( GroupedForm::class, [ 'product' => $this->group ] )
+        ->set( "quantities.{$this->cupRow->id}", 2 )
+        ->set( "quantities.{$this->potRow->id}", '' )
+        ->assertSee( '$16.00' );
 } );
 
 it( 'leaves the total out when a quantity is over the line limit', function (): void {

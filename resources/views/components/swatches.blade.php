@@ -11,7 +11,9 @@
     the legend names it ("Glaze: Stoneware"). A `required` group has a "*"
     after the legend (hidden from screen readers, which hear the radios'
     `required`), and an `error` shows under the chips with the error icon,
-    linked to the group and marking its inputs invalid.
+    linked to the group and marking its inputs invalid. A group with an
+    error can take focus (`tabindex="-1"`), so a form can move the shopper
+    to it even when every option is disabled.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -27,7 +29,7 @@
     {{ $attributes->whereDoesntStartWith( 'wire:model' )->except( 'aria-describedby' )->class( [ 'ec-swatches' ] ) }}
     data-swatches="{{ $name }}"
     @if ( '' !== $ecommerceDescribedBy ) aria-describedby="{{ $ecommerceDescribedBy }}" @endif
-    @if ( null !== $error ) data-invalid @endif
+    @if ( null !== $error ) data-invalid tabindex="-1" @endif
 >
     <legend class="ec-swatches__legend">{{ $legend }}@if ( null !== $ecommerceChosen )<span class="ec-swatches__chosen" data-swatches-chosen>: {{ $ecommerceChosen }}</span>@endif{!! $required ? '<span class="ec-swatches__required" aria-hidden="true">*</span>' : '' !!}</legend>
 

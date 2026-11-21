@@ -148,9 +148,11 @@ class GroupedForm extends PurchaseForm
 
     /**
      * The running line above "Add selected to cart": how many items have a
-     * quantity and what they cost together. The total is null when one of
-     * them has no single price (a range) or a quantity isn't a whole number
-     * in range; the count is then of the valid quantities only.
+     * quantity and what they cost together. An empty or 0 quantity is
+     * skipped. The total is null when a product has no single price (a
+     * range) or a filled-in quantity isn't a whole number from 1 to the line
+     * limit, since "Add selected to cart" would refuse it; the count is then
+     * of the valid quantities only.
      *
      * @since 2.0.0
      *
@@ -165,15 +167,21 @@ class GroupedForm extends PurchaseForm
         $known = true;
 
         foreach ( $rows as $row ) {
-            $quantity = filter_var( $this->quantities[ $row['id'] ] ?? null, FILTER_VALIDATE_INT );
+            $raw = $this->quantities[ $row['id'] ] ?? null;
 
-            if ( ! $row['buyable'] || false === $quantity || $quantity < 1 ) {
+            if ( ! $row['buyable'] || null === $raw || '' === $raw || 0 === $raw || '0' === $raw ) {
                 continue;
             }
 
-            if ( $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
+            $quantity = is_int( $raw ) || is_string( $raw ) ? filter_var( $raw, FILTER_VALIDATE_INT ) : false;
+
+            if ( false === $quantity || $quantity < 0 || $quantity > StorefrontCartService::MAX_LINE_QUANTITY ) {
                 $known = false;
 
+                continue;
+            }
+
+            if ( 0 === $quantity ) {
                 continue;
             }
 

@@ -331,8 +331,10 @@ class VariableForm extends PurchaseForm
         if ( null !== $missing ) {
             $this->addError( 'selected.' . $missing->id, $this->missingChoiceMessage( $missing ) );
 
-            // Takes the shopper to the group to fix (WCAG 3.3.1).
-            $this->js( '$wire.$el.querySelector( ' . json_encode( '[data-variation-group="' . (int) $missing->id . '"] :is(input:not(:disabled), select)' ) . ' )?.focus()' );
+            // Takes the shopper to the group to fix (WCAG 3.3.1): its first
+            // enabled option, or, when every option is disabled (all sold
+            // out), the group itself, which then reads its legend and error.
+            $this->js( '( ( group ) => { if ( ! group ) { return; } const option = group.querySelector( "input:not(:disabled), select" ); if ( option ) { option.focus(); return; } group.setAttribute( "tabindex", "-1" ); group.focus(); } )( $wire.$el.querySelector( ' . json_encode( '[data-variation-group="' . (int) $missing->id . '"]' ) . ' ) )' );
 
             return false;
         }

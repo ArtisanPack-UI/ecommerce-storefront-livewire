@@ -170,7 +170,7 @@ it( 'removes a line at quantity 0 or with Remove, and can undo it', function ():
     // The inverse toast with Undo (#97).
     expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
         ->toContain( '"title":"Mug was removed from your cart."' )
-        ->toContain( '"variant":"inverse","icon":"trash"' )
+        ->toContain( '"variant":"inverse","id":"ecommerce-cart-line-removed","icon":"trash"' )
         ->toContain( 'label: ["Undo"][0], onClick: () => $wire.call( ["undoRemove"][0] )' );
 
     $component->call( 'undoRemove' )
@@ -184,6 +184,29 @@ it( 'removes a line at quantity 0 or with Remove, and can undo it', function ():
         ->assertSet( 'removedLine.quantity', 2 );
 
     expect( Cart::query()->sole()->items()->count() )->toBe( 0 );
+} );
+
+it( 'replaces the last removal toast so an earlier Undo can\'t restore a later removal', function (): void {
+    $mug  = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    $bowl = makeProduct( 1500, [ 'name' => 'Bowl' ] );
+    $cart = shopperCartWith( [ $mug, $bowl ] );
+
+    [ $mugLine, $bowlLine ] = [ $cart->items()->where( 'product_id', $mug->id )->sole(), $cart->items()->where( 'product_id', $bowl->id )->sole() ];
+
+    $component = Livewire::test( Index::class )->call( 'removeLine', $mugLine->id );
+    $first     = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    $component->call( 'removeLine', $bowlLine->id );
+    $second = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    // Both toasts share an id, so the Bowl toast takes the Mug toast's place.
+    expect( $first )->toContain( '"id":"ecommerce-cart-line-removed"' )->toContain( 'Mug was removed' )
+        ->and( $second )->toContain( '"id":"ecommerce-cart-line-removed"' )->toContain( 'Bowl was removed' );
+
+    // The one Undo left restores the line removed last, and only it.
+    $component->call( 'undoRemove' )->assertSee( 'Bowl is back in your cart.' );
+
+    expect( Cart::query()->sole()->items()->pluck( 'product_id' )->all() )->toBe( [ $bowl->id ] );
 } );
 
 it( 'ignores another cart\'s line', function (): void {

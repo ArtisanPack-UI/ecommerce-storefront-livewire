@@ -469,6 +469,12 @@
         font-variant-numeric: tabular-nums;
     }
 
+    .ec-swatches:focus-visible {
+        border-radius: var(--apui-radius-md);
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
     .ec-swatches__required {
         margin-inline-start: 4px;
         color: var(--apui-color-error-text);

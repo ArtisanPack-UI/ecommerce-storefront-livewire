@@ -152,9 +152,28 @@ it( 'refuses to add without a variant and shows a field error on the missing cho
 
     // Focus moves to the group to fix.
     expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
-        ->toContain( '[data-variation-group=\\"' . $this->size . '\\"]' );
+        ->toContain( '[data-variation-group=\\"' . $this->size . '\\"]' )
+        ->toContain( 'option.focus()' );
 
     expect( Cart::query()->first()?->items()->count() ?? 0 )->toBe( 0 );
+} );
+
+it( 'focuses the group itself when every option in it is disabled', function (): void {
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2000, 'stock' => 0 ],
+        'blue/l' => [ 'price' => 2100, 'stock' => 0 ],
+    ], [], 'SOLDOUT' );
+
+    $colour    = $made['groups']['colour']->id;
+    $component = Livewire::test( VariableForm::class, [ 'product' => $made['product'] ] )
+        ->call( 'addToCart' )
+        ->assertHasErrors( [ "selected.{$colour}" ] )
+        ->assertSeeHtml( 'data-invalid tabindex="-1"' );
+
+    expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
+        ->toContain( 'group.querySelector( "input:not(:disabled), select" )' )
+        ->toContain( 'group.setAttribute( "tabindex", "-1" ); group.focus();' )
+        ->toContain( '[data-variation-group=\\"' . $colour . '\\"]' );
 } );
 
 it( 'clears the missing-choice error once the shopper chooses', function (): void {
