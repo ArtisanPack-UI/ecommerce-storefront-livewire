@@ -64,7 +64,10 @@ final class Accessibility
             async () => {
                 const ignored = {$ignored};
                 // Colors mid-transition (a button re-enabled after a request) aren't the final ones.
-                await Promise.all( document.getAnimations().map( ( animation ) => animation.finished.catch( () => null ) ) );
+                // Looping animations (a skeleton's shimmer) never finish, so only the finite ones are awaited.
+                await Promise.all( document.getAnimations()
+                    .filter( ( animation ) => Number.isFinite( animation.effect?.getComputedTiming().iterations ?? 1 ) )
+                    .map( ( animation ) => animation.finished.catch( () => null ) ) );
                 // target-size (WCAG 2.2 SC 2.5.8, 24px) is off by default in axe 4.x.
                 const { violations } = await window.axe.run( {$context}, { rules: { 'target-size': { enabled: true } } } );
 
