@@ -43,7 +43,7 @@
             @endscope
 
             @scope( 'cell_status', $row )
-                <x-artisanpack-badge :value="$row['status']" class="{{ $row['color'] }}" />
+                <x-artisanpack-badge variant="soft" :color="$row['color']" data-order-status>{{ $row['status'] }}</x-artisanpack-badge>
             @endscope
 
             @scope( 'cell_items', $row )

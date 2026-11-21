@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\Models\Refund;
 use ArtisanPackUI\Ecommerce\Models\Shipment;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Throwable;
@@ -68,9 +69,12 @@ trait DescribesOrder
     }
 
     /**
-     * The badge colour for an order's status.
+     * The design-system color of an order status's soft badge. The status
+     * word is always shown, so the color only reinforces it.
      *
      * @since 1.0.0
+     * @since 2.0.0 A design-system Badge color (`info`, `success`, …)
+     *              instead of a DaisyUI `badge-*` class.
      *
      * @param  Order  $order  The order.
      *
@@ -79,11 +83,11 @@ trait DescribesOrder
     protected function orderStatusColor( Order $order ): string
     {
         return match ( (string) $order->system_status ) {
-            'complete'             => 'badge-success',
-            'processing'           => 'badge-info',
-            'pending'              => 'badge-warning',
-            'cancelled', 'failed'  => 'badge-error',
-            default                => 'badge-ghost',
+            'processing'          => 'info',
+            'complete'            => 'success',
+            'pending', 'refunded' => 'warning',
+            'failed'              => 'error',
+            default               => 'neutral',
         };
     }
 
@@ -115,17 +119,24 @@ trait DescribesOrder
 
     /**
      * The order's lines: `id`, `name`, `variant`, `sku`, `quantity`,
-     * `unit`, `total` (before discounts), `currency`, `free`, and whether
-     * the product still exists (`product_id`).
+     * `unit`, `total` (before discounts), `currency`, `free`, whether the
+     * product still exists (`product_id`), and `image` (the variant's, else
+     * the product's card image; null once the product is gone).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `image`.
      *
      * @param  Order  $order  The order, with its items.
      *
-     * @return array<int, array{id: int, name: string, variant: string|null, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null}>
+     * @return array<int, array{id: int, name: string, variant: string|null, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null, image: array{url: string, srcset: string|null, alt: string}|null}>
      */
     protected function orderLines( Order $order ): array
     {
+        $order->loadMissing( [ 'items.product.images', 'items.variant' ] );
+
+        ProductImages::preload( $order->items->pluck( 'variant.image_media_id' ) );
+        ProductImages::preloadCards( $order->items->pluck( 'product' )->filter() );
+
         return $order->items->map( static function ( OrderItem $item ): array {
             $snapshot = (array) ( $item->product_snapshot ?? [] );
             $name     = is_string( $snapshot['name'] ?? null ) && '' !== trim( $snapshot['name'] ) ? trim( $snapshot['name'] ) : __( 'Item' );
@@ -143,8 +154,36 @@ trait DescribesOrder
                 'currency'   => (string) $item->unit_price_currency,
                 'free'       => true === ( $snapshot['free_item'] ?? false ),
                 'product_id' => null === $item->product_id ? null : (int) $item->product_id,
+                'image'      => self::orderLineImage( $item, $name ),
             ];
         } )->values()->all();
+    }
+
+    /**
+     * An order line's thumbnail: the variant's image, else the product's
+     * card image, named after the line. Null when the product is gone or
+     * has no image.
+     *
+     * @since 2.0.0
+     *
+     * @param  OrderItem  $item  The line, with its product and variant.
+     * @param  string     $name  The line's name, for the alt text.
+     *
+     * @return array{url: string, srcset: string|null, alt: string}|null
+     */
+    protected static function orderLineImage( OrderItem $item, string $name ): ?array
+    {
+        if ( null !== $item->variant?->image_media_id ) {
+            $image = ProductImages::media( (int) $item->variant->image_media_id, $name );
+
+            if ( null !== $image ) {
+                return [ 'url' => (string) $image['url'], 'srcset' => is_string( $image['srcset'] ?? null ) ? $image['srcset'] : null, 'alt' => $name ];
+            }
+        }
+
+        $image = null === $item->product ? null : ProductImages::card( $item->product );
+
+        return null === $image ? null : [ 'url' => (string) $image['url'], 'srcset' => is_string( $image['srcset'] ?? null ) ? $image['srcset'] : null, 'alt' => $name ];
     }
 
     /**
