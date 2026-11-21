@@ -97,8 +97,8 @@ Opening the page records a view through the engine (`ap.ecommerce.product.viewed
 | Type | Form |
 | --- | --- |
 | `simple` | Quantity and "Add to cart". Out of stock or unpriced disables the button and says why. |
-| `variable` | The variation picker: one swatch or pill group per attribute. An option no available variant offers with the earlier choices is disabled, with the reason ("Out of stock" or "Not available with your other choices"). A choice that rules out a later one clears it and says so. The matched variant goes in the query string as `?variant=`. "Add to cart" stays disabled, naming the missing choice, until a variant is matched. |
-| `grouped` | Each child product with its own price, stock, and quantity. One "Add to cart" adds every product with a quantity as its own line. A refused product shows the reason next to its quantity; the others are still added. |
+| `variable` | The variation picker: one swatch or pill group per attribute. An option no available variant offers with the earlier choices is disabled, with the reason ("Out of stock" or "Not available with your other choices"). A choice that rules out a later one clears it and says so. The matched variant goes in the query string as `?variant=`. An attribute with more values than `product.variation_select_after` (8) is a select instead of swatches. "Add to cart" can be pressed before every choice is made: it then shows a field error on the first group still missing a choice ("Choose a size to add this to your cart.") and moves focus there. It is disabled only when nothing can be bought (no variants, a combination that doesn't exist, or a sold-out variant). |
+| `grouped` | A table of the child products, each with its price and a quantity; one that can't be bought shows its stock badge and a dash. A running "2 items · $56.00" line sits above "Add selected to cart", which adds every product with a quantity as its own line. A refused product shows the reason next to its quantity; the others are still added. |
 | `bundled` | What the bundle includes and how many of each, then quantity and "Add to cart". The bundle is one line at its own price. |
 | `digital` | What the shopper gets: files, download limit and expiry, and a licence key when the product issues them. When the product offers licence types, the shopper picks one. |
 | Any other | A type with no registered form whose engine type implements `ProvidesStorefrontOptions` gets a generic form built from its fields. |
@@ -142,7 +142,7 @@ Recently viewed (`recently-viewed`) shows the products the recently-viewed satel
 | Value | Result |
 | --- | --- |
 | `drawer` (default) | Opens the cart drawer |
-| `toast` | Shows an "Added to your cart" toast |
+| `toast` | Shows an "Added to your cart" toast naming the product (and its variant), with a "View cart" button |
 | `none` | Only the cart count updates |
 
 **Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](Checkout-Guest-Checkout).

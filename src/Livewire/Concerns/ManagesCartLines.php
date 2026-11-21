@@ -48,6 +48,16 @@ trait ManagesCartLines
     use DescribesCart;
 
     /**
+     * The id every removal toast shares, so a new removal replaces the
+     * last one's toast and its Undo.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const REMOVED_TOAST_ID = 'ecommerce-cart-line-removed';
+
+    /**
      * Each line's quantity, keyed by line id.
      *
      * @since 1.0.0
@@ -269,7 +279,16 @@ trait ManagesCartLines
         $this->syncQuantities();
         $this->linesChanged();
 
-        $this->toastSuccess( __( 'Removed from your cart' ), __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ) );
+        // The inverse toast with Undo (#97); a line that can't come back has no
+        // Undo. Every removal toast has the same id, so a new removal replaces
+        // the last one: Undo only ever restores the line removed last, which
+        // is the one `undoRemove()` holds.
+        $this->toastSuccess( __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ), null, [
+            'id'      => self::REMOVED_TOAST_ID,
+            'variant' => 'inverse',
+            'icon'    => 'trash',
+            'action'  => null === $this->removedLine ? null : [ 'label' => __( 'Undo' ), 'call' => 'undoRemove' ],
+        ] );
     }
 
     /**

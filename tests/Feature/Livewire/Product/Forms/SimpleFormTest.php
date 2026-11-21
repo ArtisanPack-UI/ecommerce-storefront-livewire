@@ -15,6 +15,8 @@ afterEach( function (): void {
 it( 'renders the quantity stepper and an enabled button', function (): void {
     Livewire::test( SimpleForm::class, [ 'product' => makeProduct() ] )
         ->assertOk()
+        ->assertSeeHtml( 'class="ec-purchase-form" data-purchase-form="simple"' )
+        ->assertSeeHtml( 'data-add-to-cart-row' )
         ->assertSet( 'quantity', 1 )
         ->assertSeeHtml( 'data-quantity=' )
         ->assertSeeHtml( 'aria-label="Increase quantity"' )

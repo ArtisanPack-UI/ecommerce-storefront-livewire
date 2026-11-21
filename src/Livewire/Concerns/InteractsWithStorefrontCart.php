@@ -15,6 +15,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
 
 use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Gives a component the shopper's cart and announces cart changes.
@@ -75,18 +76,29 @@ trait InteractsWithStorefrontCart
      * drawer, `toast` shows a toast naming the product, `none` does nothing
      * (the header count still updates). Needs {@see SendsToasts}.
      *
+     * The toast (#97) names the product and its variant ("Oxbow mug ·
+     * Stoneware · 14 oz") with a "View cart" button when the cart page is
+     * registered.
+     *
      * @since 1.0.0
+     * @since 2.0.0 Added `$details`, and the "View cart" action.
      *
      * @param  string|null  $productName  The product added, for the toast.
+     * @param  string|null  $details      The variant or options, after the name.
      *
      * @return void
      */
-    protected function afterAddToCart( ?string $productName ): void
+    protected function afterAddToCart( ?string $productName, ?string $details = null ): void
     {
         match ( (string) config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'drawer' ) ) {
             'toast' => $this->toastSuccess(
                 __( 'Added to your cart' ),
-                null === $productName ? null : __( ':name is in your cart.', [ 'name' => $productName ] ),
+                null === $productName ? null : implode( ' · ', array_filter( [ $productName, $details ], static fn ( ?string $part ): bool => null !== $part && '' !== trim( $part ) ) ),
+                [
+                    'action' => Route::has( 'artisanpack.ecommerce.storefront.cart' )
+                        ? [ 'label' => __( 'View cart' ), 'url' => route( 'artisanpack.ecommerce.storefront.cart', absolute: false ) ]
+                        : null,
+                ],
             ),
             'none'  => null,
             default => $this->dispatch( 'ecommerce-cart-open' ),

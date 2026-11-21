@@ -80,6 +80,12 @@ Who may review, and moderation, are engine settings (`artisanpack.ecommerce.revi
 | --- | --- | --- |
 | `cart.after_add` | `'drawer'` | What happens after "Add to cart" on the product page or a product card's quick add: `drawer` opens the cart drawer, `toast` shows a toast, `none` only updates the cart count. |
 
+## Product page
+
+| Key | Default | What it controls |
+| --- | --- | --- |
+| `product.variation_select_after` | `8` | How many values a variation attribute can have and still be drawn as swatches on the variable product form; longer lists use a select. `0` always uses swatches. |
+
 ## Checkout
 
 | Key | Default | What it controls |

@@ -1,7 +1,10 @@
 {{--
     Shows a toast left for the next page by an action that reloaded it (see
-    SendsToasts::flashToastSuccess()) on `<x-artisanpack-toaster>`, once
-    Livewire and Alpine are ready, and removes it from the session. The inline script carries the CSP
+    SendsToasts::flashToastSuccess()) on the storefront toaster
+    (`<x-artisanpack-ec-toaster>`), once Livewire and Alpine are ready, and
+    removes it from the session. The toast keeps its variant, icon and a
+    "url" action; a "call" action needs the component that sent it, so it
+    is dropped (ToastPayload::script()). The inline script carries the CSP
     nonce Vite was given (`Vite::useCspNonce()`), if any.
 
     @package    ArtisanPack_UI

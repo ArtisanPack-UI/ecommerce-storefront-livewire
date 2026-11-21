@@ -469,6 +469,38 @@
         font-variant-numeric: tabular-nums;
     }
 
+    .ec-swatches:focus-visible {
+        border-radius: var(--apui-radius-md);
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-swatches__required {
+        margin-inline-start: 4px;
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-swatches[data-invalid] .ec-swatch {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-swatches__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 8px 0 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-swatches__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
     @media (forced-colors: active) {
         .ec-swatch:has(.ec-swatch__input:checked) {
             outline: 2px solid Highlight;
@@ -968,6 +1000,86 @@
 
     .ec-add-to-cart__error {
         color: var(--apui-color-error-text);
+    }
+
+    /*
+     * Purchase forms (#99, #100, #101): under the product summary, the
+     * choices (swatches, selects, the grouped table) and then the shared
+     * add-to-cart row, 20px apart.
+     */
+    .ec-purchase-form {
+        display: grid;
+        gap: 20px;
+        min-inline-size: 0;
+    }
+
+    .ec-purchase-form__notice {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-purchase-form__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-purchase-form__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
+    /*
+     * Grouped table (#101): item, price and a 96px quantity per product; a
+     * product that can't be bought shows its badge and a dash. Then the
+     * running "2 items · $56.00" line, count at the start and total at the
+     * end.
+     */
+    .ec-grouped-table__item {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-grouped-table__name {
+        unicode-bidi: plaintext;
+    }
+
+    .ec-grouped-table__quantity {
+        inline-size: 96px;
+        margin-inline-start: auto;
+    }
+
+    .ec-grouped-table__quantity input {
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-grouped-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        min-block-size: var(--apui-type-body-md-line-height);
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-grouped-summary__total {
+        font-weight: var(--apui-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
     }
 
     /*
@@ -1794,6 +1906,24 @@
     }
 
     .ec-merge-prompt__note {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Storefront toasts (#97): the toaster and its toasts are the library's
+     * (the ec-toaster component); a long product name wraps rather than
+     * widening the toast.
+     */
+    .apui-toast [data-part="title"],
+    .apui-toast [data-part="description"] {
+        overflow-wrap: anywhere;
+    }
+
+    /* "Ordered as a guest?" link (#98) */
+    .ec-order-lookup-link {
+        margin: 0;
         color: var(--apui-text-muted);
         font-size: var(--apui-type-body-sm-font-size);
         line-height: var(--apui-type-body-sm-line-height);

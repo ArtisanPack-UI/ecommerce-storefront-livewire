@@ -422,12 +422,12 @@ abstract class PurchaseForm extends Component
         $last = end( $items );
 
         // Loaded explicitly so hosts that prevent lazy loading don't throw.
-        $last->loadMissing( 'cart' );
+        $last->loadMissing( [ 'cart', 'variant' ] );
 
         $this->cartChanged( $last->cart );
 
         $this->announcement = __( 'Added to your cart.' );
 
-        $this->afterAddToCart( (string) $this->product->name );
+        $this->afterAddToCart( (string) $this->product->name, 1 === count( $items ) ? $last->variant?->name : null );
     }
 }

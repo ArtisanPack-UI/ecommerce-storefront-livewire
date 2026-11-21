@@ -49,12 +49,15 @@ class Swatches extends Component
 
     /**
      * @since 1.0.0
+     * @since 2.0.0 Added `$required` and `$error`.
      *
      * @param  string                            $name      The inputs' name (unique per group on the page).
      * @param  string                            $legend    The group's visible label.
      * @param  array<int, array<string, mixed>>  $options   The options.
      * @param  bool                              $multiple  Checkboxes (many) instead of radios (one).
      * @param  string|null                       $idPrefix  Prefix for the inputs' ids.
+     * @param  bool                              $required  Marks the group required (a "*" after the legend).
+     * @param  string|null                       $error     The group's error, shown under it and linked to it.
      */
     public function __construct(
         public string $name,
@@ -62,9 +65,24 @@ class Swatches extends Component
         public array $options = [],
         public bool $multiple = false,
         public ?string $idPrefix = null,
+        public bool $required = false,
+        public ?string $error = null,
     ) {
         $this->idPrefix ??= 'ec-swatch-' . preg_replace( '/[^A-Za-z0-9_-]/', '-', $name );
         $this->items      = array_values( array_map( self::normalize( ... ), array_filter( $options, 'is_array' ) ) );
+        $this->error      = null !== $error && '' !== trim( $error ) ? $error : null;
+    }
+
+    /**
+     * The id of the group's error message.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    public function errorId(): string
+    {
+        return $this->idPrefix . '-error';
     }
 
     /**
