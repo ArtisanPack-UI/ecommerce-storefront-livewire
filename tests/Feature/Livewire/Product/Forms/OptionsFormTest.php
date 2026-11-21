@@ -49,11 +49,29 @@ it( 'counts the characters of a text field with a max rule', function (): void {
     Livewire::test( OptionsForm::class, [ 'product' => $this->product ] )
         ->assertSee( '0 of 20 characters' )
         ->assertSeeHtml( 'id="' . $id . '-count"' )
-        ->assertSeeHtml( 'maxlength="20"' )
+        ->assertDontSeeHtml( 'maxlength=' )
         ->assertSeeHtml( 'aria-describedby="' . $id . '-count"' )
         ->assertSeeHtml( 'data-character-count' )
         ->set( 'options.engraving.text', 'Sam\'s coffee' )
-        ->assertSee( '12 of 20 characters' );
+        ->assertSee( '12 of 20 characters' )
+        ->set( 'options.engraving.text', str_repeat( '😀', 11 ) )
+        ->assertSee( '11 of 20 characters' );
+} );
+
+it( 'accepts as many emoji as the max rule allows, counting code points', function (): void {
+    Livewire::test( OptionsForm::class, [ 'product' => $this->product ] )
+        ->set( 'options.engraving.text', str_repeat( '😀', 20 ) )
+        ->call( 'addToCart' )
+        ->assertHasNoErrors( 'options.engraving.text' );
+} );
+
+it( 'advertises the text limit every field is validated against when a declared one is higher', function (): void {
+    $maxLength = new ReflectionMethod( OptionsForm::class, 'maxLength' );
+
+    expect( $maxLength->invoke( null, [ 'max:20' ] ) )->toBe( 20 )
+        ->and( $maxLength->invoke( null, 'required|max:2000' ) )->toBe( OptionsForm::TEXT_MAX_LENGTH )
+        ->and( $maxLength->invoke( null, [ 'max:50', 'max:30' ] ) )->toBe( 30 )
+        ->and( $maxLength->invoke( null, [ 'required' ] ) )->toBeNull();
 } );
 
 it( 'shows the options error with the alert icon', function (): void {

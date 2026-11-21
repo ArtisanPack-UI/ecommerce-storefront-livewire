@@ -43,6 +43,15 @@ use Illuminate\Validation\Rule;
 class OptionsForm extends PurchaseForm
 {
     /**
+     * The longest value any text or textarea field accepts.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public const TEXT_MAX_LENGTH = 1000;
+
+    /**
      * The field values, nested by field name.
      *
      * @since 1.0.0
@@ -231,7 +240,7 @@ class OptionsForm extends PurchaseForm
                 'quantity'        => [ 'integer', 'min:0', 'max:' . StorefrontCartService::MAX_LINE_QUANTITY ],
                 'checkbox'        => [ 'boolean' ],
                 'select', 'radio' => [ Rule::in( array_column( $field['options'], 'value' ) ) ],
-                default           => [ 'string', 'max:1000' ],
+                default           => [ 'string', 'max:' . self::TEXT_MAX_LENGTH ],
             };
 
             $rules[ $key ]      = [ ( $field['required'] ?? false ) ? ( 'checkbox' === $field['type'] ? 'accepted' : 'required' ) : 'nullable', ...$types, ...$own ];
@@ -297,7 +306,10 @@ class OptionsForm extends PurchaseForm
     }
 
     /**
-     * The longest value a text field's `max:N` rule allows, or null.
+     * The longest value a text field accepts when it declares a `max:N`
+     * rule: the smallest declared limit, capped at the
+     * {@see self::TEXT_MAX_LENGTH} every text field is validated against.
+     * Null without a declared limit.
      *
      * @since 2.0.0
      *
@@ -316,6 +328,6 @@ class OptionsForm extends PurchaseForm
             }
         }
 
-        return null !== $max && $max > 0 ? $max : null;
+        return null !== $max && $max > 0 ? min( $max, self::TEXT_MAX_LENGTH ) : null;
     }
 }

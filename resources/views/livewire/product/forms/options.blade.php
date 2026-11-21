@@ -5,10 +5,12 @@
     Under the product summary (#104): each field as its design-system
     control (Input, Textarea, Select, RadioGroup, Checkbox, or the quantity
     stepper), an `info` field as a short muted note, then the shared
-    add-to-cart row. A text field with a `max:N` rule has a `maxlength`
-    and a "12 of 20 characters" count under it that follows the typing;
-    the count describes the control but isn't a live region, so it doesn't
-    talk over every keystroke.
+    add-to-cart row. A text field with a `max:N` rule has a "12 of 20
+    characters" count under it that follows the typing; the count describes
+    the control but isn't a live region, so it doesn't talk over every
+    keystroke. Characters are counted (and capped) as code points, as the
+    server's `max` rule counts them, rather than with a native `maxlength`,
+    which counts an emoji as two.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -31,8 +33,22 @@
             wire:key="option-field-{{ $field['id'] }}"
             data-option-field="{{ $field['name'] }}"
             @if ( null !== $ecommerceMaxLength )
-                x-data="{ length: {{ $ecommerceLength }}, template: @js( __( ':count of :max characters', [ 'max' => $ecommerceMaxLength ] ) ) }"
-                x-on:input="length = $event.target.value.length"
+                x-data="{
+                    length: {{ $ecommerceLength }},
+                    max: {{ $ecommerceMaxLength }},
+                    template: @js( __( ':count of :max characters', [ 'max' => $ecommerceMaxLength ] ) ),
+                    count( event ) {
+                        const characters = [ ...event.target.value ];
+
+                        if ( characters.length > this.max ) {
+                            event.target.value = characters.slice( 0, this.max ).join( '' );
+                            event.target.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+                        }
+
+                        this.length = Math.min( characters.length, this.max );
+                    },
+                }"
+                x-on:input="count( $event )"
             @endif
         >
             @switch ( $field['type'] )
@@ -73,7 +89,6 @@
                         :hint="$field['help']"
                         wire:model="{{ $ecommerceModel }}"
                         :required="$field['required']"
-                        :maxlength="$ecommerceMaxLength"
                         :aria-describedby="$ecommerceCountId"
                         :error-field="$ecommerceModel"
                     />
@@ -117,7 +132,6 @@
                         :type="'number' === $field['type'] ? 'number' : 'text'"
                         wire:model="{{ $ecommerceModel }}"
                         :required="$field['required']"
-                        :maxlength="$ecommerceMaxLength"
                         :aria-describedby="$ecommerceCountId"
                         :error-field="$ecommerceModel"
                     />
