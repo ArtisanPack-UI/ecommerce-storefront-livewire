@@ -132,9 +132,17 @@ return [
     | quick add): `drawer` opens the cart drawer, `toast` shows a toast,
     | `none` only updates the cart count.
     |
+    | `free_shipping_threshold` is the order amount, after discounts, from
+    | which shipping is free, for the cart drawer's progress meter: minor
+    | units in the store's base currency (15000) or a map of per-currency
+    | amounts (['USD' => 15000, 'EUR' => 14000]), as the engine's
+    | free-shipping method takes it. Null shows the meter only when a
+    | promotion has made shipping free.
+    |
     */
     'cart' => [
-        'after_add' => 'drawer',
+        'after_add'               => 'drawer',
+        'free_shipping_threshold' => null,
     ],
 
     /*

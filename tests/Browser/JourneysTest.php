@@ -71,7 +71,7 @@ it( 'adds a quantity to the cart from the product page', function (): void {
         ->type( '[data-quantity] input', '3' )
         ->click( '[data-add-to-cart]' )
         ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Product page mug' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel [data-cart-subtotal]', '$72.00' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-content [data-cart-subtotal]', '$72.00' )
         ->assertNoJavaScriptErrors();
 } );
 
@@ -85,7 +85,7 @@ it( 'keeps the line price on "Add to cart" in step with the quantity', function 
         ->type( '[data-quantity] input', '5' )
         ->click( '[data-add-to-cart]' )
         ->assertSeeIn( '[data-add-to-cart-price]', '$120.00' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel [data-cart-subtotal]', '$120.00' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-content [data-cart-subtotal]', '$120.00' )
         ->assertNoJavaScriptErrors();
 } );
 

@@ -289,3 +289,25 @@ it( 'is an alertdialog Escape can\'t dismiss, described by its first sentence', 
         ->toContain( 'aria-describedby="ecommerce-cart-merge-description"' )
         ->not->toContain( 'id="ecommerce-cart-merge-close-trigger"' );
 } );
+
+it( 'is a design-system Dialog with the bag icon and the primary action last, focused first', function (): void {
+    $user = makeUser();
+
+    accountCartWith( $user, dualPricedProduct( 'Tea' ), 'EUR' );
+    signInWithGuestCart( $user, guestCartWith( dualPricedProduct( 'Mug' ), 'USD' ) );
+
+    $html = Livewire::actingAs( $user )->test( MergePrompt::class )->html();
+
+    expect( $html )->toContain( 'class="apui-dialog ec-merge-prompt"' )
+        ->toContain( 'data-color="primary"' )
+        ->toContain( 'id="ecommerce-cart-merge-icon"' )
+        ->toContain( 'ecommerce-cart-merge-primary' )
+        ->and( strpos( $html, 'data-merge-choice="cancel_merge"' ) )->toBeLessThan( strpos( $html, 'data-merge-choice="switch_to_account_currency"' ) )
+        ->and( strpos( $html, 'data-merge-choice="switch_to_account_currency"' ) )->toBeLessThan( strpos( $html, 'data-merge-choice="keep_guest_currency"' ) );
+
+    preg_match( '/<button[^>]*data-merge-choice="keep_guest_currency"[^>]*>/', $html, $primary );
+    preg_match( '/<button[^>]*data-merge-choice="cancel_merge"[^>]*>/', $html, $cancel );
+
+    expect( $primary[0] )->toContain( 'data-variant="solid"' )->toContain( 'id="ecommerce-cart-merge-primary"' )
+        ->and( $cancel[0] )->toContain( 'data-variant="ghost"' )->not->toContain( 'id=' );
+} );
