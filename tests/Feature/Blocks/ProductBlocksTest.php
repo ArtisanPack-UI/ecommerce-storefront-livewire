@@ -138,7 +138,14 @@ it( 'still validates the quantity of a form without the stepper', function (): v
 it( 'says when a product can\'t be bought online', function (): void {
     $this->app->instance( ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry::class, new ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry() );
 
-    expect( renderProductBlock( new AddToCartBlock(), [ 'productId' => $this->mug->id ] ) )->toContain( 'data-product-unavailable' );
+    $html = renderProductBlock( new AddToCartBlock(), [ 'productId' => $this->mug->id ] );
+
+    preg_match( '#<div[^>]*data-product-unavailable[^>]*>#s', $html, $alert );
+
+    expect( $alert[0] ?? '' )->toContain( 'apui-alert' )
+        ->toContain( 'data-color="neutral"' )
+        ->and( $html )->toContain( 'This product can&#039;t be purchased online' )
+        ->and( classTokens( $html ) )->not->toContain( 'alert', 'o-information-circle' );
 } );
 
 it( 'pages reviews by the block\'s setting and can hide the form', function (): void {

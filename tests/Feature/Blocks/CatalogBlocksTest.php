@@ -163,7 +163,7 @@ it( 'tiles a parent\'s sub-categories, without counts or images when asked', fun
     expect( $html )->toContain( 'data-category-tile="' . $this->tea->id . '"' )
         ->not->toContain( 'data-category-tile="' . $this->kitchen->id . '"' )
         ->not->toContain( 'data-category-count' )
-        ->not->toContain( 'o-squares-2x2' )
+        ->not->toContain( 'ec-category-tile__media' )
         ->toContain( 'Tea time' );
 } );
 

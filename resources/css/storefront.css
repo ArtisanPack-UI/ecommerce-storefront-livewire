@@ -2688,4 +2688,460 @@
     .ec-redirect__continue {
         inline-size: 100%;
     }
+
+    /*
+     * Stripe Payment Element (#112): Stripe's form in a Card, the
+     * reassurance line and a full-width "Pay now". While it loads, field
+     * skeletons sit under the glass Loading overlay in the form's place.
+     */
+    .ec-stripe__card [data-scope="card"][data-part="body"] {
+        display: grid;
+    }
+
+    .ec-stripe__form {
+        display: grid;
+        gap: 12px;
+        min-inline-size: 0;
+    }
+
+    .ec-stripe__field {
+        position: relative;
+        min-inline-size: 0;
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-stripe__field[data-loading] {
+        min-block-size: 132px;
+    }
+
+    .ec-stripe__loading {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+        background: var(--apui-surface-default);
+    }
+
+    .ec-stripe__loading[hidden] {
+        display: none;
+    }
+
+    .ec-stripe__skeletons {
+        display: grid;
+        gap: 12px;
+        padding-block: 4px;
+    }
+
+    .ec-stripe__skeleton-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ec-stripe__skeleton {
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-stripe__element {
+        min-inline-size: 0;
+    }
+
+    .ec-stripe__error {
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-stripe__error:empty {
+        display: none;
+    }
+
+    .ec-stripe__reassurance {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-stripe__reassurance > .apui-icon {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        margin-block-start: 1px;
+    }
+
+    .ec-stripe__pay {
+        inline-size: 100%;
+    }
+
+    /*
+     * Category grid (#115): Card tiles (a 4:3 image, the name whose link
+     * stretches over the tile, the product count and an arrow), two to a
+     * row on small screens and `data-columns` to a row from 1024px.
+     */
+    .ec-category-grid {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-category-grid__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-category-grid__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-category-grid__list[data-columns="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-category-grid__item {
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-category-grid__list:is([data-columns="4"], [data-columns="5"], [data-columns="6"]) {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-category-grid__list[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="5"] {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="6"] {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+    }
+
+    .ec-category-tile {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-category-tile[data-interactive]:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-category-tile:focus-within {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-category-tile > .ec-category-tile__media {
+        display: grid;
+        place-items: center;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-category-tile__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-category-tile__placeholder {
+        inline-size: 40px;
+        block-size: 40px;
+    }
+
+    .ec-category-tile__body {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-category-tile__text {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-category-tile__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-lg-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-category-tile__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the tile: one link per category. */
+    .ec-category-tile__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    .ec-category-tile__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-category-tile__arrow {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    /*
+     * Cart Contents preview (#114): the sample notice, then the lines Card
+     * beside the order summary Card (stacked when the block is narrow), and
+     * a dashed note where the cross-sells go.
+     */
+    .ec-cart-preview {
+        display: grid;
+        gap: 16px;
+        container-type: inline-size;
+        min-inline-size: 0;
+    }
+
+    .ec-cart-preview > .ec-block-notice--sample {
+        margin-block-end: 0;
+    }
+
+    .ec-cart-preview__layout {
+        display: grid;
+        align-items: start;
+        gap: 24px;
+    }
+
+    @container (min-width: 48rem) {
+        .ec-cart-preview__layout {
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        }
+    }
+
+    .ec-cart-preview__lines {
+        overflow: hidden;
+    }
+
+    .ec-cart-preview__lines [data-scope="card"][data-part="body"] {
+        padding: 0;
+    }
+
+    .ec-cart-preview__list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-cart-preview__line {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+    }
+
+    .ec-cart-preview__line + .ec-cart-preview__line {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-cart-preview__media {
+        display: grid;
+        flex: none;
+        place-items: center;
+        inline-size: 96px;
+        block-size: 96px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-cart-preview__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-cart-preview__details {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-cart-preview__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-cart-preview__quantity {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-preview__amount {
+        flex: none;
+        margin: 0;
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-cart-preview__summary [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-cart-preview__totals {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .ec-cart-preview__total {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 4px 16px;
+    }
+
+    .ec-cart-preview__total dt {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart-preview__total dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        text-align: end;
+    }
+
+    .ec-cart-preview__checkout {
+        inline-size: 100%;
+    }
+
+    .ec-cart-preview__cross-sells {
+        display: block;
+    }
+
+    /*
+     * Checkout Steps preview (#116): the layout notice, then the Steps over
+     * the first step's Card (multi-step), or one Card per step with a
+     * numbered marker, the upcoming ones muted on the sunken surface
+     * (single page).
+     */
+    .ec-checkout-preview {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout-preview > .ec-block-notice--sample {
+        margin-block-end: 0;
+    }
+
+    .ec-checkout-preview__steps {
+        overflow-x: auto;
+    }
+
+    .ec-checkout-preview__placeholder {
+        display: grid;
+        justify-items: start;
+        gap: 16px;
+    }
+
+    .ec-checkout-preview__field {
+        inline-size: 100%;
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-checkout-preview__button {
+        inline-size: min(160px, 100%);
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-full);
+    }
+
+    .ec-checkout-preview__sections {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-checkout-preview__section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    .ec-checkout-preview__section[data-upcoming] {
+        box-shadow: none;
+    }
+
+    .ec-checkout-preview__section[data-upcoming] .ec-checkout-preview__section-title {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-checkout-preview__marker {
+        display: grid;
+        flex: none;
+        place-items: center;
+        box-sizing: border-box;
+        inline-size: 28px;
+        block-size: 28px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-full);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-sm-font-size);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
 }

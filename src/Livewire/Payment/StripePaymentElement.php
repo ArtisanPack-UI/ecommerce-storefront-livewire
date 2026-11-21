@@ -23,10 +23,13 @@ use Livewire\Livewire;
  *
  * The view's script loads Stripe.js from `https://js.stripe.com/v3` once
  * per page, mounts the Payment Element with the session's client secret,
- * the locale, and an appearance built from the daisyUI theme tokens
- * (`--color-primary`, `--color-base-100`, `--color-base-content`,
- * `--color-error`, `--radius-field`) with the gateway's `appearance`
- * config on top. "Pay now" calls `stripe.confirmPayment()` with
+ * the locale, and an appearance built from the design-system tokens
+ * (`--apui-color-primary`, `--apui-surface-default`, `--apui-text-*`,
+ * `--apui-color-error-text`, `--apui-radius-field`, and the field border
+ * and focus ring) with the gateway's `appearance` config on top, so its
+ * fields match the Input; it is rebuilt when the page switches between
+ * light and dark. While Stripe loads, field skeletons sit under the glass
+ * Loading overlay (#112). "Pay now" calls `stripe.confirmPayment()` with
  * `redirect: 'if_required'`, so a 3-D Secure challenge runs in the page;
  * payment methods that must redirect come back through
  * `/shop/checkout/return`. A Stripe error is shown under the form in an
@@ -51,6 +54,7 @@ use Livewire\Livewire;
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
+ * @since      2.0.0 Rebuilt on the design system: a Card, `--apui-*` appearance, skeleton loading.
  */
 class StripePaymentElement extends PaymentDriver
 {

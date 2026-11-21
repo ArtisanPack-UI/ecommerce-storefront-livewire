@@ -112,6 +112,28 @@ it( 'previews a sample cart of the newest products without creating a cart', fun
         ->and( Cart::query()->count() )->toBe( 0 );
 } );
 
+it( 'previews the cart page\'s layout on the design system', function (): void {
+    makeProduct( 1900, [ 'name' => 'Teapot' ] );
+    $this->travel( 1 )->minutes();
+    makeProduct( 2500, [ 'name' => 'Kettle' ] );
+
+    $html = previewCommerceBlock( app( CartContentsBlock::class ) );
+
+    preg_match( '#<button[^>]*ec-cart-preview__checkout[^>]*>#s', $html, $checkout );
+
+    expect( $checkout[0] ?? '' )->toContain( 'disabled' )
+        ->and( $html )->toMatch( '#class="ec-block-notice ec-block-notice--sample" data-commerce-sample>\s*<span[^>]*apui-badge[^>]*data-color="info"#s' )
+        ->toContain( 'apui-card ec-cart-preview__lines' )
+        ->and( substr_count( $html, 'data-cart-preview-line' ) )->toBe( 2 )
+        ->and( $html )->toContain( 'apui-card ec-cart-preview__summary' )
+        ->toMatch( '#data-part="title"[^>]*>Order summary</h3>#' )
+        ->toContain( 'Calculated at checkout' )
+        ->toContain( '$44.00' )
+        ->toContain( 'data-cart-preview-coupon' )
+        ->toMatch( '#<p class="ec-block-notice[^"]*ec-cart-preview__cross-sells" data-cart-preview-cross-sells>#' )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'grid', 'lg:grid-cols-3', 'badge', 'badge-neutral', 'rounded-box', 'border-dashed', 'w-full', 'text-xl', 'divide-y' );
+} );
+
 it( 'asks for a product when the store has none to preview', function (): void {
     expect( previewCommerceBlock( app( CartContentsBlock::class ) ) )
         ->toContain( 'data-commerce-block-notice' )
@@ -175,6 +197,35 @@ it( 'previews the checkout steps in the chosen layout without a cart', function 
     'store setting' => [ CheckoutStepsBlock::STORE_LAYOUT, 'data-checkout-preview="multi_step"' ],
     'single page'   => [ CheckoutLayout::SINGLE_PAGE, 'data-checkout-preview="single_page"' ],
 ] );
+
+it( 'previews the multi-step checkout as Steps over the first step\'s Card', function (): void {
+    $html = previewCommerceBlock( app( CheckoutStepsBlock::class ), [ 'layout' => CheckoutLayout::MULTI_STEP ] );
+
+    preg_match( '#<li[^>]*data-checkout-preview-step="contact"[^>]*>#', $html, $contact );
+
+    expect( $html )->toMatch( '#<ol[^>]*apui-steps[^>]*aria-label="Checkout steps"#s' )
+        ->and( $contact[0] ?? '' )->toContain( 'data-state="current"' )
+        ->toContain( 'aria-current="step"' )
+        ->and( $html )->toContain( 'apui-card ec-checkout-preview__current' )
+        ->toMatch( '#data-part="title"[^>]*>Contact</h3>#' )
+        ->and( substr_count( $html, 'apui-skeleton' ) )->toBe( 2 )
+        ->and( $html )->toMatch( '#apui-badge.*?data-part="label">Multi-step<#s' )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'flex-wrap', 'font-semibold', 'badge', 'rounded-box', 'opacity-60', 'text-base-content/60' );
+} );
+
+it( 'previews the single-page checkout as one Card per step, the first one open', function (): void {
+    $html = previewCommerceBlock( app( CheckoutStepsBlock::class ), [ 'layout' => CheckoutLayout::SINGLE_PAGE ] );
+
+    preg_match_all( '#<li data-checkout-preview-step="([a-z_-]+)"[^>]*>\s*<div([^>]*)>#s', $html, $sections );
+
+    expect( $sections[1] )->toContain( 'contact', 'review' )
+        ->and( $sections[2][0] ?? '' )->toContain( 'data-surface="default"' )->not->toContain( 'data-upcoming' )
+        ->and( $sections[2][1] ?? '' )->toContain( 'data-surface="sunken"' )->toContain( 'data-upcoming' )
+        ->and( $html )->toMatch( '#<li data-checkout-preview-step="contact"\s+aria-current="step"\s*>#' )
+        ->toMatch( '#class="ec-checkout-preview__marker" aria-hidden="true">1</span>#' )
+        ->toMatch( '#apui-badge.*?data-part="label">Single page<#s' )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'font-semibold', 'badge', 'rounded-box', 'opacity-60', 'p-4' );
+} );
 
 it( 'sends a shopper with an empty cart from the checkout block to the cart', function (): void {
     Livewire::test( Checkout::class, [ 'layoutOverride' => CheckoutLayout::SINGLE_PAGE ] )
