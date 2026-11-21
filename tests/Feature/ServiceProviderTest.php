@@ -32,6 +32,8 @@ it( 'merges the config under the artisanpack key', function (): void {
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
         'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
+        'tagline'        => null,
+        'nav_categories' => 3,
     ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.account' ) )->toBe( [
             'route_prefix'                  => 'account',
@@ -45,6 +47,7 @@ it( 'merges the config under the artisanpack key', function (): void {
             'default_sort'      => 'newest',
             'show_stock_count'  => false,
             'filter_attributes' => null,
+            'description'       => null,
         ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart' ) )->toBe( [ 'after_add' => 'drawer', 'free_shipping_threshold' => null ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.checkout.layout' ) )->toBe( 'multi_step' )

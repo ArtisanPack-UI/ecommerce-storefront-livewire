@@ -23,6 +23,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CurrencyNames;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -44,8 +45,10 @@ use Livewire\Component;
  * and the shopper told why. The page then reloads in the new currency with
  * a toast saying the cart total changed.
  *
- * The package layout shows it in the header; a host layout can place it
- * anywhere.
+ * The package layout shows it in the header (from 768px) and in the
+ * footer; a host layout can place it anywhere. Give each copy on a page its
+ * own `placement`, which keeps their ids apart:
+ * `<livewire:artisanpack-ecommerce-storefront-currency-switcher placement="footer" />`.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -75,6 +78,18 @@ class Switcher extends Component
      * @var string
      */
     public string $currency = '';
+
+    /**
+     * Where the switcher sits (`header`, `footer`, …): the header's menu is
+     * `ecommerce-currency-switcher`, any other's
+     * `ecommerce-currency-switcher-{placement}`.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $placement = 'header';
 
     /**
      * Starts on the shopper's current currency.
@@ -161,7 +176,7 @@ class Switcher extends Component
      * Renders the component.
      *
      * @since 1.0.0
-     * @since 2.0.0 Passes the menu's radio `items` instead of select `options`.
+     * @since 2.0.0 Passes the menu's radio `items` instead of select `options`, and its `menuId`.
      *
      * @return View
      */
@@ -177,7 +192,8 @@ class Switcher extends Component
                 'shortcut' => $code,
                 'checked'  => $code === $this->currency,
             ], $enabled ),
-            'show'  => count( $enabled ) > 1,
+            'show'   => count( $enabled ) > 1,
+            'menuId' => 'ecommerce-currency-switcher' . ( 'header' === $this->placement ? '' : '-' . ( preg_replace( '/[^a-z0-9_-]/i', '', $this->placement ) ?: 'other' ) ),
         ] );
     }
 

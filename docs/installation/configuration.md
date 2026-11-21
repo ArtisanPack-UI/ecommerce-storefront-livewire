@@ -21,6 +21,8 @@ Every key has a default, so you only need the keys you change. Some choices are 
 | `storefront.middleware` | `[ 'web' ]` | Middleware on every storefront route. |
 | `storefront.layout` | `'ecommerce-storefront::layouts.app'` | The view every storefront and account page extends. Point it at your own layout to adopt its header and footer. An empty value falls back to the package layout. See [Layouts](Installation-Layouts). |
 | `storefront.rtl_locales` | `[ 'ar', 'he', 'fa', 'ur' ]` | Languages written right to left. The standalone layout sets `<html dir="rtl">` when the app locale's language is in this list (`ar_EG` and `ar-EG` follow `ar`). A host layout can do the same with `Support\TextDirection::for()`; see [Layouts](Installation-Layouts). |
+| `storefront.tagline` | `null` | The line under the store name in the standalone layout's footer. `null` leaves it out. |
+| `storefront.nav_categories` | `3` | How many top-level categories the standalone layout's header and footer list after "Shop all". `0` lists none. See [Layouts](Installation-Layouts#store-navigation). |
 
 Route names are always `artisanpack.ecommerce.storefront.*` (for example `artisanpack.ecommerce.storefront.product`).
 
@@ -59,6 +61,7 @@ The host owns sign-in, registration, and the profile and password screens. A rou
 | `catalog.default_sort` | `'newest'` | The default sort: `newest`, `price`, `-price`, `popularity`, `rating`, or `name`. A key the `ap.ecommerceStorefrontLivewire.catalog.sorts` filter removed falls back to the first sort offered. |
 | `catalog.show_stock_count` | `false` | Low-stock products say "Only 3 left" instead of "Low stock". The engine's `artisanpack.ecommerce.inventory.show_quantity` must be on for the count to be known. |
 | `catalog.filter_attributes` | `null` | The attribute keys shoppers can filter by, for example `[ 'colour', 'size' ]`. `null` offers every attribute. |
+| `catalog.description` | `null` | The line under the catalog page's "All products" title. `null` leaves it out. |
 
 ## Reviews
 

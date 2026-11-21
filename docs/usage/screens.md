@@ -60,7 +60,7 @@ The catalog lists products from the engine's `CatalogQuery`.
 
 - **Sort**: `newest`, `price`, `-price`, `popularity`, `rating`, `name`. The default is `catalog.default_sort`. Add or remove sorts with the `ap.ecommerceStorefrontLivewire.catalog.sorts` filter.
 - **Page size**: `catalog.per_page` (24), with the choices in `catalog.per_page_values`.
-- **Filters** (a sidebar on desktop, a drawer on mobile): category tree, tag, price range, attribute values, in stock, on sale, and minimum rating. Each option shows a facet count. A group's own counts ignore its own selection, and options with no results are disabled, not hidden. `catalog.filter_attributes` limits which attributes can be filtered on. Add or remove groups with the `ap.ecommerceStorefrontLivewire.catalog.filters` filter.
+- **Filters** (a 240px sidebar from 1024px, a start-side drawer below that, opened by a "Filters (2)" button that counts the active filters): category tree, tag, price range, attribute values, in stock, on sale, and minimum rating. Each option shows a facet count; sub-categories are indented under their parent. Active filters show as removable chips above the results, with "Clear all". A group's own counts ignore its own selection, and options with no results are disabled, not hidden. `catalog.filter_attributes` limits which attributes can be filtered on. Add or remove groups with the `ap.ecommerceStorefrontLivewire.catalog.filters` filter.
 
 Everything lives in the query string:
 
@@ -76,11 +76,13 @@ Everything lives in the query string:
 | `rating` | Minimum rating |
 | `f[{key}]` | A filter group added through the filter hook |
 
+The catalog page opens with breadcrumbs, the "All products" title and the `catalog.description` line. The toolbar has the live results count (announced politely when it changes), "Sort by", and "Per page" (left out on phones). Cards sit three to a row beside the filters (two on phones, four without filters). While a filter, sort, or page loads, skeleton cards stand in for the cards. With no matches, a card says so and offers "Clear filters".
+
 Product cards show the image, name, price, rating, and stock. Prices are the signed-in customer's (passed to the engine's `PriceDisplayResolver`), so a customer-group price shows in listings as it does in the cart. Simple products get a quick "Add to cart" button. Other types need a choice made on the product page (a variant, a licence type, options), so they get none, and quick add refuses them if called directly. With `catalog.show_stock_count` on, low-stock products say "Only 3 left" (the engine's `inventory.show_quantity` must be on).
 
 Products whose type's satellite isn't installed are left out of every listing, search, and header suggestion. A malformed query string (`?per_page=abc`, `?sort[]=x`) is ignored rather than causing an error.
 
-The category page adds breadcrumbs, the category's name, description, and image, and sub-category chips. The tag page has the catalog's filters, less the tag filter.
+The category page adds breadcrumbs, then a card with a "Category" eyebrow, the category's name, description, and sub-category chips ("All {category}" for the page itself, then each sub-category), with its image on the end half. The tag page has the catalog's filters, less the tag filter.
 
 ## Product
 
@@ -149,7 +151,7 @@ Recently viewed (`recently-viewed`) shows the products the recently-viewed satel
 
 ## Currency switcher
 
-`currency-switcher` renders only when the store sells in more than one currency. Each option names the currency, its code, and symbol ("Euro (EUR, €)"). A choice is stored through the engine's `CurrencyResolver` and its currency cookie, an existing cart is re-priced through `StorefrontCartService::changeCurrency()`, and the page reloads with a toast. If the cart can't be re-priced, the choice is undone and the shopper told why.
+`currency-switcher` renders only when the store sells in more than one currency. Each option names the currency, its code, and symbol ("Euro (EUR, €)"). The package layout shows it in the header from 768px and in the footer. A page with more than one gives each its own `placement` (`<livewire:artisanpack-ecommerce-storefront-currency-switcher placement="footer" />`), which keeps their ids apart. A choice is stored through the engine's `CurrencyResolver` and its currency cookie, an existing cart is re-priced through `StorefrontCartService::changeCurrency()`, and the page reloads with a toast. If the cart can't be re-priced, the choice is undone and the shopper told why.
 
 Prices are shown in the open cart's currency when there is one, so a shopper whose account cart is in euros (opened on another device, or after a merge) sees euro prices even if they last chose dollars. Without a cart, it is the currency the engine's `CurrencyResolver` returns. The switcher is the only way to change a cart's currency, since that re-prices it. From PHP, `StorefrontCart::currency()` gives the display currency, `rememberCurrency( $code )` stores a choice (without re-pricing the cart), and `customer()` gives the signed-in shopper's engine customer.
 

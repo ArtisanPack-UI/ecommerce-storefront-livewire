@@ -110,6 +110,8 @@ A listener that already followed its own change can ignore an `ecommerce-cart-up
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
 | `ap.ecommerceStorefrontLivewire.header.actions` | filter | Rendering the package layout's header | `array $actions` (key => view name or `Htmlable`) | Header actions (`currency`, `account`, `cart` by default). |
+| `ap.ecommerceStorefrontLivewire.layout.navigation` | filter | Rendering the package layout's header | `array $links` (each `label`, `url`, `current`) | The store navigation ("Shop all" and the top-level categories). See [Layouts](Installation-Layouts#store-navigation). |
+| `ap.ecommerceStorefrontLivewire.layout.footerLinks` | filter | Rendering the package layout's footer | `array $columns` (key => `title`, `links`) | The footer's link columns (`shop`, `help`, `account`). See [Layouts](Installation-Layouts#store-navigation). |
 | `ap.ecommerceStorefrontLivewire.layout.viteEntries` | filter | Loading the package layout's assets | `array $entries` | Vite entry paths. |
 
 ## Search engines

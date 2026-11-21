@@ -49,6 +49,7 @@ class CategoryShow extends Component
      * Renders the component.
      *
      * @since 1.0.0
+     * @since 2.0.0 Passes the category's own `url`, for its "All" chip.
      *
      * @return View
      */
@@ -59,6 +60,7 @@ class CategoryShow extends Component
 
         return view( 'ecommerce-storefront::livewire.catalog.category-show', [
             'breadcrumbs'   => $this->breadcrumbs( $paths, $id ),
+            'url'           => $paths->url( $id ),
             'subcategories' => array_map( static fn ( array $node ): array => [
                 'id'   => $node['id'],
                 'name' => $node['name'],

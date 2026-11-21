@@ -6,17 +6,18 @@
     says what it changes. The menu lists each currency as a radio item, its
     name with the code as a mono shortcut and a check on the current one
     (`menuitemradio` with `aria-checked`). Choosing one sets `currency`,
-    which switches the shopper's currency and reloads the page.
+    which switches the shopper's currency and reloads the page. Each copy
+    on a page (`placement`) has its own menu id.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="ec-currency" data-ecommerce-currency-switcher>
+<div class="ec-currency" data-ecommerce-currency-switcher data-currency-placement="{{ $placement }}">
     @if ( $show )
         <x-artisanpack-dropdown-menu
-            id="ecommerce-currency-switcher"
+            :id="$menuId"
             align="end"
             :items="$items"
             x-on:checked-change="$event.detail.checked && $event.detail.value !== $wire.currency && $wire.set( 'currency', $event.detail.value )"
