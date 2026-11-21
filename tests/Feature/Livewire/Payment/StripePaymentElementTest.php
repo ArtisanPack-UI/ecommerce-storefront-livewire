@@ -116,7 +116,7 @@ it( 'builds Stripe\'s appearance from the design-system tokens, not DaisyUI', fu
         ->toContain( '--apui-focus-ring-color' )
         ->toContain( "'.Input:focus'" )
         ->toContain( '0 0 0 ${ spread }px ${ ring }' )
-        ->toContain( "px solid transparent`" )
+        ->toContain( 'px solid transparent`' )
         ->not->toContain( "outline: 'none'" )
         ->toContain( '$wire.__instance?.addCleanup?.( teardown )' )
         ->not->toContain( 'calc(${' )
