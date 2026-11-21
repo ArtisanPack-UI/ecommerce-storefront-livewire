@@ -39,7 +39,7 @@ app( StorefrontContext::class )->setPage( 'product' )->setProduct( $product );
 
 ### Product Grid (`artisanpack-commerce/product-grid`)
 
-A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`.
+A grid of product cards under an optional heading. Renders `artisanpack-ecommerce-storefront-product-grid`: the cards stretch to the row's height and the grid adds no outer margin (the editor spaces blocks).
 
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`
 | `ids` | string | `''` | For `hand_picked`: product IDs separated by commas, in the order to show them. Anything that isn't a number is ignored. |
 | `sort` | string | `newest` | `newest`, `price`, `-price`, `popularity`, `rating`, or `name` |
 | `limit` | number | `8` | 1 to 24 |
-| `columns` | number | `4` | 1 to 6 |
+| `columns` | number | `4` | 1 to 6: the most cards to a row from 1024px (two to a row on small screens, three for 4–6 columns from 640px) |
 | `showPrice` | boolean | `true` | |
 | `showRating` | boolean | `true` | |
 | `showAddToCart` | boolean | `true` | |
@@ -107,7 +107,7 @@ The products of the page the block is on, with filters, sorting, and pages. It h
 | Search (`page` is `search`) | `artisanpack-ecommerce-storefront-search` |
 | Anything else | `artisanpack-ecommerce-storefront-catalog` |
 
-The default archive, category, tag, and search templates are built on it.
+The default archive, category, tag, and search templates are built on it. The block adds nothing around the listing but the commerce block wrapper, so it looks exactly like the page it stands in for.
 
 ## Product blocks
 
@@ -128,7 +128,7 @@ The product's images with thumbnails and zoom, including variant images. Renders
 
 ### Price (`artisanpack-commerce/product-price`)
 
-The product's price, with any sale price, in the shopper's cart currency. Renders `<x-artisanpack-ec-price>`. No other attributes.
+The product's price, with any sale price, in the shopper's cart currency. Renders `<x-artisanpack-ec-price>` at the large size the product page uses: a regular price, a sale price with the original struck through and the percentage off, or a range. No other attributes.
 
 ### Add-to-Cart Button (`artisanpack-commerce/add-to-cart`)
 

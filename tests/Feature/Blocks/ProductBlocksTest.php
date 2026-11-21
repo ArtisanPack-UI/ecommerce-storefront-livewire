@@ -101,8 +101,31 @@ it( 'shows the gallery with thumbnails below, beside, or hidden, and zoom on or 
 it( 'shows the display price with the sale', function (): void {
     app( StorefrontContext::class )->setProduct( $this->lamp );
 
-    expect( renderProductBlock( new ProductPriceBlock() ) )->toContain( '$25.00' )->toContain( '$30.00' );
+    $sale    = renderProductBlock( new ProductPriceBlock() );
+    $regular = renderProductBlock( new ProductPriceBlock(), [ 'productId' => $this->mug->id ] );
+
+    expect( $sale )->toContain( '$25.00' )->toContain( '$30.00' )
+        ->toContain( 'data-size="lg"' )
+        ->toContain( 'data-on-sale' )
+        ->toContain( 'class="ec-price__was"' )
+        ->toContain( 'data-product-price' )
+        ->and( $regular )->toContain( '$9.00' )->toContain( 'data-size="lg"' )->not->toContain( 'data-on-sale' )
+        ->and( classTokens( $sale . $regular ) )->not->toContain( 'text-xl', 'text-error', 'line-through', 'badge', 'badge-error' );
 } );
+
+it( 'renders the gallery, price and reviews blocks in the frame with no DaisyUI or Tailwind classes', function ( string $class, string $marker ): void {
+    blockReview( $this->lamp, 4, 'Bright' );
+    app( StorefrontContext::class )->setProduct( $this->lamp );
+
+    $html = renderProductBlock( app( $class ) );
+
+    expect( $html )->toContain( $marker )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'flex-col', 'grid', 'gap-4', 'gap-6', 'text-xl', 'text-2xl', 'font-bold', 'mb-4', 'mt-6', 'rounded-box', 'btn', 'badge', 'card', 'rating', 'progress', 'bg-base-200', 'text-base-content/70' );
+} )->with( [
+    'gallery' => [ ProductGalleryBlock::class, 'data-commerce-block="product-gallery"' ],
+    'price'   => [ ProductPriceBlock::class, 'data-commerce-block="product-price"' ],
+    'reviews' => [ ProductReviewsBlock::class, 'data-commerce-block="product-reviews"' ],
+] );
 
 it( 'renders the product\'s purchase form with its options', function (): void {
     app( StorefrontContext::class )->setProduct( $this->lamp );

@@ -45,6 +45,7 @@ use Throwable;
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
+ * @since      2.0.0 The grid is laid out by `data-columns`; the view reads `columns`, and `gridClass` is gone.
  */
 class ProductGrid extends Component
 {
@@ -223,7 +224,6 @@ class ProductGrid extends Component
         return view( 'ecommerce-storefront::livewire.catalog.product-grid', [
             'products'  => $this->products(),
             'currency'  => app( StorefrontCart::class )->currency(),
-            'gridClass' => GridColumns::classes( $this->columns ),
             'headingId' => 'ec-product-grid-' . $this->getId(),
         ] );
     }

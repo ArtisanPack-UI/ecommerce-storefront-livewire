@@ -22,12 +22,15 @@ use Illuminate\Support\Facades\Blade;
 /**
  * `artisanpack-commerce/product-price`: a product's display price in the
  * shopper's currency (sale and from-prices included). Renders
- * `<x-artisanpack-ec-price>`.
+ * `<x-artisanpack-ec-price>` at the product page's large size (#120): a
+ * regular, sale (with the original struck through and the percentage off)
+ * or range price, with no outer margin.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
+ * @since      2.0.0 Large design-system price; the Tailwind `text-xl` class is gone.
  */
 class ProductPriceBlock extends ProductBlock
 {
@@ -94,6 +97,6 @@ class ProductPriceBlock extends ProductBlock
         $carts = app( StorefrontCart::class );
         $price = app( PriceDisplayResolver::class )->for( $product, $carts->currency(), null, $carts->customer() );
 
-        return Blade::renderComponent( ( new Price( $price ) )->withAttributes( [ 'class' => 'text-xl' ] ) );
+        return Blade::renderComponent( ( new Price( $price, size: 'lg' ) )->withAttributes( [ 'data-product-price' => true ] ) );
     }
 }
