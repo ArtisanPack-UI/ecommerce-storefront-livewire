@@ -26,7 +26,9 @@ use Livewire\Attributes\Locked;
  * lines, and undo a removal (the cart page and the cart drawer).
  *
  * Quantities live in `$quantities` (keyed by line id) and are bound with
- * `wire:model.live.debounce` to the quantity stepper; each change goes to
+ * `wire:model.live.change` to the quantity stepper (sent on every step and
+ * when typing is committed, never held back by a debounce, so a click on
+ * "Checkout" right after can't lose it); each change goes to
  * the engine's `StorefrontCartService::updateItem()` (0 removes the line),
  * counts against `ecommerce.cart.mutate`, and shows the engine's message
  * under the line's field (`quantities.{id}`) when it is refused.
@@ -46,6 +48,16 @@ use Livewire\Attributes\Locked;
 trait ManagesCartLines
 {
     use DescribesCart;
+
+    /**
+     * The id every removal toast shares, so a new removal replaces the
+     * last one's toast and its Undo.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const REMOVED_TOAST_ID = 'ecommerce-cart-line-removed';
 
     /**
      * Each line's quantity, keyed by line id.
@@ -269,7 +281,16 @@ trait ManagesCartLines
         $this->syncQuantities();
         $this->linesChanged();
 
-        $this->toastSuccess( __( 'Removed from your cart' ), __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ) );
+        // The inverse toast with Undo (#97); a line that can't come back has no
+        // Undo. Every removal toast has the same id, so a new removal replaces
+        // the last one: Undo only ever restores the line removed last, which
+        // is the one `undoRemove()` holds.
+        $this->toastSuccess( __( ':name was removed from your cart.', [ 'name' => $removed['name'] ] ), null, [
+            'id'      => self::REMOVED_TOAST_ID,
+            'variant' => 'inverse',
+            'icon'    => 'trash',
+            'action'  => null === $this->removedLine ? null : [ 'label' => __( 'Undo' ), 'call' => 'undoRemove' ],
+        ] );
     }
 
     /**

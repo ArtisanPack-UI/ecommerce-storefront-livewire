@@ -28,6 +28,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator as LengthAwarePaginator
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Throwable;
 
@@ -85,6 +86,18 @@ class Index extends CatalogIndex
     public const MAX_RESULTS = 10_000;
 
     /**
+     * Show the title ("Results for “…”", else "Search"): the search page
+     * does; the Product Catalog block on a search template, under the
+     * template's own heading, doesn't.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * The search term.
      *
      * Untyped because the query string can hold anything (`q[]=x`);
@@ -125,6 +138,17 @@ class Index extends CatalogIndex
     protected bool $throttled = false;
 
     /**
+     * Whether the filters may be checked against the search's scope facets
+     * this request: only once the rate-limited search was allowed, so
+     * checking them never costs a provider call the limit didn't count.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    protected bool $scopeAllowed = false;
+
+    /**
      * Cleans the term from the query string, then sets up the catalog.
      *
      * @since 1.0.0
@@ -133,7 +157,7 @@ class Index extends CatalogIndex
      */
     public function mount(): void
     {
-        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
+        $this->q = self::normalizeTerm( self::queryTerm( $this->q ) );
 
         parent::mount();
         $this->checkTerm();
@@ -148,7 +172,7 @@ class Index extends CatalogIndex
      */
     public function updatedQ(): void
     {
-        $this->q = self::normalizeTerm( is_string( $this->q ) ? $this->q : '' );
+        $this->q = self::normalizeTerm( self::queryTerm( $this->q ) );
 
         $this->checkTerm();
         $this->resetPage();
@@ -215,10 +239,25 @@ class Index extends CatalogIndex
             'searched'     => $searched,
             'suggestions'  => $this->suggestions(),
             'resultsLabel' => $searched
-                ? trans_choice( ':count result for ":term"|:count results for ":term"', $total, [ 'count' => $total, 'term' => $this->q ] )
+                ? trans_choice( ':count result|:count results', $total, [ 'count' => $total ] )
                 : '',
             'emptyState'   => $this->emptyState( $data['filtered'] ),
         ] );
+    }
+
+    /**
+     * A query-string term as a string: Livewire JSON-decodes query values,
+     * so a numeric term (`?q=2024`) arrives as a number.
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $term  The raw value.
+     *
+     * @return string
+     */
+    protected static function queryTerm( mixed $term ): string
+    {
+        return is_string( $term ) || is_int( $term ) || is_float( $term ) ? (string) $term : '';
     }
 
     /**
@@ -317,19 +356,20 @@ class Index extends CatalogIndex
     }
 
     /**
-     * None: the search page leaves unknown attribute values to the
-     * provider (they match nothing).
+     * Checks the filters against the search's scope facets (the term with
+     * no filters), like the catalog does with its scope, but only once the
+     * rate-limited search was allowed ({@see self::result()}): before that
+     * no provider call is made for them.
      *
-     * @since 1.0.0
+     * @since 2.0.0
      *
-     * @return array<string, array<int, array{value: string, label: string, count: int}>>|null
+     * @return void
      */
-    protected function attributeUniverse(): ?array
+    protected function constrainToScope(): void
     {
-        // Every provider call here happens behind the rate-limited search,
-        // so unknown values are left to the provider rather than looked up
-        // before the limit is checked.
-        return null;
+        if ( $this->scopeAllowed ) {
+            parent::constrainToScope();
+        }
     }
 
     /**
@@ -486,7 +526,24 @@ class Index extends CatalogIndex
             $result = app( EcommerceRateLimiter::class )->attempt(
                 'ecommerce.catalog.read',
                 app( StorefrontCart::class )->subject(),
-                fn (): SearchResult => $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() ),
+                function (): SearchResult {
+                    // Unknown attribute values and out-of-range prices are
+                    // dropped before they reach the provider (and the
+                    // per-group facet searches and cache keys after it).
+                    $this->scopeAllowed = true;
+                    $this->constrainToScope();
+
+                    $result = $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() );
+
+                    // A page past the end (a stale or shared link) shows the last one.
+                    if ( $result->items->isEmpty() && $result->total > 0 && $this->currentPage() > 1 ) {
+                        $this->setPage( max( 1, (int) ceil( min( $result->total, self::MAX_RESULTS ) / max( 1, $this->perPage ) ) ) );
+
+                        $result = $this->runSearch( $this->searchFilters(), $this->currentPage(), $this->perPage, ProductCard::relations() );
+                    }
+
+                    return $result;
+                },
             );
 
             // A provider's index may still hold products whose type package
@@ -561,12 +618,13 @@ class Index extends CatalogIndex
         $on          = static fn ( string $key ): bool => isset( $definitions[ $key ] ) && ! in_array( $key, $except, true );
         $filters     = [];
 
+        // Ids, not slugs: the engine reads an all-digit value as an id.
         if ( $on( 'category' ) && '' !== $this->categoryFilter ) {
-            $filters['category'] = $this->categoryFilter;
+            $filters['category'] = $this->categoryFilterId();
         }
 
         if ( $on( 'tag' ) && '' !== $this->tagFilter ) {
-            $filters['tag'] = $this->tagFilter;
+            $filters['tag'] = $this->tagId( $this->tagFilter, false );
         }
 
         if ( $on( 'price' ) ) {
@@ -574,9 +632,9 @@ class Index extends CatalogIndex
         }
 
         if ( isset( $definitions['attributes'] ) ) {
-            foreach ( $this->attributeFilters as $key => $values ) {
+            foreach ( array_slice( $this->attributeFilters, 0, self::MAX_ATTRIBUTE_FILTERS, true ) as $key => $values ) {
                 if ( ! in_array( 'attr.' . $key, $except, true ) && [] !== $values ) {
-                    $filters['attributes'][ $key ] = $values;
+                    $filters['attributes'][ $key ] = array_slice( array_values( (array) $values ), 0, self::MAX_ATTRIBUTE_VALUES );
                 }
             }
         }
@@ -645,7 +703,7 @@ class Index extends CatalogIndex
         if ( $this->failed ) {
             return [
                 'key'         => 'unavailable',
-                'icon'        => 'o-exclamation-triangle',
+                'icon'        => 'triangle-alert',
                 'title'       => __( 'Search isn\'t available right now' ),
                 'description' => __( 'Please try again in a moment, or browse the shop instead.' ),
                 'tips'        => [],
@@ -655,7 +713,7 @@ class Index extends CatalogIndex
         if ( $this->throttled ) {
             return [
                 'key'         => 'throttled',
-                'icon'        => 'o-clock',
+                'icon'        => 'clock',
                 'title'       => __( 'Slow down' ),
                 'description' => __( 'You\'re searching faster than we can keep up. Try again in a moment.' ),
                 'tips'        => [],
@@ -665,7 +723,7 @@ class Index extends CatalogIndex
         if ( ! $this->searchable() ) {
             return [
                 'key'         => 'idle',
-                'icon'        => 'o-magnifying-glass',
+                'icon'        => 'search',
                 'title'       => __( 'What are you looking for?' ),
                 'description' => __( 'Search by product name, SKU, or description.' ),
                 'tips'        => [],
@@ -674,9 +732,9 @@ class Index extends CatalogIndex
 
         return [
             'key'         => 'no-results',
-            'icon'        => 'o-magnifying-glass',
-            'title'       => __( 'No results for ":term"', [ 'term' => $this->q ] ),
-            'description' => __( 'Try one of these:' ),
+            'icon'        => 'search',
+            'title'       => __( 'No results for “:term”', [ 'term' => $this->q ] ),
+            'description' => __( 'We couldn\'t find a product matching your search.' ),
             'tips'        => array_values( array_filter( [
                 __( 'Check the spelling.' ),
                 __( 'Use fewer or more general words.' ),

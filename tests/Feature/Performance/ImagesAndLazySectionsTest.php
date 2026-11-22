@@ -75,9 +75,10 @@ it( 'loads recently viewed products after the page, with skeletons until then', 
 
     $html = Blade::render( '<livewire:artisanpack-ecommerce-storefront-recently-viewed heading="Seen lately" :limit="3" />' );
 
-    expect( $html )->toContain( 'data-related-placeholder' )
+    expect( $html )->toContain( 'data-recently-viewed-placeholder' )
         ->toContain( 'Seen lately' )
-        ->not->toContain( 'Kettle' );
+        ->not->toContain( 'Kettle' )
+        ->and( substr_count( $html, 'class="ec-recent__item"' ) )->toBe( 3 );
 
     Livewire::withoutLazyLoading()->test( RecentlyViewed::class, [ 'limit' => 3 ] )->assertSee( 'Kettle' );
 } );

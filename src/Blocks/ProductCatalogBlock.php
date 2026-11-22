@@ -22,7 +22,9 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
  * (Catalog\TagShow), search results on the search page (Search\Index),
  * and the whole catalog anywhere else (Catalog\Index). The default
  * archive, category, tag, and search templates are built on it
- * (spec §11.4).
+ * (spec §11.4). On a category or tag page rendered through the
+ * `product-archive` fallback, whose "Shop" heading is the page's `<h1>`,
+ * the category or tag title is an `<h2>` (since 2.0.0).
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -102,9 +104,13 @@ class ProductCatalogBlock extends StorefrontBlock
     {
         $context = app( StorefrontContext::class );
 
+        // A category or tag page that fell back to the shop's template
+        // already has that template's `<h1>`, so the hero's title steps down.
+        $headed = static fn ( string $page, mixed $subject ): int => 'product-archive' === StorefrontTemplates::resolved( $page, $subject ) ? 2 : 1;
+
         [ $component, $params ] = match ( true ) {
-            null !== $context->category()  => [ 'artisanpack-ecommerce-storefront-category-show', [ 'category' => $context->category() ] ],
-            null !== $context->tag()       => [ 'artisanpack-ecommerce-storefront-tag-show', [ 'tag' => $context->tag() ] ],
+            null !== $context->category()  => [ 'artisanpack-ecommerce-storefront-category-show', [ 'category' => $context->category(), 'headingLevel' => $headed( 'category', $context->category() ) ] ],
+            null !== $context->tag()       => [ 'artisanpack-ecommerce-storefront-tag-show', [ 'tag' => $context->tag(), 'headingLevel' => $headed( 'tag', $context->tag() ) ] ],
             'search' === $context->page()  => [ 'artisanpack-ecommerce-storefront-search', [] ],
             default                        => [ 'artisanpack-ecommerce-storefront-catalog', [] ],
         };

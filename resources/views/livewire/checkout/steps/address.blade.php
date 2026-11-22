@@ -1,31 +1,41 @@
 {{--
-    Checkout step: address. Shipping (with "billing is the same"), or
-    billing only for carts that don't ship. Signed-in shoppers pick a saved
-    address or enter a new one.
+    Checkout step: address (#138). "Ship to" and the address form, then
+    "Billing address is the same as shipping" (checked); unchecked, "Bill
+    to" and a second form. A cart that doesn't ship asks for the billing
+    address only, and says why. A signed-in shopper with saved addresses
+    picks one from radio cards (or "Use a new address", which opens the
+    form), and can save a new one to their address book. Then "Continue".
+    Each field shows its own error, and the step's error summary links to
+    it.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-@php( $ecommerceNewAddress = [] === $savedAddresses || 'new' === ( $ships ? $savedShipping : $savedBilling ) )
-<form wire:submit="saveAddress" novalidate class="flex flex-col gap-6" data-checkout-address-form>
+@php
+    $ecommerceHasSaved   = [] !== $savedAddresses;
+    $ecommerceNewAddress = ! $ecommerceHasSaved || 'new' === ( $ships ? $savedShipping : $savedBilling );
+@endphp
+<form wire:submit="saveAddress" novalidate class="ec-checkout-form ec-checkout-form--loose" data-checkout-address-form>
     @if ( $ships )
-        <div class="flex flex-col gap-4" data-checkout-shipping-address>
-            @if ( [] !== $savedAddresses )
-                <x-artisanpack-radio
+        <div class="ec-checkout-form__group" data-checkout-shipping-address>
+            @if ( $ecommerceHasSaved )
+                <x-artisanpack-radio-group
                     id="ec-checkout-saved-shipping"
                     :label="__( 'Ship to' )"
-                    :options="$savedAddresses"
+                    variant="cards"
+                    class="ec-checkout-choices"
+                    :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $savedAddresses )"
                     wire:model.live="savedShipping"
                     data-checkout-saved="shipping"
                 />
             @endif
 
-            @if ( [] === $savedAddresses || 'new' === $savedShipping )
+            @if ( ! $ecommerceHasSaved || 'new' === $savedShipping )
                 <x-artisanpack-ec-address-form
                     model="shipping"
-                    :legend="__( 'Shipping address' )"
+                    :legend="$ecommerceHasSaved ? __( 'Shipping address' ) : __( 'Ship to' )"
                     :country="$shipping['country_code'] ?? null"
                     section="shipping"
                     require-name
@@ -35,25 +45,27 @@
 
         <x-artisanpack-checkbox :label="__( 'Billing address is the same as shipping' )" wire:model.live="billingSameAsShipping" data-checkout-billing-same />
     @else
-        <p class="text-sm text-base-content/70" data-checkout-digital-only>{{ __( 'Nothing in your order ships, so we only need your billing address.' ) }}</p>
+        <p class="ec-checkout-form__note" data-checkout-digital-only>{{ __( 'Nothing in your order ships, so we only need your billing address.' ) }}</p>
     @endif
 
     @if ( ! $ships || ! $billingSameAsShipping )
-        <div class="flex flex-col gap-4" data-checkout-billing-address>
-            @if ( [] !== $savedAddresses )
-                <x-artisanpack-radio
+        <div class="ec-checkout-form__group" data-checkout-billing-address>
+            @if ( $ecommerceHasSaved )
+                <x-artisanpack-radio-group
                     id="ec-checkout-saved-billing"
                     :label="__( 'Bill to' )"
-                    :options="$savedAddresses"
+                    variant="cards"
+                    class="ec-checkout-choices"
+                    :options="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\ControlOptions::from( $savedAddresses )"
                     wire:model.live="savedBilling"
                     data-checkout-saved="billing"
                 />
             @endif
 
-            @if ( [] === $savedAddresses || 'new' === $savedBilling )
+            @if ( ! $ecommerceHasSaved || 'new' === $savedBilling )
                 <x-artisanpack-ec-address-form
                     model="billing"
-                    :legend="__( 'Billing address' )"
+                    :legend="$ecommerceHasSaved ? __( 'Billing address' ) : __( 'Bill to' )"
                     :country="$billing['country_code'] ?? null"
                     section="billing"
                     require-name
@@ -66,7 +78,7 @@
         <x-artisanpack-checkbox :label="__( 'Save this address to my address book' )" wire:model="saveToAddressBook" data-checkout-save-address />
     @endif
 
-    <div>
-        <x-artisanpack-button type="submit" :label="__( 'Continue' )" color="primary" spinner="saveAddress" wire:loading.attr="disabled" wire:target="saveAddress" data-checkout-address-submit />
+    <div class="ec-checkout-form__actions">
+        <x-artisanpack-button type="submit" color="primary" class="ec-checkout-form__submit" wire:loading.attr="disabled" wire:target="saveAddress" data-checkout-address-submit>{{ __( 'Continue' ) }}</x-artisanpack-button>
     </div>
 </form>

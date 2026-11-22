@@ -1,21 +1,37 @@
 {{--
-    The header search box. See Search\HeaderSearch.
+    The header search box (#92). See Search\HeaderSearch.
 
     An ARIA 1.2 combobox: the input owns a listbox of products, categories,
-    and "See all results". Arrow keys move the highlight
-    (`aria-activedescendant`), Enter opens the highlighted option or submits
-    the form to the search page, Escape closes the popover, and the result
-    count is announced politely.
+    and "See all N results". Arrow keys move the highlight
+    (`aria-activedescendant`, `aria-selected` on the active option), Enter
+    opens the highlighted option or submits the form to the search page,
+    Escape closes the popover, and the result count is announced politely.
+    Pressing "/" anywhere outside a text field or widget focuses the box,
+    unless a modal (the cart drawer, a dialog) is open; the
+    `search.keyboard_shortcut` config key turns the shortcut (and its hint
+    and `aria-keyshortcuts`) off, as WCAG 2.1.4 asks of single-key
+    shortcuts. The polite status announces the suggestion count, or that
+    searching is throttled or unavailable.
+
+    The design system's Input (sunken fill, a "/" key hint at the end) and
+    the DropdownMenu panel and item parts for the popover. Product rows show
+    a 36px thumbnail, the name with the match marked, the category and the
+    price.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-@php( $ecommerceOptionCount = count( $products ) + count( $categories ) + ( null === $allUrl ? 0 : 1 ) )
+{{-- Only rows with a link render as options. --}}
+@php( $ecommerceSuggestionCount = count( array_filter( [ ...$products, ...$categories ], static fn ( array $row ): bool => null !== ( $row['url'] ?? null ) ) ) )
+@php( $ecommerceOptionCount = $ecommerceSuggestionCount + ( null === $allUrl ? 0 : 1 ) )
+@php( $ecommerceShortcut = $shortcut ?? true )
 @php( $ecommerceOptionIndex = 0 )
+{{-- Each part is escaped; only the <mark> around a match is markup. --}}
+@php( $ecommerceMarked = static fn ( array $parts ): string => implode( '', array_map( static fn ( array $part ): string => $part['match'] ? '<mark class="ec-search__match">' . e( $part['text'] ) . '</mark>' : e( $part['text'] ), $parts ) ) )
 <div
-    class="relative"
+    class="ec-search"
     x-data="{
         open: false,
         active: -1,
@@ -53,9 +69,32 @@
             this.open   = false;
             this.active = -1;
         },
+        shortcut( event ) {
+            if ( '/' !== event.key || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.isComposing ) {
+                return;
+            }
+
+            if ( document.querySelector( '[aria-modal=true]:not([hidden])' ) ) {
+                return;
+            }
+
+            const target = event.target;
+
+            if ( target instanceof Element && target.closest( 'input, textarea, select, iframe, [contenteditable]:not([contenteditable=false]), [role=textbox], [role=searchbox], [role=combobox], [role=listbox], [role=grid], [role=menu], [role=slider], [role=spinbutton]' ) ) {
+                return;
+            }
+
+            const input = this.$el.querySelector( 'input[role=combobox]' );
+
+            if ( input && null !== input.offsetParent ) {
+                event.preventDefault();
+                input.focus();
+            }
+        },
     }"
     x-on:click.outside="close()"
     x-on:focusout="$el.contains( $event.relatedTarget ) || close()"
+    @if ( $ecommerceShortcut ) x-on:keydown.window="shortcut( $event )" @endif
     data-header-search
 >
     <form method="GET" @if ( null !== $searchUrl ) action="{{ $searchUrl }}" @endif role="search" x-on:submit="choose( $event )" data-header-search-form>
@@ -65,10 +104,11 @@
             name="q"
             :placeholder="__( 'Search products' )"
             :aria-label="__( 'Search products' )"
-            icon="o-magnifying-glass"
+            leading-icon="search"
             wire:model.live.debounce.300ms="q"
             autocomplete="off"
             enterkeyhint="search"
+            :aria-keyshortcuts="$ecommerceShortcut ? '/' : null"
             role="combobox"
             aria-autocomplete="list"
             aria-controls="{{ $listboxId }}"
@@ -80,37 +120,47 @@
             x-on:keydown.arrow-down.prevent="move( 1 )"
             x-on:keydown.arrow-up.prevent="move( -1 )"
             x-on:keydown.escape="if ( open ) { $event.preventDefault(); close(); }"
-            class="input-sm"
+            class="ec-search__field"
             error-field="q"
-        />
+        >
+            @if ( $ecommerceShortcut )
+                <x-slot:iconEnd><x-artisanpack-kbd size="sm" class="ec-search__hint">/</x-artisanpack-kbd></x-slot:iconEnd>
+            @endif
+        </x-artisanpack-input>
     </form>
 
-    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-header-search-status>
+    <p class="apui-sr-only" role="status" aria-live="polite" aria-atomic="true" data-header-search-status>
         @if ( 'results' === $state )
-            {{ trans_choice( ':count suggestion|:count suggestions', count( $products ) + count( $categories ), [ 'count' => count( $products ) + count( $categories ) ] ) }}
+            {{ trans_choice( ':count suggestion|:count suggestions', $ecommerceSuggestionCount, [ 'count' => $ecommerceSuggestionCount ] ) }}
+        @elseif ( 'throttled' === $state )
+            {{ __( 'Too many searches. Press Enter to see all results.' ) }}
+        @elseif ( 'failed' === $state )
+            {{ __( 'Suggestions aren\'t available right now. Press Enter to search.' ) }}
         @endif
     </p>
 
     <div
         x-show="open"
         x-cloak
-        @class( [ 'absolute end-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-box border border-base-content/10 bg-base-100 p-2 shadow-lg', 'hidden' => 'idle' === $state ] )
-        wire:loading.class="opacity-60"
+        class="apui-dropdown-menu ec-search__popover"
+        data-surface="overlay"
+        @if ( 'idle' === $state ) hidden @endif
+        wire:loading.attr="data-loading"
         wire:target="q"
         data-header-search-popover
     >
         @if ( 'throttled' === $state )
-            <p class="p-2 text-sm" data-header-search-throttled>{{ __( 'Too many searches. Press Enter to see all results.' ) }}</p>
+            <p class="ec-search__message" data-header-search-throttled>{{ __( 'Too many searches. Press Enter to see all results.' ) }}</p>
         @elseif ( 'failed' === $state )
-            <p class="p-2 text-sm" data-header-search-failed>{{ __( 'Suggestions aren\'t available right now. Press Enter to search.' ) }}</p>
+            <p class="ec-search__message" data-header-search-failed>{{ __( 'Suggestions aren\'t available right now. Press Enter to search.' ) }}</p>
         @elseif ( 'results' === $state && 0 === $ecommerceOptionCount )
-            <p class="p-2 text-sm" data-header-search-empty>{{ __( 'No matches for ":term".', [ 'term' => $q ] ) }}</p>
+            <p class="ec-search__message" data-header-search-empty>{{ __( 'No matches for ":term".', [ 'term' => $q ] ) }}</p>
         @endif
 
-        <div id="{{ $listboxId }}" x-ref="listbox" role="listbox" aria-label="{{ __( 'Search suggestions' ) }}" class="flex flex-col gap-1" data-header-search-results>
+        <div id="{{ $listboxId }}" x-ref="listbox" role="listbox" aria-label="{{ __( 'Search suggestions' ) }}" class="ec-search__results" data-header-search-results>
             @if ( [] !== $products )
                 <div role="group" aria-labelledby="{{ $listboxId }}-products">
-                    <p id="{{ $listboxId }}-products" role="presentation" class="px-2 py-1 text-xs font-semibold uppercase text-base-content/70">{{ __( 'Products' ) }}</p>
+                    <p id="{{ $listboxId }}-products" role="presentation" data-scope="dropdown-menu" data-part="item-group-label">{{ __( 'Products' ) }}</p>
 
                     @foreach ( $products as $product )
                         @if ( null !== $product['url'] )
@@ -120,23 +170,31 @@
                                 href="{{ $product['url'] }}"
                                 role="option"
                                 tabindex="-1"
-                                class="flex min-h-6 items-center gap-3 rounded-field p-2"
-                                x-bind:class="active === {{ $ecommerceOption }} && 'bg-base-200'"
+                                class="ec-search__option ec-search__option--product"
+                                data-scope="dropdown-menu"
+                                data-part="item"
+                                x-bind:data-highlighted="active === {{ $ecommerceOption }} ? '' : null"
                                 x-bind:aria-selected="( active === {{ $ecommerceOption }} ).toString()"
                                 x-on:mouseenter="active = {{ $ecommerceOption }}"
                                 wire:key="header-search-product-{{ $product['id'] }}"
                                 data-header-search-product="{{ $product['id'] }}"
                             >
-                                <span class="block h-10 w-10 shrink-0 overflow-hidden rounded-field bg-base-200" aria-hidden="true">
+                                <span class="ec-search__thumb" aria-hidden="true">
                                     @if ( null !== $product['image'] )
-                                        <img src="{{ $product['image']['url'] }}" @if ( null !== ( $product['image']['srcset'] ?? null ) ) srcset="{{ $product['image']['srcset'] }}" sizes="40px" @endif width="40" height="40" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                        <img src="{{ $product['image']['url'] }}" @if ( null !== ( $product['image']['srcset'] ?? null ) ) srcset="{{ $product['image']['srcset'] }}" sizes="36px" @endif width="36" height="36" alt="" loading="lazy" decoding="async">
                                     @endif
                                 </span>
 
-                                <span class="flex min-w-0 flex-col">
-                                    <span class="truncate text-sm font-medium">{{ $product['name'] }}</span>
-                                    <x-artisanpack-ec-price :price="$product['price']" class="text-xs" />
+                                <span class="ec-search__text">
+                                    <span class="ec-search__name">{!! $ecommerceMarked( $product['parts'] ) !!}</span>
+                                    @if ( null !== $product['category'] )
+                                        <span class="ec-search__meta" data-header-search-category-name>{{ $product['category'] }}</span>
+                                    @endif
                                 </span>
+
+                                @if ( null !== $product['price'] )
+                                    <x-artisanpack-ec-price :price="$product['price']" size="sm" class="ec-search__price" />
+                                @endif
                             </a>
                         @endif
                     @endforeach
@@ -145,7 +203,7 @@
 
             @if ( [] !== $categories )
                 <div role="group" aria-labelledby="{{ $listboxId }}-categories">
-                    <p id="{{ $listboxId }}-categories" role="presentation" class="px-2 py-1 text-xs font-semibold uppercase text-base-content/70">{{ __( 'Categories' ) }}</p>
+                    <p id="{{ $listboxId }}-categories" role="presentation" data-scope="dropdown-menu" data-part="item-group-label">{{ __( 'Categories' ) }}</p>
 
                     @foreach ( $categories as $category )
                         @if ( null !== $category['url'] )
@@ -155,15 +213,17 @@
                                 href="{{ $category['url'] }}"
                                 role="option"
                                 tabindex="-1"
-                                class="flex min-h-6 items-center gap-2 rounded-field p-2 text-sm"
-                                x-bind:class="active === {{ $ecommerceOption }} && 'bg-base-200'"
+                                class="ec-search__option"
+                                data-scope="dropdown-menu"
+                                data-part="item"
+                                x-bind:data-highlighted="active === {{ $ecommerceOption }} ? '' : null"
                                 x-bind:aria-selected="( active === {{ $ecommerceOption }} ).toString()"
                                 x-on:mouseenter="active = {{ $ecommerceOption }}"
                                 wire:key="header-search-category-{{ $category['id'] }}"
                                 data-header-search-category="{{ $category['id'] }}"
                             >
-                                <x-artisanpack-icon name="o-folder" class="h-4 w-4 opacity-60" aria-hidden="true" />
-                                <span class="truncate">{{ $category['name'] }}</span>
+                                <x-artisanpack-icon name="folder" class="ec-search__icon" />
+                                <span class="ec-search__name">{!! $ecommerceMarked( $category['parts'] ) !!}</span>
                             </a>
                         @endif
                     @endforeach
@@ -177,14 +237,17 @@
                     href="{{ $allUrl }}"
                     role="option"
                     tabindex="-1"
-                    class="flex min-h-6 items-center gap-2 rounded-field border-t border-base-content/10 p-2 text-sm font-semibold"
-                    x-bind:class="active === {{ $ecommerceOption }} && 'bg-base-200'"
+                    class="ec-search__option ec-search__option--all"
+                    data-scope="dropdown-menu"
+                    data-part="item"
+                    x-bind:data-highlighted="active === {{ $ecommerceOption }} ? '' : null"
                     x-bind:aria-selected="( active === {{ $ecommerceOption }} ).toString()"
                     x-on:mouseenter="active = {{ $ecommerceOption }}"
                     data-header-search-all
                 >
-                    <x-artisanpack-icon name="o-magnifying-glass" class="h-4 w-4 opacity-60" aria-hidden="true" />
-                    {{ __( 'See all results for ":term"', [ 'term' => $q ] ) }}
+                    <x-artisanpack-icon name="search" class="ec-search__icon" />
+                    <span class="ec-search__name">{{ trans_choice( 'See all :count result for ":term"|See all :count results for ":term"', $total, [ 'count' => $total, 'term' => $q ] ) }}</span>
+                    <x-artisanpack-icon name="arrow-right" class="ec-search__icon" />
                 </a>
             @endif
         </div>

@@ -26,7 +26,7 @@ use Throwable;
  * With the library, a product's featured image is a media id and the card
  * gets a `srcset` built from the library's image sizes. Without it, images
  * are the `meta.featured_image_url` or gallery `image_url` values, which are
- * only used when they are http(s) URLs.
+ * only used when they are http(s) URLs or root-relative paths.
  *
  * Listings call {@see self::preload()} (or {@see self::preloadCards()})
  * first, so a page of cards looks its media up in one query rather than
@@ -252,9 +252,14 @@ final class ProductImages
     }
 
     /**
-     * An http(s) URL, or null.
+     * An http(s) URL or a same-origin root-relative path (`/storage/a.jpg`,
+     * which a local disk's `url()` returns), or null. Protocol-relative
+     * `//host`, any backslash, whitespace, control character, quote or
+     * angle bracket, and every other scheme (`javascript:`, `data:`) are
+     * refused.
      *
      * @since 1.0.0
+     * @since 2.0.0 Accepts root-relative paths.
      *
      * @param  mixed  $url  Candidate.
      *
@@ -262,11 +267,42 @@ final class ProductImages
      */
     public static function safeUrl( mixed $url ): ?string
     {
+        if ( is_string( $url ) && 1 === preg_match( '#^/(?!/)[^\s<>"\'\\\\\x00-\x1F\x7F]*$#D', $url ) ) {
+            return $url;
+        }
+
         if ( ! is_string( $url ) || false === filter_var( $url, FILTER_VALIDATE_URL ) ) {
             return null;
         }
 
         return in_array( strtolower( (string) parse_url( $url, PHP_URL_SCHEME ) ), [ 'http', 'https' ], true ) ? $url : null;
+    }
+
+    /**
+     * A `srcset` whose every candidate is a {@see self::safeUrl()} URL with an optional
+     * `480w` or `2x` descriptor, or null (the image keeps its `src` alone).
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $srcset  The srcset.
+     *
+     * @return string|null
+     */
+    public static function safeSrcset( mixed $srcset ): ?string
+    {
+        if ( ! is_string( $srcset ) || '' === trim( $srcset ) ) {
+            return null;
+        }
+
+        foreach ( explode( ',', $srcset ) as $candidate ) {
+            $parts = preg_split( '/\s+/', trim( $candidate ), -1, PREG_SPLIT_NO_EMPTY );
+
+            if ( [] === $parts || count( $parts ) > 2 || null === self::safeUrl( $parts[0] ) || ( isset( $parts[1] ) && 1 !== preg_match( '/^\d+(\.\d+)?[wx]$/', $parts[1] ) ) ) {
+                return null;
+            }
+        }
+
+        return trim( $srcset );
     }
 
     /**

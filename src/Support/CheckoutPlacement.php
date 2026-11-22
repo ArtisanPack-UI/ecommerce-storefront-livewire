@@ -49,6 +49,17 @@ final class CheckoutPlacement
     public const SESSION_KEY = 'ecommerce-storefront.checkout.placement';
 
     /**
+     * The order meta key the engine (1.4+) writes when it holds an order
+     * for a stranded payment: one confirmed for an earlier total or for a
+     * payment session the cart had since replaced.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PAYMENT_MISMATCH_META_KEY = 'payment_mismatch';
+
+    /**
      * Remembers the order placed from `$cart`.
      *
      * @since 1.0.0
@@ -122,13 +133,15 @@ final class CheckoutPlacement
     }
 
     /**
-     * Whether fraud screening holds the order for the store's review: the
-     * engine recorded a `challenge` verdict and the payment session is
-     * confirmed, so there is nothing left for the shopper to do. (A
+     * Whether the order is held for the store's review, so there is
+     * nothing left for the shopper to do: fraud screening recorded a
+     * `challenge` verdict and the payment session is confirmed (a
      * `challenge` whose session still needs the shopper — 3-D Secure — is
-     * not held.)
+     * not held), or the engine held it for a stranded payment
+     * (`meta.payment_mismatch`). A held order never asks for payment again.
      *
      * @since 1.0.0
+     * @since 2.0.0 An order the engine held for a stranded payment is held.
      *
      * @param  Order  $order  The order.
      *
@@ -137,6 +150,11 @@ final class CheckoutPlacement
     public static function isHeld( Order $order ): bool
     {
         $meta      = (array) ( $order->meta ?? [] );
+
+        if ( is_array( $meta[ self::PAYMENT_MISMATCH_META_KEY ] ?? null ) ) {
+            return true;
+        }
+
         $verdict   = is_array( $meta['fraud_decision'] ?? null ) ? ( $meta['fraud_decision']['verdict'] ?? null ) : null;
         $reference = (string) ( $order->payment_reference ?? '' );
         $gateway   = FraudDecision::VERDICT_CHALLENGE !== $verdict || '' === $reference || null === $order->payment_gateway_key

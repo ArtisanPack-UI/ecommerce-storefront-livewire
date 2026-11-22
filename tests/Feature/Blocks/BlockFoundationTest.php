@@ -158,6 +158,34 @@ it( 'previews the newest product as a labelled sample', function (): void {
         ->assertSee( '$9.00' );
 } );
 
+it( 'frames the sample notice on the design system, with the storefront styles inlined once', function (): void {
+    makeProduct( 900, [ 'name' => 'New mug' ] );
+
+    fakePreviewRoute( new ProductPriceBlock() );
+
+    $html = $this->actingAs( makeUser() )
+        ->postJson( '_test/blocks/preview', [ 'attributes' => [] ] )
+        ->assertOk()
+        ->getContent();
+
+    expect( $html )->toContain( 'class="ec-block-notice ec-block-notice--sample"' )
+        ->toMatch( '/class="apui-badge"[^>]*data-variant="soft"[^>]*data-color="info"/' )
+        ->toContain( 'ec-block-notice__message' )
+        ->and( substr_count( $html, 'data-ecommerce-storefront-styles' ) )->toBe( 1 )
+        ->and( $html )->not->toContain( 'badge-neutral' )
+        ->not->toContain( 'rounded-box' )
+        ->not->toContain( 'base-content' );
+} );
+
+it( 'renders a block on the site without the sample frame or inlined styles', function (): void {
+    $lamp = makeProduct( 2500, [ 'name' => 'Lamp' ] );
+
+    expect( ( new ProductPriceBlock() )->render( [ 'productId' => $lamp->id ] ) )
+        ->toContain( 'data-commerce-block="product-price"' )
+        ->not->toContain( 'ec-block-notice' )
+        ->not->toContain( 'data-ecommerce-storefront-styles' );
+} );
+
 it( 'previews the product a preview request names through the products resource', function (): void {
     $lamp = makeProduct( 2500, [ 'name' => 'Lamp' ] );
     makeProduct( 900, [ 'name' => 'Newer mug' ] );
@@ -178,7 +206,35 @@ it( 'shows editors a notice when there is nothing to preview', function (): void
         ->postJson( '_test/blocks/preview', [ 'attributes' => [] ] )
         ->assertOk()
         ->assertSee( 'data-commerce-block-notice', false )
-        ->assertSee( 'There are no products to show yet.' );
+        ->assertSee( 'There are no products to show yet.' )
+        ->assertSee( 'class="ec-block-notice"', false )
+        ->assertSee( 'data-ecommerce-storefront-styles', false )
+        ->assertSee( 'class="apui-icon"', false )
+        ->assertDontSee( 'data-error', false )
+        ->assertDontSee( 'rounded-box', false );
+} );
+
+it( 'gives each block\'s notice a Lucide icon for its inserter icon', function ( string $class ): void {
+    $block = app( $class );
+    $icon  = ( new ReflectionMethod( $block, 'icon' ) )->invoke( $block );
+
+    expect( StorefrontBlock::NOTICE_ICONS )->toHaveKey( $icon )
+        ->and( ArtisanPack\LivewireUiComponents\Support\IconRegistry::has( StorefrontBlock::NOTICE_ICONS[ $icon ] ) )->toBeTrue();
+} )->with( StorefrontBlocks::BLOCKS );
+
+it( 'renders an editor notice with the block\'s icon, or an error frame and alert icon', function (): void {
+    $notice = view( 'ecommerce-storefront::blocks.notice', [ 'slug' => 'product-grid', 'title' => 'Product Grid', 'message' => 'Nothing to show yet.', 'icon' => 'layout-grid' ] )->render();
+
+    expect( $notice )->toContain( 'class="ec-block-notice"' )
+        ->toContain( 'Product Grid' )
+        ->toContain( 'Nothing to show yet.' )
+        ->not->toContain( 'data-error' );
+
+    $error = view( 'ecommerce-storefront::blocks.notice', [ 'slug' => 'product-reviews', 'title' => 'Reviews', 'message' => 'This block couldn\'t be shown.', 'icon' => 'circle-alert', 'error' => true ] )->render();
+
+    expect( $error )->toContain( 'class="ec-block-notice ec-block-notice--error"' )
+        ->toContain( 'data-error' )
+        ->toContain( 'Reviews' );
 } );
 
 it( 'reports an engine failure and renders nothing on the site, a notice in the editor', function (): void {
@@ -194,7 +250,9 @@ it( 'reports an engine failure and renders nothing on the site, a notice in the 
     $this->actingAs( makeUser() )
         ->postJson( '_test/blocks/preview', [ 'attributes' => [ 'productId' => $lamp->id ] ] )
         ->assertOk()
-        ->assertSee( 'This block couldn' );
+        ->assertSee( 'This block couldn' )
+        ->assertSee( 'ec-block-notice--error', false )
+        ->assertSee( 'data-error', false );
 } );
 
 it( 'names every block under the commerce namespace with a description and icon', function ( string $class ): void {

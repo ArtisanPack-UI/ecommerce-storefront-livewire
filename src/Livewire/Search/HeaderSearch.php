@@ -33,8 +33,9 @@ use Throwable;
  * `<livewire:artisanpack-ecommerce-storefront-search-box />`
  *
  * The header search box (spec §7.7): as the shopper types (debounced), the
- * top five products (image, name, price) from the engine's active
- * `SearchProvider` and up to five matching categories open in a popover.
+ * top five products (image, name with the match marked, category, price)
+ * from the engine's active `SearchProvider` and up to five matching
+ * categories open in a popover, then "See all N results".
  * The box is an ARIA combobox: arrow keys move through the results, Enter
  * opens the highlighted one (or the search page when none is), and Escape
  * closes the popover. Without JavaScript it is a plain form to the search
@@ -147,13 +148,18 @@ class HeaderSearch extends Component
         $state      = 'idle';
         $products   = [];
         $categories = [];
+        $total      = 0;
 
         if ( $lookup ) {
             try {
-                [ $products, $categories ] = app( EcommerceRateLimiter::class )->attempt(
+                [ $products, $categories, $total ] = app( EcommerceRateLimiter::class )->attempt(
                     'ecommerce.catalog.read',
                     app( StorefrontCart::class )->subject(),
-                    fn (): array => [ $this->products(), $this->categories() ],
+                    function (): array {
+                        [ $products, $total ] = $this->products();
+
+                        return [ $products, $this->categories(), $total ];
+                    },
                 );
 
                 $state = 'results';
@@ -172,17 +178,60 @@ class HeaderSearch extends Component
             'categories' => $categories,
             'searchUrl'  => $searchUrl,
             'allUrl'     => null === $searchUrl || 'results' !== $state || [] === [ ...$products, ...$categories ] ? null : $searchUrl . '?' . http_build_query( [ 'q' => $this->q ] ),
+            'total'      => max( $total, count( $products ) ),
             'listboxId'  => $this->inputId . '-results',
+            'shortcut'   => (bool) config( 'artisanpack.ecommerce-storefront-livewire.search.keyboard_shortcut', true ),
         ] );
     }
 
     /**
-     * The top products from the active provider, with their image, price,
-     * and link.
+     * Splits `$text` around the words of `$term` (case-insensitively), so
+     * the view can mark each match.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $text  The text to split, such as a product name.
+     * @param  string  $term  The typed term.
+     *
+     * @return array<int, array{text: string, match: bool}>
+     */
+    public static function highlight( string $text, string $term ): array
+    {
+        $words = array_values( array_filter( preg_split( '/\s+/u', trim( $term ) ) ?: [], static fn ( string $word ): bool => '' !== $word ) );
+
+        if ( '' === $text || [] === $words ) {
+            return [ [ 'text' => $text, 'match' => false ] ];
+        }
+
+        usort( $words, static fn ( string $a, string $b ): int => mb_strlen( $b ) <=> mb_strlen( $a ) );
+
+        $pattern = '/(' . implode( '|', array_map( static fn ( string $word ): string => preg_quote( $word, '/' ), $words ) ) . ')/iu';
+        $pieces  = preg_split( $pattern, $text, -1, PREG_SPLIT_DELIM_CAPTURE );
+
+        if ( false === $pieces ) {
+            return [ [ 'text' => $text, 'match' => false ] ];
+        }
+
+        $parts = [];
+
+        foreach ( $pieces as $index => $piece ) {
+            if ( '' !== $piece ) {
+                $parts[] = [ 'text' => $piece, 'match' => 1 === $index % 2 ];
+            }
+        }
+
+        return $parts;
+    }
+
+    /**
+     * The top products from the active provider, with their image, name
+     * split around the match, first category, price and link, and the
+     * provider's total number of matches.
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `parts` and `category`, and returns the total too.
      *
-     * @return array<int, array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: \ArtisanPackUI\Ecommerce\Pricing\DisplayPrice|null}>
+     * @return array{0: array<int, array{id: int, name: string, parts: array<int, array{text: string, match: bool}>, category: string|null, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: \ArtisanPackUI\Ecommerce\Pricing\DisplayPrice|null}>, 1: int}
      */
     protected function products(): array
     {
@@ -202,24 +251,32 @@ class HeaderSearch extends Component
 
         ProductImages::preloadCards( $products );
 
-        return $products
-            ->map( static fn ( Product $product ): array => [
-                'id'    => (int) $product->id,
-                'name'  => (string) $product->name,
-                'url'   => $hasRoute ? route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) : null,
-                'image' => ProductImages::card( $product ),
-                'price' => $prices->for( $product, $currency, null, $customer ),
-            ] )
-            ->values()
-            ->all();
+        $term = $this->q;
+
+        return [
+            $products
+                ->map( static fn ( Product $product ): array => [
+                    'id'       => (int) $product->id,
+                    'name'     => (string) $product->name,
+                    'parts'    => self::highlight( (string) $product->name, $term ),
+                    'category' => $product->relationLoaded( 'categories' ) ? $product->categories->first()?->name : null,
+                    'url'      => $hasRoute ? route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) : null,
+                    'image'    => ProductImages::card( $product ),
+                    'price'    => $prices->for( $product, $currency, null, $customer ),
+                ] )
+                ->values()
+                ->all(),
+            (int) $result->total,
+        ];
     }
 
     /**
      * Up to {@see self::LIMIT} categories whose name holds the term.
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `parts`.
      *
-     * @return array<int, array{id: int, name: string, url: string|null}>
+     * @return array<int, array{id: int, name: string, parts: array<int, array{text: string, match: bool}>, url: string|null}>
      */
     protected function categories(): array
     {
@@ -228,7 +285,7 @@ class HeaderSearch extends Component
 
         foreach ( $paths->nodes() as $node ) {
             if ( false !== mb_stripos( $node['name'], $this->q ) ) {
-                $categories[] = [ 'id' => $node['id'], 'name' => $node['name'], 'url' => $paths->url( $node['id'] ) ];
+                $categories[] = [ 'id' => $node['id'], 'name' => $node['name'], 'parts' => self::highlight( $node['name'], $this->q ), 'url' => $paths->url( $node['id'] ) ];
             }
 
             if ( count( $categories ) >= self::LIMIT ) {

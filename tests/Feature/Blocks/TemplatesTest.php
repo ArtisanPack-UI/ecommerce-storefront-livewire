@@ -98,6 +98,139 @@ it( 'offers the commerce patterns whenever the blocks are registered', function 
         ->and( $patterns['artisanpack-commerce/sale-banner-grid']['raw_content'] )->toContain( 'On sale now' )->toContain( '"source":"on_sale"' );
 } );
 
+it( 'builds the featured products pattern from a heading row with "Shop all" over the featured grid', function (): void {
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/featured-products']['content'];
+
+    preg_match( '#<!-- wp:paragraph \{"className":"ec-pattern__link"\} -->\n<p class="ec-pattern__link">(.+)</p>\n<!-- /wp:paragraph -->#', $content, $link );
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-pattern"} -->' )
+        ->toContain( '<!-- wp:group {"className":"ec-pattern__header","layout":{"type":"flex","justifyContent":"space-between","verticalAlignment":"center"}} -->' )
+        ->toContain( '<!-- wp:heading {"level":2,"className":"ec-pattern__title"} -->' . "\n" . '<h2 class="wp-block-heading ec-pattern__title">Featured products</h2>' )
+        ->toContain( '<!-- wp:artisanpack-commerce/product-grid {"source":"featured","limit":4,"columns":4} /-->' )
+        ->and( $link )->not->toBeEmpty()
+        ->and( $link[1] )->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.catalog', [], false ) . '"' )
+        ->not->toContain( 'href="http' )
+        ->toContain( 'class="apui-link"' )
+        ->toContain( 'data-standalone' )
+        ->toContain( 'Shop all' )
+        ->toContain( 'data-part="iconEnd"' )
+        ->toContain( 'data-mirror' )
+        ->not->toContain( 'wire:navigate' )
+        ->not->toContain( "\n" )
+        // The heading row comes before the grid.
+        ->and( strpos( $content, 'ec-pattern__header' ) )->toBeLessThan( strpos( $content, 'wp:artisanpack-commerce/product-grid' ) )
+        ->and( classTokens( $content ) )->not->toContain( 'flex', 'flex-col', 'gap-6', 'text-2xl', 'font-bold', 'rounded-box', 'bg-base-200', 'link', 'link-primary' );
+} );
+
+it( 'leaves "Shop all" out of the featured products pattern without the storefront routes', function (): void {
+    app( 'router' )->setRoutes( new Illuminate\Routing\RouteCollection() );
+
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/featured-products']['content'];
+
+    expect( $content )->toContain( 'ec-pattern__header' )
+        ->toContain( '>Featured products</h2>' )
+        ->not->toContain( 'ec-pattern__link' )
+        ->not->toContain( 'Shop all' );
+} );
+
+it( 'builds the shop by category pattern from a heading over three columns of top-level categories', function (): void {
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/shop-by-category']['content'];
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-pattern"} -->' )
+        ->toContain( '<h2 class="wp-block-heading ec-pattern__title">Shop by category</h2>' )
+        ->toContain( '<!-- wp:artisanpack-commerce/category-grid {"limit":6,"columns":3} /-->' )
+        ->not->toContain( '"parent"' )
+        ->and( classTokens( $content ) )->not->toContain( 'flex', 'flex-col', 'gap-6', 'text-2xl', 'font-bold' );
+} );
+
+it( 'translates the pattern copy', function (): void {
+    app()->setLocale( 'fr' );
+    app( 'translator' )->addLines( [
+        '*.Featured products' => 'Produits phares',
+        '*.Shop all'          => 'Tout voir',
+        '*.Shop by category'  => 'Acheter par catégorie',
+    ], 'fr', '*' );
+
+    $patterns = StorefrontTemplates::patterns();
+
+    expect( $patterns['artisanpack-commerce/featured-products']['title'] )->toBe( 'Produits phares' )
+        ->and( $patterns['artisanpack-commerce/featured-products']['content'] )->toContain( '>Produits phares</h2>' )->toContain( 'Tout voir' )
+        ->and( $patterns['artisanpack-commerce/shop-by-category']['content'] )->toContain( '>Acheter par catégorie</h2>' );
+} );
+
+it( 'styles the pattern title at the heading-xl type with tokens only', function (): void {
+    $css = file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/storefront.css' );
+
+    preg_match( '/\.ec-pattern__title,\s*\.ec-template__title \{([^}]+)\}/', $css, $rule );
+
+    expect( $rule )->not->toBeEmpty()
+        ->and( $rule[1] )->toContain( 'var(--apui-type-heading-xl-font-size)' )
+        ->toContain( 'var(--apui-type-heading-xl-font-weight)' )
+        ->toContain( 'var(--apui-text-default)' )
+        ->not->toMatch( '/#[0-9a-f]{3,8}\b|oklch\(|--color-base|--p\b/i' );
+} );
+
+it( 'builds the sale banner pattern on the accent fill, with its copy beside an image, over four products on sale', function (): void {
+    $content = StorefrontTemplates::patterns()['artisanpack-commerce/sale-banner-grid']['content'];
+
+    preg_match( '#<!-- wp:paragraph \{"className":"ec-sale-banner__badge"\} -->\n<p class="ec-sale-banner__badge">(.+)</p>#', $content, $badge );
+    preg_match( '#<!-- wp:paragraph \{"className":"ec-sale-banner__action"\} -->\n<p class="ec-sale-banner__action">(.+)</p>#', $content, $action );
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-pattern"} -->' )
+        ->toContain( '<!-- wp:group {"className":"ec-sale-banner","layout":{"type":"flex","flexWrap":"wrap","verticalAlignment":"stretch"},"style":{"spacing":{"blockGap":"0"}}} -->' )
+        ->toContain( '<!-- wp:group {"className":"ec-sale-banner__copy"} -->' )
+        ->toContain( '<h2 class="wp-block-heading ec-sale-banner__title">On sale now</h2>' )
+        ->toContain( '<p class="ec-sale-banner__text">Save on these favourites while they last.</p>' )
+        ->toContain( '<!-- wp:image {"width":"100%","aspectRatio":"4/3","scale":"cover","className":"ec-sale-banner__media","style":{"spacing":{"margin":{"bottom":"0"}}}} -->' )
+        ->toContain( '<figure class="wp-block-image ec-sale-banner__media" style="margin-bottom:0"><img alt=""/></figure>' )
+        ->toContain( '<!-- wp:artisanpack-commerce/product-grid {"source":"on_sale","limit":4,"columns":4} /-->' )
+        ->and( $badge[1] )->toMatch( '/class="apui-badge"[^>]*data-variant="solid"[^>]*data-color="accent"/' )->toContain( 'Sale' )
+        ->and( $action[1] )->toContain( 'href="' . route( 'artisanpack.ecommerce.storefront.catalog', [ 'on_sale' => 1 ], false ) . '"' )
+        ->toMatch( '/data-variant="solid"[^>]*data-color="neutral"[^>]*data-size="lg"/' )
+        ->toContain( 'Shop the sale' )
+        ->not->toContain( 'href="http' )
+        ->and( strpos( $content, 'ec-sale-banner__copy' ) )->toBeLessThan( strpos( $content, 'ec-sale-banner__media' ) )
+        ->and( classTokens( $content ) )->not->toContain( 'rounded-box', 'bg-base-200', 'p-8', 'text-center', 'text-2xl', 'font-bold', 'flex', 'flex-col', 'gap-6' );
+} );
+
+it( 'leaves "Shop the sale" out of the sale banner without the storefront routes', function (): void {
+    app( 'router' )->setRoutes( new Illuminate\Routing\RouteCollection() );
+
+    expect( StorefrontTemplates::patterns()['artisanpack-commerce/sale-banner-grid']['content'] )
+        ->toContain( 'On sale now' )
+        ->not->toContain( 'ec-sale-banner__action' );
+} );
+
+it( 'styles the sale banner with tokens only, hiding its image until it has one', function (): void {
+    $css = file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/storefront.css' );
+
+    preg_match( '/\.ec-sale-banner \{([^}]+)\}/', $css, $banner );
+
+    expect( $banner[1] )->toContain( 'var(--apui-color-accent-soft)' )->toContain( 'var(--apui-radius-surface)' )
+        ->and( $css )->toContain( '.ec-sale-banner__media:not(:has(img[src]))' );
+} );
+
+it( 'builds each default template as a group of its blocks under a design-system page heading', function ( string $slug, ?string $heading, string $block ): void {
+    $content = StorefrontTemplates::templates()[ $slug ]['content'];
+
+    expect( $content )->toStartWith( '<!-- wp:group {"className":"ec-template"} -->' )
+        ->toContain( '<!-- wp:artisanpack-commerce/' . $block . ' /-->' )
+        ->and( classTokens( $content ) )->not->toContain( 'flex', 'flex-col', 'gap-6', 'text-3xl', 'font-bold' );
+
+    if ( null !== $heading ) {
+        expect( $content )->toContain( '<!-- wp:heading {"level":1,"className":"ec-template__title"} -->' . "\n" . '<h1 class="wp-block-heading ec-template__title">' . $heading . '</h1>' );
+    } else {
+        expect( $content )->not->toContain( 'wp:heading' );
+    }
+} )->with( [
+    'archive'  => [ 'product-archive', 'Shop', 'product-catalog' ],
+    'category' => [ 'product-category', null, 'product-catalog' ],
+    'tag'      => [ 'product-tag', null, 'product-catalog' ],
+    'cart'     => [ 'cart', 'Cart', 'cart-contents' ],
+    'checkout' => [ 'checkout', 'Checkout', 'checkout-steps' ],
+    'search'   => [ 'search-results', 'Search', 'product-catalog' ],
+] );
+
 it( 'lets hosts change the templates and patterns, dropping incomplete ones', function (): void {
     addFilter( 'ap.ecommerceStorefrontLivewire.templates', static fn ( array $templates ): array => [
         'single-product' => [ 'title' => 'Product', 'content' => '<!-- wp:artisanpack-commerce/product-price /-->' ],
@@ -231,4 +364,36 @@ it( 'lists the page\'s products in the Product Catalog block', function (): void
 
     $context->setPage( 'search' )->setTag( null );
     expect( $block->render( [] ) )->toContain( 'data-search-page' );
+} );
+
+it( 'steps the category or tag title down to h2 when the page falls back to the shop template', function (): void {
+    $kitchen = ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+    $gift    = ProductTag::factory()->create( [ 'name' => 'Gift', 'slug' => 'gift' ] );
+    CategoryTree::flush();
+    installTemplates( [ 'product-archive' ] );
+
+    $block   = app( ProductCatalogBlock::class );
+    $context = app( StorefrontContext::class );
+    $archive = (string) StorefrontTemplates::templates()['product-archive']['content'];
+
+    expect( StorefrontTemplates::for( 'category', $kitchen ) )->toBe( 'product-archive' );
+    $context->setPage( 'category' )->setCategory( $kitchen );
+    $html = $block->render( [] );
+
+    // The archive template's own heading is the page's only h1.
+    expect( substr_count( $archive, '<h1' ) )->toBe( 1 )
+        ->and( substr_count( $html, '<h1' ) )->toBe( 0 )
+        ->and( $html )->toContain( '<h2 class="ec-category-hero__title">Kitchen</h2>' );
+
+    expect( StorefrontTemplates::for( 'tag', $gift ) )->toBe( 'product-archive' );
+    $context->setPage( 'tag' )->setCategory( null )->setTag( $gift );
+
+    expect( $block->render( [] ) )->not->toContain( '<h1' )->toContain( '<h2 class="ec-category-hero__title">Gift</h2>' );
+
+    // With the category's own template, the hero keeps its h1.
+    installTemplates( [ 'product-category', 'product-archive' ] );
+    expect( StorefrontTemplates::for( 'category', $kitchen ) )->toBe( 'product-category' );
+    $context->setPage( 'category' )->setTag( null )->setCategory( $kitchen );
+
+    expect( $block->render( [] ) )->toContain( '<h1 class="ec-category-hero__title">Kitchen</h1>' );
 } );

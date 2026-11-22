@@ -23,47 +23,55 @@ final class Accessibility
      * @var array<int, array{0: string, 1: string}>
      */
     public const LIBRARY_ISSUES = [
-        // ArtisanPack-UI/livewire-ui-components#117: `x-artisanpack-select`
-        // labels with a <legend>, so the control itself has no accessible
-        // name.
-        [ 'select-name', 'fieldset' ],
-        // ArtisanPack-UI/livewire-ui-components#117: the open drawer's
-        // `drawer-toggle` checkbox is unlabelled and outside any landmark.
-        [ 'label', '.drawer > input.drawer-toggle' ],
-        [ 'region', '.drawer > input.drawer-toggle' ],
-        // ArtisanPack-UI/livewire-ui-components#129:
-        // `x-artisanpack-breadcrumbs` puts the separator <span>s straight
-        // into its <ul>.
-        [ 'list', 'nav[aria-label="Breadcrumb"]' ],
-        // ArtisanPack-UI/livewire-ui-components#130: `x-artisanpack-collapse`
-        // inside an accordion renders an unlabelled radio as the section
-        // toggle.
-        [ 'label', '.collapse' ],
-        // ArtisanPack-UI/livewire-ui-components#131: form components print
-        // field errors in `text-error`, about 3:1 on the default light theme.
-        [ 'color-contrast', '[x-class="text-error"]' ],
+        // livewire-ui-components 3.0.0: the Drawer's panel is an <aside> with
+        // role="dialog", a role axe doesn't allow on <aside>. Still in 3.0.0
+        // (re-checked for 2.0); tracked upstream in
+        // https://github.com/ArtisanPack-UI/livewire-ui-components/issues/164.
+        // Remove this entry once the panel is a <div>.
+        [ 'aria-allowed-role', '[data-scope="drawer"][data-part="content"]' ],
     ];
 
     /**
      * Asserts the page has no accessibility violations beyond the known
      * library ones.
      *
-     * @param  object  $page  The page (a Pest browser webpage).
+     * @param  object       $page    The page (a Pest browser webpage).
+     * @param  string|null  $within  A selector to check only that part of the page (an open modal dialog).
      *
      * @return object
      */
-    public static function assertAccessible( object $page ): object
+    public static function assertAccessible( object $page, ?string $within = null ): object
     {
         $page->assertScript( 'document.readyState', 'complete' );
 
         $ignored = json_encode( self::LIBRARY_ISSUES );
+        $context = null === $within ? 'document' : 'document.querySelector( ' . json_encode( $within ) . ' )';
 
         /** @var array<int, array{id: string, impact: string|null, help: string, nodes: array<int, string>}> $violations */
         $violations = (array) $page->script( <<<JS
             async () => {
                 const ignored = {$ignored};
+                // Colors mid-transition (a button re-enabled after a request) aren't the final ones.
+                // Looping animations (a skeleton's shimmer) never finish, so only the finite ones are awaited.
+                // Livewire can drop a loading state a frame after the morph the test waited for, starting a
+                // transition after the first look, so wait two frames before each look until none are running.
+                const finite = () => document.getAnimations()
+                    .filter( ( animation ) => Number.isFinite( animation.effect?.getComputedTiming().iterations ?? 1 ) );
+                const frames = () => new Promise( ( resolve ) => requestAnimationFrame( () => requestAnimationFrame( resolve ) ) );
+
+                for ( let attempt = 0; attempt < 10; attempt++ ) {
+                    await frames();
+
+                    const running = finite();
+
+                    if ( 0 === running.length ) {
+                        break;
+                    }
+
+                    await Promise.all( running.map( ( animation ) => animation.finished.catch( () => null ) ) );
+                }
                 // target-size (WCAG 2.2 SC 2.5.8, 24px) is off by default in axe 4.x.
-                const { violations } = await window.axe.run( document, { rules: { 'target-size': { enabled: true } } } );
+                const { violations } = await window.axe.run( {$context}, { rules: { 'target-size': { enabled: true } } } );
 
                 return violations
                     .map( ( violation ) => ( {

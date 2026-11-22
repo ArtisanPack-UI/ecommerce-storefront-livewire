@@ -1,5 +1,6 @@
 ---
 title: Guest Checkout
+menu_order: 20
 ---
 
 # Guest Checkout
@@ -61,4 +62,4 @@ A guest checkout never changes the preferences of a customer linked to a user ac
 
 This runs on the engine's `ap.ecommerce.checkout.finalized` action, so it also covers orders the provider's webhook placed. Unticked, nothing is written. A failure is reported and never holds up the order.
 
-For a guest, the order's email is what order lookup and account claiming match against. See [Screens](Usage-Screens#orders-after-checkout).
+For a guest, the order's email is what order lookup and account claiming match against. See [Screens](../usage/screens.md#orders-after-checkout).

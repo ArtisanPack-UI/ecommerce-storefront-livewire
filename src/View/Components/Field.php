@@ -13,7 +13,9 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\View\Components;
 
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Component;
 use InvalidArgumentException;
 
@@ -21,20 +23,22 @@ use InvalidArgumentException;
  * `<x-artisanpack-ec-field id="email" type="email" :label="__( 'Email' )" :hint="__( 'For your receipt.' )" wire:model="email" />`
  *
  * A component-library input, select, textarea, password, or checkbox
- * (`control`) whose error and hint are linked to it: when the field's key
- * has an error, the control gets `aria-invalid="true"`, and
- * `aria-describedby` points at the error and the hint, each rendered here
- * with its own id. The library prints both without ids and never marks
- * the control invalid (livewire-ui-components#117), so it is told to omit
- * its own error. A select or textarea also gets its label as
- * `aria-label`: the library labels them with a `<legend>`, which doesn't
- * name the control (same issue).
+ * (`control`) whose error and hint are linked to it. Since 2.0.0 the
+ * library control does this itself: it prints the label, the hint and the
+ * error with ids, points `aria-describedby` at them (after any the caller
+ * passes), and sets `aria-invalid="true"` when the field's key has an
+ * error. The wrapper carries `data-field-key` for the error summary.
  *
  * The error key is `error-field`, or else the `wire:model` property.
  * Every other attribute (`wire:model`, `type`, `required`, `autocomplete`,
  * `data-*`) is passed to the library control; the select's options are
- * props here because the library takes them as props. A checkbox keeps
- * its hint inside its label, where it is already part of the name.
+ * props here because the library takes them as props, and are mapped to
+ * the library's `value` / `label` shape. A checkbox shows its hint as its
+ * description.
+ *
+ * Since 2.0.0 `optional` adds a muted "(optional)" after the label (the
+ * library control draws the required asterisk itself), and the wrapper is
+ * the full-width `.ec-field` block.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -55,16 +59,19 @@ class Field extends Component
     /**
      * @since 1.0.0
      *
-     * @param  string                         $id                The id passed to the library control (it prefixes it); also the base of the error and hint ids.
+     * @param  string                         $id                The id passed to the library control, which bases its error and hint ids on it.
      * @param  string                         $control           The library control: input, select, textarea, password, or checkbox.
      * @param  string|null                    $label             The visible label.
      * @param  string|null                    $hint              Help text shown under the control.
      * @param  string|null                    $errorField        The error bag key (defaults to the `wire:model` property).
      * @param  array<int, array<string, mixed>>  $options        Select options.
-     * @param  string|null                    $placeholder       The select's empty option.
-     * @param  string|null                    $placeholderValue  The empty option's value.
+     * @param  string|null                    $placeholder       The select's empty option, or the input's or textarea's placeholder (since 2.0.0).
+     * @param  string|null                    $placeholderValue  Unused since 2.0.0: the library's empty option always has an empty value.
      * @param  string                         $optionValue       The option key holding the value.
      * @param  string                         $optionLabel       The option key holding the label.
+     * @param  bool                           $optional          Mark the label "(optional)". Since 2.0.0.
+     * @param  int|null                       $maxLength         The textarea's character limit, shown as a count. Since 2.0.0.
+     * @param  string|null                    $leadingIcon       An icon at the start of an input or password. Since 2.0.0.
      *
      * @throws InvalidArgumentException When `control` is not one of {@see self::CONTROLS}.
      */
@@ -79,6 +86,9 @@ class Field extends Component
         public ?string $placeholderValue = null,
         public string $optionValue = 'id',
         public string $optionLabel = 'name',
+        public bool $optional = false,
+        public ?int $maxLength = null,
+        public ?string $leadingIcon = null,
     ) {
         if ( ! in_array( $control, self::CONTROLS, true ) ) {
             throw new InvalidArgumentException( sprintf( 'Unknown field control "%s".', $control ) );
@@ -96,6 +106,29 @@ class Field extends Component
     public function baseId(): string
     {
         return 'ec-field-' . (string) preg_replace( '/[^A-Za-z0-9_-]+/', '-', $this->id );
+    }
+
+    /**
+     * The label the library control prints: the label, then a muted
+     * "(optional)" when the field is marked optional. A checkbox's label is
+     * its whole sentence, so it is never marked optional; a required one
+     * gets the asterisk the library's checkbox doesn't draw itself.
+     *
+     * @since 2.0.0
+     *
+     * @return Htmlable|string|null
+     */
+    public function labelContent(): Htmlable|string|null
+    {
+        if ( 'checkbox' === $this->control && null !== $this->label && '' !== $this->label && $this->isRequired() ) {
+            return new HtmlString( e( $this->label ) . '<span data-scope="checkbox" data-part="required" aria-hidden="true">*</span>' );
+        }
+
+        if ( null === $this->label || '' === $this->label || ! $this->optional || 'checkbox' === $this->control ) {
+            return $this->label;
+        }
+
+        return new HtmlString( e( $this->label ) . ' <span class="ec-field__optional">' . e( __( '(optional)' ) ) . '</span>' );
     }
 
     /**
@@ -117,6 +150,34 @@ class Field extends Component
     }
 
     /**
+     * The select's options in the shape the library's Select reads
+     * (`value`, `label`), taken from each option's `option-value` and
+     * `option-label` keys.
+     *
+     * @since 2.0.0
+     *
+     * @return list<array{value: string, label: string, disabled?: bool}>
+     */
+    public function selectOptions(): array
+    {
+        $options = [];
+
+        foreach ( $this->options as $option ) {
+            if ( ! is_array( $option ) || ! array_key_exists( $this->optionValue, $option ) ) {
+                continue;
+            }
+
+            $options[] = array_filter( [
+                'value'    => (string) $option[ $this->optionValue ],
+                'label'    => (string) ( $option[ $this->optionLabel ] ?? $option[ $this->optionValue ] ),
+                'disabled' => ! empty( $option['disabled'] ) ? true : null,
+            ], static fn ( mixed $value ): bool => null !== $value );
+        }
+
+        return $options;
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
@@ -126,5 +187,19 @@ class Field extends Component
     public function render(): View
     {
         return view( 'ecommerce-storefront::components.field' );
+    }
+
+    /**
+     * Whether the `required` attribute is set (and not false).
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    protected function isRequired(): bool
+    {
+        $required = $this->attributes->get( 'required' );
+
+        return null !== $required && false !== $required;
     }
 }

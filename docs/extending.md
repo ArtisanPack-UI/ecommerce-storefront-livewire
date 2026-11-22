@@ -1,5 +1,6 @@
 ---
-title: Extending Overview
+title: Extending
+menu_order: 50
 ---
 
 # Extending
@@ -8,11 +9,11 @@ Satellites and host applications change the storefront through registries, filte
 
 ## In this section
 
-- [Embedding Components](Extending-Embedding-Components) - Use each storefront screen as a Livewire component on your own routes
-- [Blade Components](Extending-Blade-Components) - The `x-artisanpack-ec-*` components to reuse in your views
-- [Hooks Reference](Extending-Hooks-Reference) - Every registry, filter, and action the storefront uses
+- [Embedding Components](extending/embedding-components.md) - Use each storefront screen as a Livewire component on your own routes
+- [Blade Components](extending/blade-components.md) - The `x-artisanpack-ec-*` components to reuse in your views
+- [Hooks](reference/hooks.md) - Every registry, filter, and action the storefront uses
 
-The commerce blocks have their own section: [Visual Editor](Visual-Editor).
+The commerce blocks have their own section: [Visual Editor](visual-editor.md).
 
 ## Registries, filters, and actions
 
@@ -30,7 +31,7 @@ public function boot(): void
 | Registry | Adds |
 | --- | --- |
 | `ProductFormRegistry` | The purchase form (a Livewire component) for a product type |
-| `PaymentDriverRegistry` | The payment UI for a gateway's client-render `driver`. See [Payment Drivers](Checkout-Payment-Drivers). |
+| `PaymentDriverRegistry` | The payment UI for a gateway's client-render `driver`. See [Payment Drivers](checkout/payment-drivers.md). |
 | `AccountMenuRegistry` (engine) | An entry in the account navigation |
 
 **Filters** change a value the storefront is about to use: the catalog filters and sorts, the product card, the product page sections, header actions, SEO tags, the commerce blocks, and more. **Actions** let you run code at a point in a flow; the storefront fires `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` and the engine's `ap.ecommerce.customer.orderClaimed`. Both use `artisanpack-ui/hooks`:
@@ -45,7 +46,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.catalog.productCard', function ( arra
 } );
 ```
 
-A filter receives the value first and must return it. Every extra argument is passed to the callback, so declare only the ones you need. A filter that returns the wrong type is ignored and the storefront's own value is used. [Hooks Reference](Extending-Hooks-Reference) lists every one.
+A filter receives the value first and must return it. Every extra argument is passed to the callback, so declare only the ones you need. A filter that returns the wrong type is ignored and the storefront's own value is used. [Hooks](reference/hooks.md) lists every one.
 
 ## Custom purchase forms
 

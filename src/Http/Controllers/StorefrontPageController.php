@@ -17,6 +17,7 @@ use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
 use ArtisanPackUI\Ecommerce\Digital\DigitalFileStreamer;
 use ArtisanPackUI\Ecommerce\Exceptions\DigitalDownloadException;
 use ArtisanPackUI\Ecommerce\Exceptions\RateLimitExceededException;
+use ArtisanPackUI\Ecommerce\Models\Cart;
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\ProductCategory;
@@ -35,6 +36,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\PaymentSessions;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StrandedPayments;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -228,6 +230,10 @@ class StorefrontPageController extends Controller
      * (authorized, succeeded, processing) for the cart's current total
      * goes back to checkout, which places the order (payment is the last
      * step); anything else goes back to the payment step with the reason.
+     * A payment confirmed for an earlier total — or for a session the
+     * checkout showed that the cart has since replaced — is stranded
+     * ({@see StrandedPayments}): the shopper is told it arrived and to
+     * contact the store, never to pay again, and the checkout stays locked.
      * A `reference` (or Stripe's `payment_intent`) in the query string
      * must be the cart's session. Without a session there's nothing to
      * resume, so the shopper lands on checkout as it is.
@@ -409,7 +415,7 @@ class StorefrontPageController extends Controller
         } catch ( DigitalDownloadException $exception ) {
             abort_if( 404 === $exception->status && 'download-not-found' === $exception->errorCode, 404 );
 
-            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage(), 'alert-warning' ) );
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', __( 'This download isn\'t available' ), $exception->getMessage() ) );
 
             return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.account.downloads' ) );
         }
@@ -492,7 +498,7 @@ class StorefrontPageController extends Controller
         }
 
         if ( null !== $given && ( ! is_string( $given ) || ! hash_equals( $reference, $given ) ) ) {
-            return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
+            return $this->replacedPaymentReturn( $cart, $given );
         }
 
         try {
@@ -511,12 +517,45 @@ class StorefrontPageController extends Controller
         }
 
         if ( ! PaymentSessions::confirmedFor( $session, $cart ) ) {
-            return $this->backToPayment( __( 'Your order total has changed.' ), __( 'Pay again for the new total.' ) );
+            // The shopper paid for an earlier total: never ask them to pay
+            // again. The checkout picks the stranded payment up and stays
+            // locked.
+            StrandedPayments::record( $cart, (string) $cart->payment_gateway_key, $session );
+
+            return $this->backToPayment( StrandedPayments::title(), StrandedPayments::message() );
         }
 
         $request->session()->put( Checkout::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => $reference, 'total' => (int) $cart->total_amount ] );
 
         return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
+    }
+
+    /**
+     * A return for a payment session that isn't the cart's. When it is one
+     * the checkout showed for this cart (the cart replaced it since) and
+     * the gateway confirmed it, the shopper has paid: the payment is
+     * stranded ({@see StrandedPayments}) and they are told to contact the
+     * store rather than pay again. Anything else is refused.
+     *
+     * @since 2.0.0
+     *
+     * @param  Cart   $cart   The shopper's cart.
+     * @param  mixed  $given  The reference the provider returned.
+     *
+     * @return RedirectResponse
+     */
+    protected function replacedPaymentReturn( Cart $cart, mixed $given ): RedirectResponse
+    {
+        $gatewayKey = is_string( $given ) ? StrandedPayments::shownGateway( $cart, $given ) : null;
+        $session    = null === $gatewayKey ? null : StrandedPayments::retrieve( $gatewayKey, (string) $given );
+
+        if ( null !== $gatewayKey && true === $session?->isConfirmed() ) {
+            StrandedPayments::record( $cart, $gatewayKey, $session );
+
+            return $this->backToPayment( StrandedPayments::title(), StrandedPayments::message() );
+        }
+
+        return $this->backToPayment( __( 'That payment doesn\'t belong to this checkout.' ), __( 'Choose a payment method and try again.' ) );
     }
 
     /**
@@ -539,7 +578,7 @@ class StorefrontPageController extends Controller
         $held = ! CheckoutPlacement::isPaid( $order ) && CheckoutPlacement::isHeld( $order );
 
         if ( $held ) {
-            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ), 'alert-success' ) );
+            session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', __( 'Thank you for your order' ), __( 'We\'re reviewing your order and will email you shortly.' ) ) );
         }
 
         if ( $held || CheckoutPlacement::isPaid( $order ) ) {
@@ -615,7 +654,7 @@ class StorefrontPageController extends Controller
      */
     protected function backToPayment( string $title, string $description ): RedirectResponse
     {
-        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description ) );
 
         return $this->keepPrivate( redirect()->route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
     }

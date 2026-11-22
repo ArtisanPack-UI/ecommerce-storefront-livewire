@@ -1,112 +1,140 @@
 {{--
-    One of the shopper's orders. See Livewire\Account\OrderShow.
+    One order (#145). See Livewire\Account\OrderShow. Shown inside the
+    account, and read-only as a guest's signed order-view link.
+
+    The header: "All orders" (the account) or an "Order lookup" breadcrumb
+    (a guest), then "Order {number}" (the page's h1 with `showTitle`, else
+    an h2) over "Placed {date} · {n} items · {total}", with the status Badge
+    and an outline "Buy again" at the end. Then a Shipment Card per shipment
+    (the design-system Steps: Placed, Shipped, In transit, Delivered, with
+    their dates, and the carrier, tracking number and "Track package" on a
+    sunken panel), the store's messages as a Timeline in a Card, the order
+    details, and any refunds.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="flex flex-col gap-8" data-account-order="{{ $order->id }}" @if ( $readOnly ) data-account-order-read-only @endif>
-    <div class="flex flex-wrap items-start justify-between gap-4">
-        <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-            <div>
-                <dt class="text-base-content/70">{{ __( 'Order number' ) }}</dt>
-                <dd class="text-lg font-semibold" data-order-number>{{ $order->order_number }}</dd>
+@php
+    $ecommerceOrderHeading = $showTitle ? 'h1' : 'h2';
+    $ecommerceOrderItems   = array_sum( array_column( $lines, 'quantity' ) );
+@endphp
+<div class="ec-order-show" data-account-order="{{ $order->id }}" @if ( $readOnly ) data-account-order-read-only @endif>
+    <div class="ec-order-show__header">
+        @if ( null !== $ordersUrl )
+            <x-artisanpack-link :href="$ordersUrl" standalone leading-icon="arrow-left" :navigate="false" class="ec-order-show__back" data-account-order-back>{{ __( 'All orders' ) }}</x-artisanpack-link>
+        @elseif ( null !== $lookupUrl )
+            <x-artisanpack-breadcrumbs :navigate="false" data-order-breadcrumbs>
+                <x-artisanpack-breadcrumbs-item :label="__( 'Order lookup' )" :href="$lookupUrl" :navigate="false" />
+                <x-artisanpack-breadcrumbs-item :label="$order->order_number" />
+            </x-artisanpack-breadcrumbs>
+        @endif
+
+        <div class="ec-order-show__heading">
+            <div class="ec-order-show__titles">
+                <{{ $ecommerceOrderHeading }} class="ec-order-show__title" data-order-number>{{ __( 'Order :number', [ 'number' => $order->order_number ] ) }}</{{ $ecommerceOrderHeading }}>
+                <p class="ec-order-show__meta">
+                    {{ __( 'Placed :date', [ 'date' => $date ] ) }}<span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>{{ trans_choice( ':count item|:count items', $ecommerceOrderItems, [ 'count' => $ecommerceOrderItems ] ) }}<span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span><x-artisanpack-ec-money :amount="(int) $order->total_amount" :currency="(string) $order->currency" />
+                </p>
             </div>
 
-            <div>
-                <dt class="text-base-content/70">{{ __( 'Placed' ) }}</dt>
-                <dd>{{ $date }}</dd>
+            <div class="ec-order-show__actions">
+                <x-artisanpack-badge :color="$statusColor" :leading-icon="$statusIcon" data-order-status>{{ $status }}</x-artisanpack-badge>
+
+                @if ( $canBuyAgain )
+                    <x-artisanpack-button
+                        variant="outline"
+                        color="neutral"
+                        size="sm"
+                        leading-icon="rotate-ccw"
+                        wire:click="buyAgain"
+                        wire:loading.attr="disabled"
+                        wire:target="buyAgain"
+                        data-account-order-buy-again>{{ __( 'Buy again' ) }}</x-artisanpack-button>
+                @endif
             </div>
-
-            <div>
-                <dt class="text-base-content/70">{{ __( 'Status' ) }}</dt>
-                <dd><x-artisanpack-badge :value="$status" class="{{ $statusColor }}" data-order-status /></dd>
-            </div>
-        </dl>
-
-        <div class="flex flex-wrap gap-2">
-            @if ( null !== $ordersUrl )
-                <x-artisanpack-button :label="__( 'All orders' )" :link="$ordersUrl" no-wire-navigate icon="o-arrow-left" class="btn-ghost btn-sm rtl:[&_svg]:rotate-180" data-account-order-back />
-            @endif
-
-            @if ( $canBuyAgain )
-                <x-artisanpack-button
-                    :label="__( 'Buy again' )"
-                    icon="o-arrow-path"
-                    color="primary"
-                    class="btn-sm"
-                    wire:click="buyAgain"
-                    spinner="buyAgain"
-                    wire:loading.attr="disabled"
-                    wire:target="buyAgain"
-                    data-account-order-buy-again
-                />
-            @endif
         </div>
     </div>
 
     @if ( [] !== $shipments )
-        <section class="flex flex-col gap-3" aria-labelledby="ec-order-shipments-heading" data-order-shipments>
-            <h2 id="ec-order-shipments-heading" class="text-xl font-bold">{{ __( 'Shipments' ) }}</h2>
+        <div class="ec-order-show__shipments" data-order-shipments>
+            @foreach ( $shipments as $shipment )
+                <x-artisanpack-card class="ec-order-card" role="region" aria-labelledby="ec-order-shipment-{{ $shipment['id'] }}" wire:key="order-shipment-{{ $shipment['id'] }}" data-order-shipment="{{ $shipment['id'] }}">
+                    <h2 id="ec-order-shipment-{{ $shipment['id'] }}" class="ec-order-card__title">
+                        {{ 1 === count( $shipments ) ? __( 'Shipment' ) : __( 'Shipment :number of :total', [ 'number' => $loop->iteration, 'total' => count( $shipments ) ] ) }}
+                    </h2>
 
-            <ul class="flex flex-col gap-3">
-                @foreach ( $shipments as $shipment )
-                    <li class="flex flex-wrap items-center justify-between gap-4 rounded-box border border-base-content/10 p-4" wire:key="order-shipment-{{ $shipment['id'] }}" data-order-shipment="{{ $shipment['id'] }}">
-                        <div>
-                            <p class="font-semibold">{{ $shipment['carrier'] ?? __( 'Shipment' ) }} &middot; {{ $shipment['status'] }}</p>
+                    <x-artisanpack-steps :label="__( 'Shipment progress' )" class="ec-order-shipment__steps" data-order-shipment-steps>
+                        @foreach ( $shipment['steps'] as $shipmentStep )
+                            <x-artisanpack-step :title="$shipmentStep['label']" :description="$shipmentStep['date']" :state="$shipmentStep['state']" data-order-shipment-step="{{ $shipmentStep['state'] }}" />
+                        @endforeach
+                    </x-artisanpack-steps>
 
-                            @if ( null !== $shipment['shipped'] )
-                                <p class="text-sm text-base-content/70">{{ __( 'Shipped :date', [ 'date' => $shipment['shipped'] ] ) }}</p>
-                            @endif
+                    <div class="ec-order-shipment__panel">
+                        <div class="ec-order-shipment__details">
+                            <p class="ec-order-shipment__carrier">
+                                {{ $shipment['carrier'] ?? __( 'Shipment' ) }}<span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>{{ null !== $shipment['shipped'] ? __( 'shipped :date', [ 'date' => $shipment['shipped'] ] ) : $shipment['status'] }}
+                            </p>
 
                             @if ( null !== $shipment['tracking'] )
-                                <p class="text-sm">{{ __( 'Tracking number: :number', [ 'number' => $shipment['tracking'] ] ) }}</p>
+                                <p class="ec-order-shipment__tracking">{!! str_replace( e( $shipment['tracking'] ), '<span class="ec-order-shipment__tracking-number" data-order-tracking-number>' . e( $shipment['tracking'] ) . '</span>', e( __( 'Tracking number: :number', [ 'number' => $shipment['tracking'] ] ) ) ) !!}</p>
                             @endif
                         </div>
 
                         @if ( null !== $shipment['url'] )
-                            <a href="{{ $shipment['url'] }}" class="btn btn-sm" target="_blank" rel="noopener noreferrer nofollow" data-order-tracking-link>
-                                {{ __( 'Track package' ) }}
-                                <span class="sr-only">{{ __( '(opens in a new tab)' ) }}</span>
-                                <x-artisanpack-icon name="o-arrow-top-right-on-square" class="h-4 w-4" aria-hidden="true" />
-                            </a>
+                            <x-artisanpack-button
+                                variant="outline"
+                                color="neutral"
+                                size="sm"
+                                :href="$shipment['url']"
+                                trailing-icon="external-link"
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                data-order-tracking-link
+                            >{{ __( 'Track package' ) }}<span class="apui-sr-only"> {{ __( '(opens in a new tab)' ) }}</span></x-artisanpack-button>
                         @endif
-                    </li>
+                    </div>
+                </x-artisanpack-card>
+            @endforeach
+        </div>
+    @endif
+
+    @if ( [] !== $notes )
+        <x-artisanpack-card class="ec-order-card" role="region" aria-labelledby="ec-order-notes-heading" data-order-notes>
+            <h2 id="ec-order-notes-heading" class="ec-order-card__title">{{ __( 'Messages from the store' ) }}</h2>
+
+            <x-artisanpack-timeline :label="__( 'Messages from the store' )" class="ec-order-notes">
+                @foreach ( $notes as $note )
+                    <x-artisanpack-timeline-item icon="mail" :title="$storeName" :time="$note['date']" :datetime="$note['datetime']" :description="$note['body']" wire:key="order-note-{{ $note['id'] }}" data-order-note="{{ $note['id'] }}" />
                 @endforeach
-            </ul>
-        </section>
+            </x-artisanpack-timeline>
+        </x-artisanpack-card>
     @endif
 
     @include( 'ecommerce-storefront::partials.order-details' )
 
     @if ( [] !== $refunds )
-        <section class="flex flex-col gap-3" aria-labelledby="ec-order-refunds-heading" data-order-refunds>
-            <h2 id="ec-order-refunds-heading" class="text-xl font-bold">{{ __( 'Refunds' ) }}</h2>
+        <x-artisanpack-card class="ec-order-card ec-order-card--flush" role="region" aria-labelledby="ec-order-refunds-heading" data-order-refunds>
+            <div class="ec-order-card__head">
+                <h2 id="ec-order-refunds-heading" class="ec-order-card__title">{{ __( 'Refunds' ) }}</h2>
+            </div>
 
-            <ul class="flex flex-col gap-2">
+            <x-artisanpack-list variant="divided" class="ec-order-lines">
                 @foreach ( $refunds as $refund )
-                    <li class="flex flex-wrap justify-between gap-4" wire:key="order-refund-{{ $refund['id'] }}" data-order-refund="{{ $refund['id'] }}">
-                        <span>{{ $refund['date'] }} @if ( $refund['pending'] ) &middot; {{ __( 'Pending' ) }} @endif</span>
-                        <x-artisanpack-ec-money :amount="$refund['amount']" :currency="$refund['currency']" class="font-semibold" />
-                    </li>
-                @endforeach
-            </ul>
-        </section>
-    @endif
+                    <x-artisanpack-list-item class="ec-order-line" wire:key="order-refund-{{ $refund['id'] }}" data-order-refund="{{ $refund['id'] }}">
+                        <x-slot:title>{{ $refund['date'] }}</x-slot:title>
 
-    @if ( [] !== $notes )
-        <section class="flex flex-col gap-3" aria-labelledby="ec-order-notes-heading" data-order-notes>
-            <h2 id="ec-order-notes-heading" class="text-xl font-bold">{{ __( 'Messages from the store' ) }}</h2>
+                        @if ( $refund['pending'] )
+                            <x-slot:description>{{ __( 'Pending' ) }}</x-slot:description>
+                        @endif
 
-            <ul class="flex flex-col gap-3">
-                @foreach ( $notes as $note )
-                    <li class="rounded-box border border-base-content/10 p-4" wire:key="order-note-{{ $note['id'] }}" data-order-note="{{ $note['id'] }}">
-                        <p class="text-sm text-base-content/70">{{ $note['date'] }}</p>
-                        <p class="whitespace-pre-line">{{ $note['body'] }}</p>
-                    </li>
+                        <x-slot:trailing>
+                            <x-artisanpack-ec-money :amount="$refund['amount']" :currency="$refund['currency']" class="ec-order-line__total" />
+                        </x-slot:trailing>
+                    </x-artisanpack-list-item>
                 @endforeach
-            </ul>
-        </section>
+            </x-artisanpack-list>
+        </x-artisanpack-card>
     @endif
 </div>

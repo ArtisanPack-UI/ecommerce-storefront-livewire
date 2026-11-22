@@ -15,10 +15,12 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Catalog;
 
 use ArtisanPackUI\Ecommerce\Catalog\CatalogQuery;
 use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\GridColumns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
@@ -45,6 +47,7 @@ use Throwable;
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
+ * @since      2.0.0 The grid is laid out by `data-columns`; the view reads `columns`, and `gridClass` is gone.
  */
 class ProductGrid extends Component
 {
@@ -223,7 +226,6 @@ class ProductGrid extends Component
         return view( 'ecommerce-storefront::livewire.catalog.product-grid', [
             'products'  => $this->products(),
             'currency'  => app( StorefrontCart::class )->currency(),
-            'gridClass' => GridColumns::classes( $this->columns ),
             'headingId' => 'ec-product-grid-' . $this->getId(),
         ] );
     }
@@ -263,6 +265,41 @@ class ProductGrid extends Component
     }
 
     /**
+     * The category's id: by slug first (an all-digit slug such as `2024`
+     * is a slug), then by id; 0 (matches nothing) when neither exists.
+     *
+     * @since 2.0.0
+     *
+     * @return int
+     */
+    protected function categoryId(): int
+    {
+        $paths = app( CategoryPaths::class );
+        $node  = $paths->bySlug( $this->category ) ?? ( ctype_digit( $this->category ) ? $paths->node( (int) $this->category ) : null );
+
+        return (int) ( $node['id'] ?? 0 );
+    }
+
+    /**
+     * The tag's id: by slug first, then by id; 0 (matches nothing) when
+     * neither exists.
+     *
+     * @since 2.0.0
+     *
+     * @return int
+     */
+    protected function tagId(): int
+    {
+        $id = ProductTag::query()->where( 'slug', $this->tag )->value( 'id' );
+
+        if ( null === $id && ctype_digit( $this->tag ) ) {
+            $id = ProductTag::query()->whereKey( (int) $this->tag )->value( 'id' );
+        }
+
+        return (int) ( $id ?? 0 );
+    }
+
+    /**
      * The catalog query for the source, or null when the source has
      * nothing to list (no category, tag, or picks).
      *
@@ -277,9 +314,11 @@ class ProductGrid extends Component
         return match ( $this->source ) {
             'featured'    => $query->featured(),
             'on_sale'     => $query->onSale(),
-            'category'    => '' === $this->category ? null : $query->inCategory( ctype_digit( $this->category ) ? (int) $this->category : $this->category ),
-            'tag'         => '' === $this->tag ? null : $query->withTag( ctype_digit( $this->tag ) ? (int) $this->tag : $this->tag ),
-            'hand_picked' => [] === $this->ids ? null : $query->ids( $this->ids ),
+            'category'    => '' === $this->category ? null : $query->inCategory( $this->categoryId() ),
+            'tag'         => '' === $this->tag ? null : $query->withTag( $this->tagId() ),
+            // The first picks in the editor's order, not the first by the sort.
+            'hand_picked' => [] === $this->ids ? null : $query->ids( array_slice( $this->ids, 0, $this->limit ) ),
+            // "Newest" is a sort of its own; the block's "Sort by" says so.
             default       => $query->sort( 'newest' ),
         };
     }

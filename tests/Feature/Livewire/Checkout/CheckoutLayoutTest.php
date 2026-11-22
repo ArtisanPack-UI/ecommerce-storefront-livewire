@@ -2,7 +2,10 @@
 
 declare( strict_types=1 );
 
+use ArtisanPackUI\Ecommerce\Models\Cart;
+use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Registries\SettingsRegistry;
+use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\Settings\SettingsRepository;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutLayout;
@@ -14,7 +17,7 @@ beforeEach( function (): void {
     checkoutCart();
 } );
 
-it( 'shows the multi-step progress bar, the open step, and only finished steps by default', function (): void {
+it( 'shows the multi-step progress bar, the finished steps, the open step, and the steps to come', function (): void {
     $component = Livewire::test( Index::class )
         ->set( 'email', 'ada@example.test' )
         ->call( 'saveContact' )
@@ -27,8 +30,10 @@ it( 'shows the multi-step progress bar, the open step, and only finished steps b
         ->assertSeeHtml( 'data-checkout-step-summary="contact"' )
         ->assertSeeHtml( 'data-checkout-edit="contact"' )
         ->assertSeeHtml( 'data-checkout-step="address"' )
-        ->assertDontSeeHtml( 'data-checkout-step="shipping"' )
-        ->assertDontSeeHtml( 'data-checkout-step="review"' )
+        ->assertSeeHtml( 'data-checkout-step="shipping"' )
+        ->assertSeeHtml( 'data-checkout-step="review"' )
+        ->assertSeeHtml( 'data-checkout-step-state="upcoming"' )
+        ->assertDontSeeHtml( 'data-checkout-step-locked' )
         ->assertSet( 'announcement', 'Step 2 of 5: Address' );
 
     expect( $component->html() )->toContain( 'x-init="$nextTick( () => $el.focus() )"' );
@@ -65,7 +70,9 @@ it( 'shows every section on a single page, disabling the ones after an unfinishe
         ->assertSeeHtml( 'data-checkout-step-locked="shipping"' )
         ->assertSeeHtml( 'data-checkout-step-locked="review"' )
         ->assertSeeHtml( 'data-checkout-step-locked="payment"' )
-        ->assertSeeHtml( 'aria-disabled="true"' )
+        ->assertDontSeeHtml( 'aria-disabled' )
+        ->assertSeeHtml( 'data-checkout-step-unavailable' )
+        ->assertSee( '(not available yet)' )
         ->assertSee( 'Complete “Address” first.' );
 } );
 
@@ -103,7 +110,7 @@ it( 'offers the layout and terms page on the admin\'s checkout settings', functi
         ->and( $settings->definition( CheckoutLayout::TERMS_SETTING )->configKey() )->toBe( 'artisanpack.ecommerce-storefront-livewire.checkout.terms_url' );
 } );
 
-it( 'escapes step labels in the progress bar, which renders them as HTML', function (): void {
+it( 'escapes step labels in the progress bar', function (): void {
     Livewire::component( 'age-check-step', Tests\Fixtures\Livewire\AgeCheckStep::class );
 
     addFilter( 'ap.ecommerceStorefrontLivewire.checkout.steps', static function ( array $steps ): array {
@@ -115,7 +122,7 @@ it( 'escapes step labels in the progress bar, which renders them as HTML', funct
     $html = Livewire::test( Index::class )->html();
 
     expect( $html )->not->toContain( '<img src=x' )
-        ->and( $html )->toContain( 'text: \'&amp;lt;img src=x onerror=alert(1)&amp;gt;Age &amp;#039;check&amp;#039;\'' );
+        ->and( $html )->toContain( '&lt;img src=x onerror=alert(1)&gt;Age &#039;check&#039;' );
 } );
 
 it( 'accepts the same terms pages in the admin setting as at checkout', function ( string $url, bool $allowed ): void {
@@ -134,3 +141,71 @@ it( 'accepts the same terms pages in the admin setting as at checkout', function
     'javascript'         => [ 'javascript:alert(1)', false ],
     'relative path'      => [ 'terms', false ],
 ] );
+
+it( 'guards a step the browser sets (history back/forward): an unreachable step falls back to the furthest one', function (): void {
+    Livewire::test( Index::class )
+        ->set( 'email', 'ada@example.test' )
+        ->call( 'saveContact' )
+        ->assertSet( 'step', 'address' )
+        ->set( 'step', 'payment' )
+        ->assertSet( 'step', 'address' )
+        ->set( 'step', [ 'x' ] )
+        ->assertSet( 'step', 'address' )
+        ->set( 'step', 'contact' )
+        ->assertSet( 'step', 'contact' )
+        ->assertSet( 'focusStep', true )
+        ->assertSet( 'announcement', 'Step 1 of 5: Contact' );
+} );
+
+it( 'quotes shipping when the browser goes back to the shipping step', function (): void {
+    $gateway = app( PaymentGatewayRegistry::class )->find( 'fake' );
+
+    checkoutAtReview( $gateway );
+
+    // A reload (or the payment return) lands on review with nothing quoted.
+    Livewire::withQueryParams( [ 'step' => 'review' ] )->test( Index::class )
+        ->assertSet( 'step', 'review' )
+        ->assertSet( 'rates', null )
+        ->set( 'step', 'shipping' )
+        ->assertSet( 'step', 'shipping' )
+        ->assertSeeHtml( 'data-checkout-rates' )
+        ->assertSeeHtml( 'data-checkout-shipping-submit' );
+} );
+
+it( 'sets the payment up again for the cart as it is now when the browser returns to payment', function (): void {
+    $gateway = app( PaymentGatewayRegistry::class )->find( 'fake' );
+    $cart    = Cart::query()->sole();
+
+    $component = checkoutAtReview( $gateway )
+        ->call( 'saveReview' )
+        ->assertSet( 'step', 'payment' )
+        ->assertSet( 'payment.reference', 'fake_ps_1' );
+
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+
+    $component->set( 'step', 'review' )
+        ->assertSet( 'step', 'review' )
+        ->set( 'step', 'payment' )
+        ->assertSet( 'step', 'payment' );
+
+    expect( $component->get( 'payment.reference' ) )->not->toBe( 'fake_ps_1' )
+        ->toBe( $cart->refresh()->payment_reference );
+} );
+
+it( 'keeps the shopper on payment when the browser goes back after the payment is confirmed', function (): void {
+    $gateway = app( PaymentGatewayRegistry::class )->find( 'fake' );
+
+    $component = checkoutAtReview( $gateway )->call( 'saveReview' );
+
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', static function (): void {
+        throw new RuntimeException( 'A listener broke.' );
+    } );
+
+    payAtCheckout( $component, $gateway )
+        ->assertSet( 'confirmedPayment.reference', 'fake_ps_1' )
+        ->set( 'step', 'contact' )
+        ->assertSet( 'step', 'payment' )
+        ->assertSee( 'Your payment is confirmed. Contact us to change this order.' )
+        ->set( 'step', 'review' )
+        ->assertSet( 'step', 'review' );
+} );

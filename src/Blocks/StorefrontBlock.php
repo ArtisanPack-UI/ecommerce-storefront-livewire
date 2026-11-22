@@ -96,6 +96,27 @@ abstract class StorefrontBlock
     public const MAX_STRING_LENGTH = 200;
 
     /**
+     * The Lucide icon an editor notice shows for each inserter dashicon.
+     * Other dashicons fall back to `shopping-bag`.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, string>
+     */
+    public const NOTICE_ICONS = [
+        'archive'        => 'list',
+        'backup'         => 'clock',
+        'cart'           => 'shopping-bag',
+        'category'       => 'layout-grid',
+        'format-gallery' => 'image',
+        'grid-view'      => 'layout-grid',
+        'money-alt'      => 'wallet',
+        'networking'     => 'link',
+        'products'       => 'package',
+        'star-filled'    => 'star',
+    ];
+
+    /**
      * Whether the last render fell back to a sample product.
      *
      * @since 1.0.0
@@ -249,7 +270,7 @@ abstract class StorefrontBlock
         } catch ( Throwable $exception ) {
             report( $exception );
 
-            return self::previewing() ? $this->notice( __( 'This block couldn\'t be shown. Check the logs for the error.' ) ) : '';
+            return self::previewing() ? $this->notice( __( 'This block couldn\'t be shown. Check the logs for the error.' ), true ) : '';
         }
 
         if ( null === $html ) {
@@ -257,9 +278,10 @@ abstract class StorefrontBlock
         }
 
         return view( 'ecommerce-storefront::blocks.block', [
-            'slug'   => $this->slug(),
-            'html'   => $html,
-            'sample' => $this->sample,
+            'slug'    => $this->slug(),
+            'html'    => $html,
+            'sample'  => $this->sample,
+            'preview' => self::previewing(),
         ] )->render();
     }
 
@@ -439,17 +461,26 @@ abstract class StorefrontBlock
     }
 
     /**
-     * A notice for editor previews.
+     * A notice for editor previews: the block's icon and title over the
+     * message, in a dashed frame (an error one when the block failed).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `$error`, and passes the notice's icon.
      *
      * @param  string  $message  The message.
+     * @param  bool    $error    Whether the block failed to render.
      *
      * @return string
      */
-    protected function notice( string $message ): string
+    protected function notice( string $message, bool $error = false ): string
     {
-        return view( 'ecommerce-storefront::blocks.notice', [ 'slug' => $this->slug(), 'title' => $this->title(), 'message' => $message ] )->render();
+        return view( 'ecommerce-storefront::blocks.notice', [
+            'slug'    => $this->slug(),
+            'title'   => $this->title(),
+            'message' => $message,
+            'icon'    => $error ? 'circle-alert' : ( self::NOTICE_ICONS[ $this->icon() ] ?? 'shopping-bag' ),
+            'error'   => $error,
+        ] )->render();
     }
 
     /**

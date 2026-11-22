@@ -412,3 +412,38 @@ if ( ! function_exists( 'verifiedShopper' ) ) {
         return [ $user, $record ];
     }
 }
+
+if ( ! function_exists( 'classTokens' ) ) {
+    /**
+     * Every class name in the markup's `class` attributes, once each.
+     *
+     * @return array<int, string>
+     */
+    function classTokens( string $html ): array
+    {
+        preg_match_all( '/\sclass="([^"]*)"/', $html, $matches );
+
+        return array_values( array_unique( preg_split( '/\s+/', implode( ' ', $matches[1] ), -1, PREG_SPLIT_NO_EMPTY ) ) );
+    }
+}
+
+if ( ! function_exists( 'withoutBackInStock' ) ) {
+    /**
+     * Turns off the add-to-cart row's "Notify me" signup, so a sold-out
+     * product keeps the disabled button and its reason.
+     */
+    function withoutBackInStock(): void
+    {
+        addFilter( 'ap.ecommerceStorefrontLivewire.product.backInStockEnabled', static fn (): bool => false );
+    }
+}
+
+if ( ! function_exists( 'engineHasBackInStock' ) ) {
+    /**
+     * Whether the installed engine takes back-in-stock signups (1.4+).
+     */
+    function engineHasBackInStock(): bool
+    {
+        return class_exists( ArtisanPackUI\Ecommerce\Services\BackInStockService::class );
+    }
+}

@@ -1,10 +1,11 @@
 ---
 title: Blocks
+menu_order: 10
 ---
 
 # Blocks
 
-The storefront registers twelve blocks with visual-editor, named `artisanpack-commerce/{slug}`. Each block renders the same Livewire component or Blade component the storefront pages use, so a block and a page look and behave the same. See [Visual Editor](Visual-Editor) for when they are registered.
+The storefront registers twelve blocks with visual-editor, named `artisanpack-commerce/{slug}`. Each block renders the same Livewire component or Blade component the storefront pages use, so a block and a page look and behave the same. See [Visual Editor](../visual-editor.md) for when they are registered.
 
 ## How every block behaves
 
@@ -39,7 +40,7 @@ app( StorefrontContext::class )->setPage( 'product' )->setProduct( $product );
 
 ### Product Grid (`artisanpack-commerce/product-grid`)
 
-A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`.
+A grid of product cards under an optional heading. Renders `artisanpack-ecommerce-storefront-product-grid`: the cards stretch to the row's height and the grid adds no outer margin (the editor spaces blocks).
 
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
@@ -49,7 +50,7 @@ A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`
 | `ids` | string | `''` | For `hand_picked`: product IDs separated by commas, in the order to show them. Anything that isn't a number is ignored. |
 | `sort` | string | `newest` | `newest`, `price`, `-price`, `popularity`, `rating`, or `name` |
 | `limit` | number | `8` | 1 to 24 |
-| `columns` | number | `4` | 1 to 6 |
+| `columns` | number | `4` | 1 to 6: the most cards to a row from 1024px (two to a row on small screens, three for 4–6 columns from 640px) |
 | `showPrice` | boolean | `true` | |
 | `showRating` | boolean | `true` | |
 | `showAddToCart` | boolean | `true` | |
@@ -57,13 +58,13 @@ A grid of product cards. Renders `artisanpack-ecommerce-storefront-product-grid`
 
 ### Category Grid (`artisanpack-commerce/category-grid`)
 
-Category tiles with images and product counts. Renders `<x-artisanpack-ec-category-grid>`.
+Category tiles with images and product counts. Renders `<x-artisanpack-ec-category-grid>`: each tile is a Card with a 4:3 image, the name (one link, stretched over the tile), the product count and an arrow.
 
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `parent` | string | `''` | Parent category slug; shows its sub-categories. Empty shows the top-level categories. |
 | `limit` | number | `6` | 1 to 24 |
-| `columns` | number | `3` | 1 to 6 |
+| `columns` | number | `3` | 1 to 6: the most tiles to a row from 1024px (two to a row on small screens, three for 4–6 columns from 640px) |
 | `showCounts` | boolean | `true` | |
 | `showImages` | boolean | `true` | |
 | `heading` | string | `''` | |
@@ -82,7 +83,7 @@ Related products, upsells, or cross-sells. Renders `artisanpack-ecommerce-storef
 | `productId` | number | `0` | See above |
 | `heading` | string | `''` | |
 
-With no product, `related` and `upsell` render nothing. `cross_sell` without a product shows cross-sells for the shopper's cart instead. On the site the section loads after the page (Livewire lazy loading); in an editor preview it renders straight away.
+With no product, `related` and `upsell` render nothing. `cross_sell` without a product shows cross-sells for the shopper's cart instead. On the site the section loads after the page (Livewire lazy loading), showing skeleton cards; in an editor preview it renders straight away. The section is the product page's: product cards under the heading, a grid of `columns` from 1024px, and a sideways-scrolling row with "Previous" and "Next" buttons on small screens. The block adds nothing around it but the commerce block wrapper, so block spacing comes from the editor.
 
 ### Recently Viewed (`artisanpack-commerce/recently-viewed`)
 
@@ -91,10 +92,12 @@ The products the shopper looked at last. Renders `artisanpack-ecommerce-storefro
 | Attribute | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `limit` | number | `4` | 1 to 12 |
-| `columns` | number | `4` | 1 to 6 |
+| `columns` | number | `4` | 1 to 6; the most rows side by side (each at least 240px wide) |
 | `heading` | string | `''` | |
 
-This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks Reference](Extending-Hooks-Reference).
+Each product is a compact row (a thumbnail, the name and the price). With no history the block renders nothing, and it adds nothing around the section but the commerce block wrapper, so block spacing comes from the editor.
+
+This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks](../reference/hooks.md).
 
 ### Product Catalog (`artisanpack-commerce/product-catalog`)
 
@@ -107,7 +110,7 @@ The products of the page the block is on, with filters, sorting, and pages. It h
 | Search (`page` is `search`) | `artisanpack-ecommerce-storefront-search` |
 | Anything else | `artisanpack-ecommerce-storefront-catalog` |
 
-The default archive, category, tag, and search templates are built on it.
+The default archive, category, tag, and search templates are built on it. The block adds nothing around the listing but the commerce block wrapper, so it looks exactly like the page it stands in for.
 
 ## Product blocks
 
@@ -115,7 +118,7 @@ All of these take `productId` (number, default `0`, minimum `0`) and find their 
 
 ### Single Product (`artisanpack-commerce/single-product`)
 
-The whole product: images, price, add to cart, details, and reviews. Renders `artisanpack-ecommerce-storefront-product-show`. No other attributes. A product view is recorded on the site, never in an editor preview.
+The whole product: images, price, add to cart, details, and reviews. Renders `artisanpack-ecommerce-storefront-product-show`. No other attributes. A product view is recorded on the site, never in an editor preview. In the editor, with no product, it shows the newest product under a "Sample product" notice. The block adds nothing around the product page but the commerce block wrapper.
 
 ### Product Gallery (`artisanpack-commerce/product-gallery`)
 
@@ -128,7 +131,7 @@ The product's images with thumbnails and zoom, including variant images. Renders
 
 ### Price (`artisanpack-commerce/product-price`)
 
-The product's price, with any sale price, in the shopper's cart currency. Renders `<x-artisanpack-ec-price>`. No other attributes.
+The product's price, with any sale price, in the shopper's cart currency. Renders `<x-artisanpack-ec-price>` at the large size the product page uses: a regular price, a sale price with the original struck through and the percentage off, or a range. No other attributes.
 
 ### Add-to-Cart Button (`artisanpack-commerce/add-to-cart`)
 
@@ -139,7 +142,7 @@ The product's purchase form (the one registered for its type in `ProductFormRegi
 | `showQuantity` | boolean | `true` | |
 | `buttonText` | string | `''` | Empty shows "Add to cart". Cut to 60 characters. |
 
-When the product's type has no purchase form, the block shows "This product can't be purchased online".
+When the product's type has no purchase form, the block shows a neutral alert, "This product can't be purchased online".
 
 ### Reviews (`artisanpack-commerce/product-reviews`)
 
@@ -161,7 +164,7 @@ The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells. R
 | `showCrossSells` | boolean | `true` |
 | `showCoupon` | boolean | `true` |
 
-In an editor preview it shows a static cart with the two newest products that have a price, instead of the editor's own cart. With no such product, the preview says to add one.
+In an editor preview it shows a static cart with the two newest products that have a price, instead of the editor's own cart: a dashed "Sample cart" notice, the lines in a Card beside an order summary Card (subtotal, shipping "Calculated at checkout", a disabled coupon field and "Checkout"), and a note where the cross-sells go. Nothing in it is saved. With no such product, the preview says to add one.
 
 ### Checkout Steps (`artisanpack-commerce/checkout-steps`)
 
@@ -171,7 +174,7 @@ The checkout. Renders `artisanpack-ecommerce-storefront-checkout`.
 | --- | --- | --- | --- |
 | `layout` | string | `store` | `store` (the store's checkout layout setting), `multi_step`, or `single_page` |
 
-In an editor preview it shows the checkout steps in the chosen layout, without a cart. See [Checkout Layouts](Checkout-Layouts).
+In an editor preview it shows the checkout steps in the chosen layout, without a cart: multi-step shows the Steps with the first one current over that step's Card; single page shows one Card per step, the first open and the rest muted. See [Checkout Layouts](../checkout/layouts.md).
 
 ## Removing or adding blocks
 

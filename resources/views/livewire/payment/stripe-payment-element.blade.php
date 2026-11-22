@@ -1,31 +1,61 @@
 {{--
-    The Stripe Payment Element driver. See StripePaymentElement.
+    The Stripe Payment Element driver (#112). See StripePaymentElement.
+
+    A Card holding Stripe's form on the default surface, then the
+    reassurance line (a shield icon and "Your card details go straight to
+    Stripe…") and a full-width "Pay now". While Stripe loads, field
+    skeletons (one full-width, then two side by side) sit under the design
+    system's glass Loading overlay with "Loading the payment form…". A
+    Stripe error shows under the form, in the error text color, in an
+    assertive live region. Without a publishable key and client secret, a
+    warning Alert says the method isn't available.
+
+    Before confirming, the script asks the driver whether the session still
+    pays for the order (`stillPayable()`); after Stripe confirms, "Pay now"
+    stays disabled and says "Placing your order…" until the checkout moves
+    on. Only a failure gives the button back.
 
     The form sits in `wire:ignore` so Livewire never re-renders Stripe's
-    iframe; the script below runs once per mount.
+    iframe; the script below runs once per mount. Stripe's `appearance` is
+    built from the `--apui-*` tokens so its fields match the Input.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="flex flex-col gap-3" data-payment-driver="stripe-payment-element">
+<div class="ec-stripe" data-payment-driver="stripe-payment-element">
     @if ( $available )
-        <div wire:ignore class="flex flex-col gap-3">
-            <p class="text-sm text-base-content/70" data-stripe-loading>{{ __( 'Loading the payment form…' ) }}</p>
+        <x-artisanpack-card class="ec-stripe__card">
+            <div wire:ignore class="ec-stripe__form">
+                <div class="ec-stripe__field" data-loading>
+                    <div class="ec-stripe__loading" data-stripe-loading>
+                        <div class="ec-stripe__skeletons" aria-hidden="true">
+                            <x-artisanpack-skeleton class="ec-stripe__skeleton" />
+                            <div class="ec-stripe__skeleton-row">
+                                <x-artisanpack-skeleton class="ec-stripe__skeleton" />
+                                <x-artisanpack-skeleton class="ec-stripe__skeleton" />
+                            </div>
+                        </div>
 
-            <div data-stripe-element></div>
+                        <x-artisanpack-loading overlay :delay="0">{{ __( 'Loading the payment form…' ) }}</x-artisanpack-loading>
+                    </div>
 
-            <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))] empty:hidden" role="alert" aria-live="assertive" data-stripe-error></p>
+                    <div class="ec-stripe__element" data-stripe-element></div>
+                </div>
 
-            <div>
-                <x-artisanpack-button type="button" :label="__( 'Pay now' )" color="primary" icon="o-lock-closed" disabled data-stripe-pay />
+                <p class="ec-stripe__error" role="alert" aria-live="assertive" data-stripe-error></p>
+
+                <p class="ec-stripe__reassurance">
+                    <x-artisanpack-icon name="shield" />
+                    <span>{{ __( 'Your card details go straight to Stripe. This store never sees or stores them.' ) }}</span>
+                </p>
+
+                <x-artisanpack-button type="button" color="primary" leading-icon="lock" class="ec-stripe__pay" disabled data-stripe-pay><span data-stripe-pay-label>{{ __( 'Pay now' ) }}</span></x-artisanpack-button>
             </div>
-
-            <p class="text-xs text-base-content/70">{{ __( 'Your card details go straight to Stripe. This store never sees or stores them.' ) }}</p>
-        </div>
+        </x-artisanpack-card>
     @else
-        <x-artisanpack-alert icon="o-exclamation-triangle" class="alert-warning alert-soft text-base-content!" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
+        <x-artisanpack-alert color="warning" icon="triangle-alert" :title="__( 'This payment method isn\'t available.' )" data-payment-unavailable />
     @endif
 </div>
 
@@ -35,9 +65,12 @@
         const root       = $wire.$el;
         const settings   = @js( $stripe );
         const loading    = root.querySelector( '[data-stripe-loading]' );
+        const field      = root.querySelector( '.ec-stripe__field' );
         const mountPoint = root.querySelector( '[data-stripe-element]' );
         const errorBox   = root.querySelector( '[data-stripe-error]' );
         const payButton  = root.querySelector( '[data-stripe-pay]' );
+        const payLabel   = root.querySelector( '[data-stripe-pay-label]' );
+        const payText    = payLabel ? payLabel.textContent : '';
 
         let stripe   = null;
         let elements = null;
@@ -76,15 +109,16 @@
             return window.ecommerceStripeJs;
         };
 
-        // daisyUI colours may be oklch(), which Stripe can't read: paint
-        // one pixel and read it back as rgb().
+        // Design-system colours may be oklch(), which Stripe can't read:
+        // paint one pixel and read it back as rgb().
         const toRgb = ( value ) => {
-            const context = document.createElement( 'canvas' ).getContext( '2d' );
+            const context = document.createElement( 'canvas' ).getContext( '2d', { willReadFrequently: true } );
 
             if ( ! value || ! context ) {
                 return null;
             }
 
+            context.clearRect( 0, 0, 1, 1 );
             context.fillStyle = value;
             context.fillRect( 0, 0, 1, 1 );
 
@@ -93,39 +127,96 @@
             return `rgb(${ red }, ${ green }, ${ blue })`;
         };
 
+        // Stripe's appearance from the --apui-* tokens, so its fields match
+        // the Input: the field radius, border, text, placeholder and error
+        // colours, and the focus ring. The gateway's `appearance` config
+        // goes on top.
         const appearance = () => {
-            const styles    = getComputedStyle( root );
-            const token     = ( name ) => styles.getPropertyValue( name ).trim();
-            const variables = {};
-            const colours   = {
-                colorPrimary: '--color-primary',
-                colorBackground: '--color-base-100',
-                colorText: '--color-base-content',
-                colorDanger: '--color-error',
-            };
+            const styles = getComputedStyle( root );
+            const token  = ( name ) => styles.getPropertyValue( name ).trim();
+            const colour = ( name ) => toRgb( token( name ) );
 
-            for ( const [ key, name ] of Object.entries( colours ) ) {
-                const colour = toRgb( token( name ) );
+            const variables = Object.fromEntries( Object.entries( {
+                colorPrimary: colour( '--apui-color-primary' ),
+                colorBackground: colour( '--apui-surface-default' ),
+                colorText: colour( '--apui-text-default' ),
+                colorTextSecondary: colour( '--apui-text-muted' ),
+                colorTextPlaceholder: colour( '--apui-text-subtle' ),
+                colorDanger: colour( '--apui-color-error-text' ),
+                borderRadius: token( '--apui-radius-field' ) || null,
+                fontFamily: styles.fontFamily || null,
+            } ).filter( ( [ , value ] ) => null !== value && '' !== value ) );
 
-                if ( colour ) {
-                    variables[ key ] = colour;
-                }
-            }
-
-            if ( token( '--radius-field' ) ) {
-                variables.borderRadius = token( '--radius-field' );
-            }
-
-            if ( styles.fontFamily ) {
-                variables.fontFamily = styles.fontFamily;
-            }
+            // Stripe only takes plain values in `rules` (no calc(), nothing
+            // empty), so the ring's spread is worked out here in px and
+            // unset declarations are dropped.
+            const px         = ( name, fallback ) => Number.parseFloat( token( name ) ) || fallback;
+            const border     = colour( '--apui-border-default' );
+            const hover      = colour( '--apui-border-strong' );
+            const ring       = colour( '--apui-focus-ring-color' );
+            const ringOffset = colour( '--apui-focus-ring-offset-color' ) || variables.colorBackground;
+            const offset     = px( '--apui-focus-ring-offset', 2 );
+            const spread     = offset + px( '--apui-focus-ring-width', 2 );
+            const declare    = ( declarations ) => Object.fromEntries( Object.entries( declarations ).filter( ( [ , value ] ) => null !== value && undefined !== value && '' !== value ) );
+            const rules      = Object.fromEntries( Object.entries( {
+                '.Input': declare( {
+                    border: border ? `${ px( '--apui-border-width', 1 ) }px solid ${ border }` : null,
+                    boxShadow: 'none',
+                } ),
+                '.Input:hover': declare( { borderColor: hover } ),
+                // A transparent outline is invisible until forced colors
+                // paints it, where the box-shadow ring is dropped.
+                '.Input:focus': declare( {
+                    outline: `${ px( '--apui-focus-ring-width', 2 ) }px solid transparent`,
+                    boxShadow: ring ? `0 0 0 ${ offset }px ${ ringOffset }, 0 0 0 ${ spread }px ${ ring }` : null,
+                } ),
+                '.Label': declare( { color: variables.colorText, fontWeight: token( '--apui-font-weight-medium' ) } ),
+                '.Error': declare( { color: variables.colorDanger } ),
+            } ).filter( ( [ , declarations ] ) => Object.keys( declarations ).length > 0 ) );
 
             const custom = settings.appearance || {};
 
-            return { theme: 'stripe', ...custom, variables: { ...variables, ...( custom.variables || {} ) } };
+            return {
+                theme: 'stripe',
+                ...custom,
+                variables: { ...variables, ...( custom.variables || {} ) },
+                rules: { ...rules, ...( custom.rules || {} ) },
+            };
         };
 
-        $wire.on( 'payment-failed', ( event ) => showError( event?.message ) );
+        // The form is ready (or failed): drop the skeletons and the overlay.
+        const doneLoading = () => {
+            loading.hidden = true;
+            field.removeAttribute( 'data-loading' );
+        };
+
+        // Only a failure gives the shopper "Pay now" back. After Stripe
+        // confirms, the checkout is placing the order: a second click would
+        // try to confirm a PaymentIntent that has already succeeded.
+        const release = () => {
+            busy               = false;
+            payButton.disabled = false;
+            payButton.removeAttribute( 'aria-busy' );
+
+            if ( payLabel ) {
+                payLabel.textContent = payText;
+            }
+        };
+
+        const placing = () => {
+            busy               = true;
+            payButton.disabled = true;
+            payButton.setAttribute( 'aria-busy', 'true' );
+
+            if ( payLabel ) {
+                payLabel.textContent = settings.messages.placing;
+            }
+        };
+
+        $wire.on( 'payment-failed', ( event ) => {
+            showError( event?.message );
+            release();
+        } );
 
         loadStripe()
             .then( ( Stripe ) => {
@@ -135,19 +226,43 @@
                 const element = elements.create( 'payment' );
 
                 element.on( 'ready', () => {
-                    loading.hidden     = true;
+                    doneLoading();
                     payButton.disabled = false;
                 } );
 
                 element.on( 'loaderror', ( event ) => {
-                    loading.hidden = true;
+                    doneLoading();
                     showError( event?.error?.message || settings.messages.loadFailed );
                 } );
 
                 element.mount( mountPoint );
+
+                // Light, dark or a theme switch while the form is open: give
+                // Stripe the new token values.
+                const scheme   = window.matchMedia( '(prefers-color-scheme: dark)' );
+                const observer = new MutationObserver( () => retheme() );
+                const teardown = () => {
+                    observer.disconnect();
+                    scheme.removeEventListener( 'change', retheme );
+                };
+                const retheme  = () => {
+                    if ( ! root.isConnected ) {
+                        teardown();
+
+                        return;
+                    }
+
+                    elements.update( { appearance: appearance() } );
+                };
+
+                scheme.addEventListener( 'change', retheme );
+                observer.observe( document.documentElement, { attributes: true, attributeFilter: [ 'class', 'data-theme' ] } );
+
+                // Unsubscribe when Livewire removes the component (Livewire 3 and 4).
+                $wire.__instance?.addCleanup?.( teardown );
             } )
             .catch( () => {
-                loading.hidden = true;
+                doneLoading();
                 showError( settings.messages.loadFailed );
             } );
 
@@ -161,6 +276,16 @@
             errorBox.textContent = '';
 
             try {
+                // The order may have changed in another tab since this form
+                // was set up: Stripe would charge the old amount. The
+                // checkout sets the payment up again for the new total.
+                if ( true !== await $wire.stillPayable() ) {
+                    showError( settings.messages.changed );
+                    release();
+
+                    return;
+                }
+
                 const { error, paymentIntent } = await stripe.confirmPayment( {
                     elements,
                     confirmParams: { return_url: settings.returnUrl },
@@ -169,9 +294,11 @@
 
                 if ( error ) {
                     // Field errors are the shopper's to fix; anything else
-                    // (a declined card) is a failed payment.
+                    // (a declined card) is a failed payment, and the
+                    // payment-failed listener gives the button back.
                     if ( 'validation_error' === error.type ) {
                         showError( error.message );
+                        release();
                     } else {
                         await $wire.fail( error.message || '' );
                     }
@@ -179,12 +306,12 @@
                     return;
                 }
 
+                placing();
+
                 await $wire.confirm( paymentIntent?.id ?? null );
             } catch ( exception ) {
                 showError( settings.messages.failed );
-            } finally {
-                busy               = false;
-                payButton.disabled = false;
+                release();
             }
         } );
     </script>

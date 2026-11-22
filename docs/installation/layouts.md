@@ -1,5 +1,6 @@
 ---
 title: Layouts
+menu_order: 40
 ---
 
 # Layouts
@@ -23,21 +24,48 @@ Any layout the pages extend must provide:
 - `@stack( 'head' )` inside `<head>`: every page pushes its description, canonical URL, robots directive, Open Graph tags, and JSON-LD here (`ecommerce-storefront::partials.seo`). Without it, pages lose their search-engine tags.
 - `@stack( 'styles' )` and `@stack( 'scripts' )`.
 - `@include( 'ecommerce-storefront::partials.global' )`: the cart drawer, toasts, and the cart merge prompt. See [The global partial](#the-global-partial).
-- Livewire's assets and your Tailwind build, as on any Livewire page.
+- Livewire's assets and your Vite build with the design system (see [Front-End Setup](front-end.md)), as on any Livewire page.
+- `@apuiThemeScript` inside `<head>`, before your Vite entries: it applies the shopper's light or dark theme before the page paints, so the page doesn't flash the wrong theme.
 
-When `artisanpack-ui/seo` is installed, the storefront hands its JSON-LD to the SEO package instead of printing it, so your layout also needs `<x-seo:schema />` in `<head>` (the package layout includes it). See [SEO](Seo).
+When `artisanpack-ui/seo` is installed, the storefront hands its JSON-LD to the SEO package instead of printing it, so your layout also needs `<x-seo:schema />` in `<head>` (the package layout includes it). See [SEO](../seo.md).
 
 ## 1. Standalone layout
 
-`ecommerce-storefront::layouts.app` is used unless you configure another. It is built from `x-artisanpack-nav` and a plain `<main>` (the storefront has no sidebar, so it doesn't use `x-artisanpack-main` and its drawer toggle) and includes:
+`ecommerce-storefront::layouts.app` is used unless you configure another. It is built on the design system: the sticky `x-artisanpack-navbar`, a plain `<main>`, and a footer. Header, content, and footer share one column 1232px wide, with 24px gutters (16px below 768px). It includes:
 
 - `<html dir>` set from the app locale (see [Right-to-left languages](#right-to-left-languages));
-- a "Skip to content" link;
-- a sticky header with the store name (`app.name`) linking to the catalog, a "Shop" link, the search box (a search icon linking to the search page on phones), the header actions, and the theme toggle. On a 320px screen the actions wrap instead of scrolling sideways;
-- a footer with the copyright line and a "Find an order" link to the order lookup;
-- your Vite entries (see [Front-End Setup](Installation-Front-End#which-entries-the-storefront-loads)), `@livewireStyles`, `@livewireScripts`, the `head`, `styles`, and `scripts` stacks, and the global partial.
+- "Skip to content", the first focusable element on the page, shown when it has focus;
+- the header: the store's mark (the initials of `app.name`) and name linking to the catalog, the store navigation (see [Store navigation](#store-navigation)), the search box, and the header actions. Below 768px a menu button before the mark opens the store navigation in a drawer, the search box becomes a search icon linking to the search page, and the currency switcher moves to the footer. On a 320px screen the actions wrap instead of scrolling sideways;
+- the footer: the mark, name, and `storefront.tagline` (when set), the Shop, Help, and Account link columns, then the copyright line, the currency switcher, and the theme toggle;
+- your Vite entries (see [Front-End Setup](front-end.md#which-entries-the-storefront-loads)), `@livewireStyles`, `@livewireScripts`, the `head`, `styles`, and `scripts` stacks, and the global partial.
 
-Links to routes that aren't registered (catalog, search, lookup) are left out. The page title is the page's `title` section followed by `· {app.name}`.
+Links to routes that aren't registered (catalog, search, lookup, sign-in, account) are left out. The page title is the page's `title` section followed by `· {app.name}`.
+
+### Store navigation
+
+The header lists "Shop all" (the catalog), then the first `storefront.nav_categories` top-level categories (3 by default; 0 for none). The link for the page the shopper is on is marked current: "Shop all" on the catalog, and a category on its own page or any page under it. The footer's Shop column lists "All products" and the same categories; Help has "Find an order"; Account has "Sign in" (or "Account" when signed in), "Orders", and "Addresses".
+
+Change the header links with `ap.ecommerceStorefrontLivewire.layout.navigation` (a list of `label`, `url`, and `current`), and the footer columns with `ap.ecommerceStorefrontLivewire.layout.footerLinks` (`key => [ 'title' => …, 'links' => [ [ 'label' => …, 'url' => … ], … ] ]`):
+
+```php
+addFilter( 'ap.ecommerceStorefrontLivewire.layout.navigation', function ( array $links ): array {
+    $links[] = [ 'label' => __( 'Journal' ), 'url' => url( '/journal' ), 'current' => request()->is( 'journal*' ) ];
+
+    return $links;
+} );
+
+addFilter( 'ap.ecommerceStorefrontLivewire.layout.footerLinks', function ( array $columns ): array {
+    $columns['help']['links'][] = [ 'label' => __( 'Shipping & returns' ), 'url' => url( '/shipping' ) ];
+
+    return $columns;
+} );
+```
+
+Links without a label or URL are dropped, and so is a column with no links. Both filters only affect the package layout.
+
+### Checkout header
+
+A page that sets `@section( 'storefront-chrome', 'checkout' )` gets a slim secure header in place of the store header (`ecommerce-storefront::partials.header.checkout`: the store's mark and name, "Secure checkout" from 640px, and "Back to cart") and no store navigation or footer. The checkout page sets it. A host layout can read the same section to do the same.
 
 ### Header actions
 
@@ -46,7 +74,7 @@ The header's action buttons run through the `ap.ecommerceStorefrontLivewire.head
 | Key | View | Shows |
 | --- | --- | --- |
 | `currency` | `ecommerce-storefront::partials.header.currency` | The currency switcher, only when the store sells in more than one currency |
-| `account` | `ecommerce-storefront::partials.header.account` | "Account" for signed-in shoppers, else "Sign in" to `auth.login_route` |
+| `account` | `ecommerce-storefront::partials.header.account` | A user icon named "Account" for signed-in shoppers, else "Sign in" to `auth.login_route` |
 | `cart` | `ecommerce-storefront::partials.header.cart` | The cart button and count; opens the cart drawer |
 
 Add, replace, or remove entries from a service provider's `boot()`:
@@ -62,7 +90,7 @@ addFilter( 'ap.ecommerceStorefrontLivewire.header.actions', function ( array $ac
 } );
 ```
 
-A view name that doesn't exist is skipped. The filter only affects the package layout. See [Hooks Reference](Extending-Hooks-Reference).
+A view name that doesn't exist is skipped. The filter only affects the package layout. See [Hooks](../reference/hooks.md).
 
 To change the markup itself, publish the views and edit `resources/views/vendor/ecommerce-storefront/layouts/app.blade.php`, keeping the contract above.
 
@@ -85,6 +113,7 @@ and make it meet the contract. A minimal example:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield( 'title' ) &middot; {{ config( 'app.name' ) }}</title>
+    @apuiThemeScript
     @vite( [ 'resources/css/app.css', 'resources/js/app.js' ] )
     @livewireStyles
     @stack( 'head' )
@@ -126,7 +155,7 @@ Your layout replaces the package header, so it has no search box or cart button 
 
 The search partial shows the search box with live suggestions from the `md` breakpoint up, and a search icon linking to the search page below it, so phones keep a way to search. Use `<x-artisanpack-ec-search-box />` on its own if you want only the box.
 
-If a page shows more than one search box, give each its own `input-id` (the default is `ecommerce-header-search`). See [Blade Components](Extending-Blade-Components).
+If a page shows more than one search box, give each its own `input-id` (the default is `ecommerce-header-search`). See [Blade Components](../extending/blade-components.md).
 
 ## 3. Component layouts
 
@@ -160,7 +189,7 @@ The wrapper passes the page title to the component as its `title` prop and puts 
 
 ## Right-to-left languages
 
-The standalone layout sets `<html dir="rtl">` when the app locale's language is in `storefront.rtl_locales` (`ar`, `he`, `fa`, and `ur` by default; see [Configuration](Installation-Configuration#storefront-routes)). In your own layout, set `dir` the same way, as in the example above:
+The standalone layout sets `<html dir="rtl">` when the app locale's language is in `storefront.rtl_locales` (`ar`, `he`, `fa`, and `ur` by default; see [Configuration](configuration.md#storefront-routes)). In your own layout, set `dir` the same way, as in the example above:
 
 ```blade
 <html lang="{{ str_replace( '_', '-', app()->getLocale() ) }}" dir="{{ \ArtisanPackUI\EcommerceStorefrontLivewire\Support\TextDirection::for() }}">
@@ -176,13 +205,13 @@ The host owns the sign-in screen, so the storefront can't add its "Ordered as a 
 @include( 'ecommerce-storefront::partials.order-lookup-link' )
 ```
 
-It renders nothing when the order lookup route isn't registered.
+It renders muted text with a muted design-system link, so it sits quietly under a sign-in form, and nothing at all when the order lookup route isn't registered.
 
 ## The global partial
 
 `ecommerce-storefront::partials.global` renders the storefront's page-wide pieces:
 
-- the toast container, plus any toast flashed for this page;
+- the toaster (`<x-artisanpack-ec-toaster>`: toasts stack at the top end from 768px and along the bottom on a phone), plus any toast flashed for this page;
 - the slide-out cart drawer (`cart.after_add` set to `drawer` opens it after "Add to cart");
 - the cart merge prompt, shown after sign-in when the cart built as a guest and the account's cart are in different currencies (same-currency carts merge on their own).
 
@@ -190,4 +219,4 @@ Include it once, after the content. It is wrapped in `@once`, so it renders once
 
 ## Visual-editor templates
 
-With `artisanpack-ui/visual-editor` and `artisanpack-ui/cms-framework` installed and `visual_editor.templates` on, the catalog, category, tag, product, search, cart, and checkout pages render through a saved visual-editor template when one exists. The template replaces only the page's `content` section: the page still extends your configured layout, so the header, footer, global partial, and `head` tags stay the same. With no saved template, pages render as usual. See [Templates](Visual-Editor-Templates).
+With `artisanpack-ui/visual-editor` and `artisanpack-ui/cms-framework` installed and `visual_editor.templates` on, the catalog, category, tag, product, search, cart, and checkout pages render through a saved visual-editor template when one exists. The template replaces only the page's `content` section: the page still extends your configured layout, so the header, footer, global partial, and `head` tags stay the same. With no saved template, pages render as usual. See [Templates](../visual-editor/templates.md).

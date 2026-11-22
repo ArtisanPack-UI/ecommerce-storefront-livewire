@@ -86,7 +86,7 @@ class ProductGridBlock extends StorefrontBlock
                 'type'      => 'string',
                 'enum'      => ProductGrid::SORTS,
                 'default'   => 'newest',
-                'apControl' => [ 'control' => 'select', 'label' => __( 'Sort by' ), 'options' => self::options( [
+                'apControl' => [ 'control' => 'select', 'label' => __( 'Sort by' ), 'help' => __( 'Not used for "Newest" or "Hand-picked".' ), 'options' => self::options( [
                     'newest'     => __( 'Newest' ),
                     'price'      => __( 'Price: low to high' ),
                     '-price'     => __( 'Price: high to low' ),

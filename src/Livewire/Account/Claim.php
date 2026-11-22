@@ -29,6 +29,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -39,10 +40,13 @@ use Throwable;
  * §7.5, S30). They give one order's number and shipping postcode; the
  * engine's `CustomerClaimService` checks them against an unclaimed guest
  * order under the account's email and, when they match, claims every guest
- * order under that email. The shopper then lands on their order history.
+ * order under that email. A success Alert then says which order (or how
+ * many) joined the account, with a link to the order history.
  *
- * The account's email must be verified (`OrderAccess::canClaim()`): a
- * claim takes over every guest order under that email. By default
+ * The account's email must be verified (`OrderAccess::canClaim()`), and
+ * the customer record's email must be that verified email
+ * (`OrderAccess::claimEmail()`): a claim takes over every guest order
+ * under the record's email. By default
  * (`account.claim_requires_verified_email`) a user model that doesn't
  * implement `MustVerifyEmail` can't claim at all.
  *
@@ -90,6 +94,18 @@ class Claim extends Component
     public ?string $failure = null;
 
     /**
+     * What the last claim added: how many orders, and the number the
+     * shopper entered (the engine matches it exactly). Shown as the
+     * success Alert above the form.
+     *
+     * @since 2.0.0
+     *
+     * @var array{count: int, number: string}|null
+     */
+    #[Locked]
+    public ?array $claimed = null;
+
+    /**
      * Claims the shopper's guest orders.
      *
      * @since 1.0.0
@@ -101,6 +117,7 @@ class Claim extends Component
         $this->newErrorSummary();
         $this->resetErrorBag();
         $this->failure = null;
+        $this->claimed = null;
 
         $this->orderNumber = trim( $this->orderNumber );
         $this->postalCode  = trim( $this->postalCode );
@@ -147,7 +164,9 @@ class Claim extends Component
             report( $exception );
         }
 
-        if ( null === $customer ) {
+        // The engine claims under the customer record's email, which can be
+        // older than the user's verified one: only claim when they match.
+        if ( null === $customer || null === OrderAccess::claimEmail( $user, $customer ) ) {
             $this->failure = __( 'Your account can\'t claim orders yet. Verify your email address and try again.' );
 
             return;
@@ -177,11 +196,7 @@ class Claim extends Component
 
         $count = $outcome instanceof Collection ? $outcome->count() : 0;
 
-        $this->flashToastSuccess( trans_choice( ':count order added to your account|:count orders added to your account', $count, [ 'count' => $count ] ) );
-
-        $this->redirect(
-            Route::has( 'artisanpack.ecommerce.account.orders.index' ) ? route( 'artisanpack.ecommerce.account.orders.index' ) : url( '/' ),
-        );
+        $this->claimed = [ 'count' => $count, 'number' => $this->orderNumber ];
     }
 
     /**
@@ -193,7 +208,10 @@ class Claim extends Component
      */
     public function render(): View
     {
-        return view( 'ecommerce-storefront::livewire.account.claim' );
+        return view( 'ecommerce-storefront::livewire.account.claim', [
+            'fieldIds'  => $this->fieldIds(),
+            'ordersUrl' => Route::has( 'artisanpack.ecommerce.account.orders.index' ) ? route( 'artisanpack.ecommerce.account.orders.index' ) : null,
+        ] );
     }
 
     /**
@@ -219,5 +237,24 @@ class Claim extends Component
 
             return __( 'We couldn\'t claim your orders right now. Try again in a moment.' );
         }
+    }
+
+    /**
+     * The form's field ids, by error key: prefixed and unique to this
+     * component instance, so they can't collide with the host page's own
+     * fields (or a second copy of this form), and never dotted.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    protected function fieldIds(): array
+    {
+        $base = 'ec-account-claim-' . preg_replace( '/[^A-Za-z0-9_-]+/', '', (string) $this->getId() ) . '-';
+
+        return [
+            'orderNumber' => $base . 'number',
+            'postalCode'  => $base . 'postcode',
+        ];
     }
 }

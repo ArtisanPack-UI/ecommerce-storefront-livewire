@@ -56,10 +56,10 @@ it( 'names each address in its buttons, so they differ for screen readers', func
 
     $html = Livewire::test( Addresses::class )->html();
 
-    expect( $html )->toContain( 'Edit<span class="sr-only">: Home, 9 Ship Lane' )
-        ->toContain( 'Edit<span class="sr-only">: 4 Bill Road' )
-        ->toContain( 'Delete<span class="sr-only">: Home, 9 Ship Lane' )
-        ->toContain( 'Use for shipping<span class="sr-only">: 4 Bill Road' );
+    expect( $html )->toContain( 'Edit<span class="apui-sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Edit<span class="apui-sr-only">: 4 Bill Road' )
+        ->toContain( 'Delete<span class="apui-sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Use for shipping<span class="apui-sr-only">: 4 Bill Road' );
 } );
 
 it( 'shows an empty state when the shopper has no addresses, even without a customer record', function (): void {
@@ -149,7 +149,7 @@ it( 'validates the address before saving', function (): void {
         ->assertHasErrors( [ 'form.address1', 'form.city', 'form.postal_code', 'form.region_code', 'form.label' ] )
         ->assertSet( 'editing', true )
         ->assertSeeHtml( 'wire:key="ec-account-address-errors-1"' )
-        ->assertSee( 'There are 5 problems to fix:' )
+        ->assertSee( 'Fix 5 things to continue' )
         ->assertSeeHtml( 'data-field-key="form.city"' );
 
     expect( $customer->addresses()->count() )->toBe( 0 );
@@ -300,3 +300,26 @@ it( 'rate limits deleting addresses and changing defaults', function ( string $a
             ->and( (bool) $second->refresh()->is_default_billing )->toBeFalse();
     }
 } )->with( [ 'delete', 'makeDefault' ] );
+
+it( 'won\'t make a customer record for a user who hasn\'t verified their email', function (): void {
+    $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email' => 'squat@example.com' ] )->id );
+    $this->actingAs( $user );
+
+    $component = Livewire::test( Addresses::class )
+        ->call( 'add' )
+        ->set( 'form', checkoutAddress() + [ 'label' => '' ] )
+        ->call( 'save' )
+        ->assertSet( 'editing', true );
+
+    expect( Customer::query()->count() )->toBe( 0 )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Verify your email address' );
+} );
+
+it( 'gives the label field an id unique to the component and without dots', function (): void {
+    shopper();
+
+    $component = Livewire::test( Addresses::class )->call( 'add' );
+    $id        = 'ec-account-address-' . $component->id() . '-label';
+
+    $component->assertSeeHtml( 'id="' . $id . '"' )->assertDontSeeHtml( 'id="form.label"' );
+} );

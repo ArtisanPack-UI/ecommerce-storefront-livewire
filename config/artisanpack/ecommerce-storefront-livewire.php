@@ -25,6 +25,12 @@ return [
     | `rtl_locales` lists the languages written right to left: the standalone
     | layout sets `<html dir="rtl">` for them (see Support\TextDirection).
     |
+    | `tagline` is the line under the store name in the standalone layout's
+    | footer (null leaves it out). `nav_categories` is how many top-level
+    | categories the header and footer list after "Shop all" (0 for none);
+    | change the links with the `ap.ecommerceStorefrontLivewire.layout.*`
+    | filters (see Support\StorefrontNavigation).
+    |
     */
     'storefront' => [
         'routes_enabled' => true,
@@ -32,6 +38,8 @@ return [
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
         'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
+        'tagline'        => null,
+        'nav_categories' => 3,
     ],
 
     /*
@@ -60,15 +68,17 @@ return [
     | Customer authentication
     |--------------------------------------------------------------------------
     |
-    | The host owns sign-in, registration, and the profile and password
-    | screens. The storefront links to these route names (a missing route
-    | hides its link) and creates accounts at checkout through the action
+    | The host owns sign-in, registration, sign-out, and the profile and
+    | password screens. The storefront links to these route names (a missing
+    | route hides its link; the account's "Sign out" posts to
+    | `logout_route`) and creates accounts at checkout through the action
     | class, which implements Contracts\CreatesCustomerAccounts.
     |
     */
     'auth' => [
         'login_route'           => 'login',
         'register_route'        => 'register',
+        'logout_route'          => 'logout',
         'profile_route'         => 'settings.profile',
         'password_route'        => 'settings.password',
         'create_account_action' => 'ArtisanPackUI\\EcommerceStorefrontLivewire\\Actions\\CreateCustomerAccount',
@@ -86,6 +96,9 @@ return [
     | `filter_attributes` lists the attribute keys shoppers can filter by
     | (e.g. [ 'colour', 'size' ]); null offers every attribute.
     |
+    | `description` is the line under the catalog page's "All products"
+    | title (null leaves it out).
+    |
     */
     'catalog' => [
         'per_page'          => 24,
@@ -93,6 +106,23 @@ return [
         'default_sort'      => 'newest',
         'show_stock_count'  => false,
         'filter_attributes' => null,
+        'description'       => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    |
+    | `keyboard_shortcut` lets shoppers press "/" to jump to the header
+    | search box (only when focus isn't in a text field or another
+    | widget). It is a single-character shortcut, so WCAG 2.1.4 requires a
+    | way to turn it off: set it to false to drop the shortcut, its
+    | `aria-keyshortcuts` and the "/" hint.
+    |
+    */
+    'search' => [
+        'keyboard_shortcut' => true,
     ],
 
     /*
@@ -130,9 +160,31 @@ return [
     | quick add): `drawer` opens the cart drawer, `toast` shows a toast,
     | `none` only updates the cart count.
     |
+    | `free_shipping_threshold` is the order amount, after discounts, from
+    | which shipping is free, for the cart drawer's progress meter: minor
+    | units in the store's base currency (15000) or a map of per-currency
+    | amounts (['USD' => 15000, 'EUR' => 14000]), as the engine's
+    | free-shipping method takes it. Null shows the meter only when a
+    | promotion has made shipping free.
+    |
     */
     'cart' => [
-        'after_add' => 'drawer',
+        'after_add'               => 'drawer',
+        'free_shipping_threshold' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Product page
+    |--------------------------------------------------------------------------
+    |
+    | `variation_select_after` is how many values a variation attribute can
+    | have and still be drawn as swatches on the variable product form;
+    | longer lists use a Select. 0 always uses swatches.
+    |
+    */
+    'product' => [
+        'variation_select_after' => 8,
     ],
 
     /*

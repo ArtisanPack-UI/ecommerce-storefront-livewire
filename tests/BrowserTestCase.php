@@ -29,6 +29,7 @@ abstract class BrowserTestCase extends TestCase
      */
     public const VITE_ENTRIES = [
         'tests/Browser/workbench/resources/css/app.css',
+        'tests/Browser/workbench/resources/js/app.js',
     ];
 
     /**

@@ -1,0 +1,6447 @@
+/*
+ * ecommerce-storefront-livewire: the styles the design system has no
+ * component for. Tokens only (--apui-*), logical properties throughout so
+ * the storefront mirrors in right-to-left layouts, and no Tailwind or
+ * DaisyUI.
+ *
+ * Inlined by resources/views/partials/styles.blade.php, so a host needs no
+ * build step for them.
+ */
+
+@layer apui.components {
+    /*
+     * Layout (#129): the page fills the viewport so the footer sits at the
+     * bottom. Header, content and footer share one 1232px column with 24px
+     * gutters (16px below 768px).
+     */
+    .ec-storefront {
+        --ec-content-max: 1232px;
+        --ec-gutter: 16px;
+
+        display: flex;
+        flex-direction: column;
+        min-block-size: 100vh;
+        min-block-size: 100dvh;
+        margin: 0;
+        background: var(--apui-surface-page);
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-sans);
+        -webkit-font-smoothing: antialiased;
+    }
+
+    @media (min-width: 768px) {
+        .ec-storefront {
+            --ec-gutter: 24px;
+        }
+    }
+
+    /*
+     * The sticky header would cover a control the browser scrolls into view
+     * at the top edge (Shift+Tab up a long page, a fragment or error-summary
+     * link). Scroll padding keeps it below the header (WCAG 2.4.11). The
+     * actions can wrap below 768px, so the bar may grow there.
+     */
+    html:has(> body.ec-storefront .apui-navbar[data-sticky]) {
+        scroll-padding-block-start: calc(var(--apui-navbar-height) + 16px);
+    }
+
+    @media (max-width: 767.98px) {
+        html:has(> body.ec-storefront .apui-navbar[data-sticky]) {
+            scroll-padding-block-start: calc(var(--apui-navbar-height) + 32px);
+        }
+    }
+
+    /* "Skip to content": hidden until focused, then above the sticky header. */
+    .ec-skip-link:not(:focus) {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .ec-skip-link:focus {
+        position: fixed;
+        inset-block-start: 8px;
+        inset-inline-start: 8px;
+        z-index: calc(var(--apui-z-sticky) + 1);
+    }
+
+    /*
+     * Header: the Navbar's content in the page column. The search sits at the
+     * end, before the actions. Below 768px the store links give way to the
+     * menu button, the search is an icon, and the actions wrap rather than
+     * scroll the page sideways on a 320px screen (WCAG 1.4.10).
+     */
+    .ec-storefront .ec-header.apui-navbar {
+        padding-inline: max(var(--ec-gutter), calc((100% - var(--ec-content-max)) / 2));
+    }
+
+    .ec-header [data-scope="navbar"][data-part="brand"] {
+        flex: 0 1 auto;
+        gap: 4px;
+        min-inline-size: 0;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="links"] {
+        display: none;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="search"] {
+        display: flex;
+        justify-content: flex-end;
+        margin-inline-start: auto;
+    }
+
+    .ec-header [data-scope="navbar"][data-part="actions"] {
+        flex: 0 1 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    /* The search takes the end of the bar; the actions follow it (without a search, they keep the end themselves). */
+    .ec-header [data-scope="navbar"][data-part="search"] + [data-scope="navbar"][data-part="actions"] {
+        margin-inline-start: 0;
+    }
+
+    .ec-header__menu {
+        display: inline-flex;
+    }
+
+    @media (max-width: 767.98px) {
+        .ec-header [data-scope="navbar"][data-part="search"] {
+            flex: none;
+        }
+
+        .ec-header .ec-currency {
+            display: none;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .ec-header [data-scope="navbar"][data-part="links"] {
+            display: flex;
+        }
+
+        .ec-header__menu {
+            display: none;
+        }
+    }
+
+    /*
+     * The store's mark (its initials on the inverse surface) and name. Like
+     * the other custom controls here, its focus ring is a box shadow over a
+     * transparent outline, which forced-colors mode draws instead.
+     */
+    .ec-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-inline-size: 0;
+        border-radius: var(--apui-radius-xs);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-brand:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-brand__mark {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        inline-size: 32px;
+        block-size: 32px;
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-inverse);
+        color: var(--apui-text-inverse);
+        font-size: var(--apui-type-label-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        letter-spacing: 0.02em;
+    }
+
+    .ec-brand__name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* The store navigation in the menu drawer, below 768px. */
+    .ec-menu-list {
+        display: grid;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-menu-list__link {
+        display: flex;
+        align-items: center;
+        min-block-size: 44px;
+        padding-inline: 12px;
+        border-radius: var(--apui-radius-md);
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-menu-list__link:hover {
+        background: var(--apui-state-hover);
+    }
+
+    .ec-menu-list__link[aria-current="page"] {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-menu-list__link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    /* The page content. */
+    .ec-main {
+        flex: 1 0 auto;
+    }
+
+    .ec-main__content {
+        box-sizing: border-box;
+        inline-size: 100%;
+        max-inline-size: calc(var(--ec-content-max) + 2 * var(--ec-gutter));
+        margin-inline: auto;
+        padding-block: 24px 64px;
+        padding-inline: var(--ec-gutter);
+        outline: none;
+    }
+
+    /*
+     * Footer: the brand and tagline beside the link columns (the brand
+     * above them, two columns to a row, below 768px), then the copyright and
+     * the currency and theme controls after a divider.
+     */
+    .ec-footer {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-footer__inner {
+        box-sizing: border-box;
+        display: grid;
+        gap: 32px;
+        inline-size: 100%;
+        max-inline-size: calc(var(--ec-content-max) + 2 * var(--ec-gutter));
+        margin-inline: auto;
+        padding-block: 48px 32px;
+        padding-inline: var(--ec-gutter);
+    }
+
+    .ec-footer__top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 32px 24px;
+    }
+
+    .ec-footer__about {
+        display: grid;
+        flex: 1 1 100%;
+        align-content: start;
+        justify-items: start;
+        gap: 12px;
+    }
+
+    .ec-footer__nav {
+        display: flex;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        gap: 32px 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-footer__column {
+        flex: 1 1 calc(50% - 12px);
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 768px) {
+        .ec-footer__about {
+            flex: 0 1 36%;
+            margin-inline-end: auto;
+        }
+
+        .ec-footer__nav {
+            flex: 1 1 0;
+            flex-wrap: nowrap;
+        }
+
+        .ec-footer__column {
+            flex: 1 1 0;
+        }
+    }
+
+    .ec-footer__tagline {
+        max-inline-size: 36ch;
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-footer__title {
+        margin: 0 0 12px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-footer__links {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-footer__link {
+        border-radius: var(--apui-radius-xs);
+        color: var(--apui-text-muted);
+        text-decoration: none;
+        outline: none;
+    }
+
+    .ec-footer__link:hover {
+        color: var(--apui-text-default);
+        text-decoration: underline;
+    }
+
+    .ec-footer__link:focus-visible {
+        color: var(--apui-text-default);
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-footer__bottom {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-block-start: 24px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-footer__copyright {
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-footer__settings {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Money (#75): tabular figures that never wrap, each isolated left to right. */
+    .ec-money {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-money[data-tone="muted"] {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-money__equivalent {
+        margin-inline-start: 4px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /* Price (#74): weight 500, tabular figures; the size follows the context. */
+    .ec-price {
+        --ec-price-size: 15px;
+        --ec-price-line: 22px;
+
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 2px 8px;
+        color: var(--apui-text-default);
+        font-size: var(--ec-price-size);
+        line-height: var(--ec-price-line);
+    }
+
+    .ec-price[data-size="sm"] {
+        --ec-price-size: var(--apui-type-body-sm-font-size);
+        --ec-price-line: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-price[data-size="lg"] {
+        --ec-price-size: 23px;
+        --ec-price-line: 30px;
+    }
+
+    .ec-price__amount {
+        font-weight: var(--apui-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+
+    /* A range may break after its dash on a narrow card. */
+    .ec-price__amount[aria-hidden="true"] {
+        white-space: normal;
+    }
+
+    .ec-price__amount[data-tone="sale"] {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-price__amount[data-tone="free"] {
+        color: var(--apui-color-success-text);
+    }
+
+    .ec-price__was {
+        color: var(--apui-text-muted);
+        font-size: max(0.8em, 13px);
+        font-weight: var(--apui-font-weight-regular);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        text-decoration: line-through;
+    }
+
+    .ec-price__from {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-price__from .ec-price__amount {
+        color: var(--apui-text-default);
+        font-size: var(--ec-price-size);
+    }
+
+    .ec-price__from .ec-price__amount[data-tone="sale"] {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-price__note,
+    .ec-price[data-price="unavailable"] {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /* Stock status (#76): the compact form for product cards. */
+    .ec-stock[data-variant="ghost"] {
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /* Product card (#73) */
+    .ec-product-card {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-product-card:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-product-card:has(.ec-product-card__name a:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-product-card > .ec-product-card__media {
+        position: relative;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-product-card__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-product-card[data-sold-out] .ec-product-card__media > img {
+        opacity: 0.6;
+    }
+
+    .ec-product-card__placeholder {
+        display: grid;
+        place-items: center;
+        inline-size: 100%;
+        block-size: 100%;
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-product-card__placeholder svg {
+        inline-size: 40px;
+        block-size: 40px;
+    }
+
+    .ec-product-card__badges {
+        position: absolute;
+        inset-block-start: 12px;
+        inset-inline-start: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        pointer-events: none;
+    }
+
+    .ec-product-card__actions {
+        position: absolute;
+        z-index: 1;
+        inset-block-start: 10px;
+        inset-inline-end: 10px;
+        display: flex;
+        gap: 4px;
+    }
+
+    .ec-product-card__body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 6px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-product-card__category {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-product-card__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-product-card__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the card: one link per product. */
+    .ec-product-card__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    .ec-product-card__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 12px;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-product-card__meta :where(a, button) {
+        position: relative;
+        z-index: 1;
+    }
+
+    .ec-product-card__cta {
+        position: relative;
+        z-index: 1;
+        margin-block-start: auto;
+        padding-block-start: 8px;
+    }
+
+    /* "Choose options" leads to the product page through the card's link. */
+    .ec-product-card__cta[data-cta="options"] {
+        z-index: auto;
+        pointer-events: none;
+    }
+
+    .ec-product-card__cta .apui-button {
+        inline-size: 100%;
+    }
+
+    /*
+     * Rating summary (#77): the design system's read-only Rating, then the
+     * average in label text and the count muted. One link when it links to
+     * the reviews; the compact form (cards) is one star and "4.8 (126)".
+     */
+    .ec-rating {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-sm-font-size);
+        line-height: var(--apui-type-label-sm-line-height);
+        text-decoration: none;
+    }
+
+    .ec-rating[data-compact] {
+        gap: 4px;
+    }
+
+    .ec-rating__stars {
+        display: inline-flex;
+    }
+
+    /* The summary writes the average itself, in the store's locale. */
+    .ec-rating__stars [data-scope="rating"][data-part="value"] {
+        display: none;
+    }
+
+    .ec-rating__average {
+        font-weight: var(--apui-font-weight-medium);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-rating__count,
+    .ec-rating--empty {
+        color: var(--apui-text-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* "31 reviews" keeps its own direction inside a right-to-left row. */
+    .ec-rating__count {
+        unicode-bidi: plaintext;
+    }
+
+    a.ec-rating .ec-rating__count {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    a.ec-rating:hover .ec-rating__count {
+        color: var(--apui-text-default);
+    }
+
+    a.ec-rating:focus-visible {
+        border-radius: var(--apui-radius-sm);
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-rating__star {
+        display: inline-flex;
+        color: var(--apui-color-accent);
+    }
+
+    .ec-rating__star svg {
+        inline-size: var(--apui-icon-size-sm);
+        block-size: var(--apui-icon-size-sm);
+        fill: currentcolor;
+        stroke: var(--apui-color-accent-border);
+        stroke-width: 1.5;
+    }
+
+    /*
+     * Swatches (#78): native radios or checkboxes drawn as selectable chips,
+     * 40px tall, with a 24px round color or image dot before the name; text
+     * values (sizes) are the chip alone, at least 56px wide and centered.
+     */
+    .ec-swatches {
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-swatches__legend {
+        margin-block-end: 8px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-swatches__chosen {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-swatches__options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ec-swatch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-sizing: border-box;
+        min-block-size: 40px;
+        min-inline-size: 56px;
+        padding-inline: 14px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        cursor: pointer;
+        transition:
+            background-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+            border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+    }
+
+    .ec-swatch[data-dot] {
+        padding-inline: 7px 14px;
+    }
+
+    .ec-swatch:hover {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-swatch__input {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        opacity: 0;
+    }
+
+    /*
+     * The selected value: a 2px primary border (the 1px border plus an inset
+     * ring, so nothing shifts) on the soft fill. The primary colour keeps
+     * 3:1 against the surface and the unselected border in both themes, and
+     * the thicker edge tells it apart without relying on colour (WCAG
+     * 1.4.11, 1.4.1).
+     */
+    .ec-swatch:has(.ec-swatch__input:checked) {
+        border-color: var(--apui-color-primary);
+        background: var(--apui-selected-bg);
+        color: var(--apui-color-primary-soft-foreground);
+        box-shadow: inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary);
+    }
+
+    .ec-swatch:has(.ec-swatch__input:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-swatch:has(.ec-swatch__input:checked):has(.ec-swatch__input:focus-visible) {
+        box-shadow:
+            inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary),
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    /* Unavailable values stay visible, faded and struck through. */
+    .ec-swatch:has(.ec-swatch__input:disabled) {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .ec-swatch:has(.ec-swatch__input:disabled) .ec-swatch__label {
+        text-decoration: line-through;
+    }
+
+    .ec-swatch:has(.ec-swatch__input:disabled):hover {
+        background: var(--apui-surface-default);
+    }
+
+    /* A sold-out value the shopper can still pick, to sign up for it. */
+    .ec-swatch[data-sold-out] .ec-swatch__label {
+        text-decoration: line-through;
+    }
+
+    .ec-swatch__dot {
+        flex: none;
+        box-sizing: border-box;
+        inline-size: 24px;
+        block-size: 24px;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-full);
+        object-fit: cover;
+    }
+
+    /* A value keeps its own direction ("14 oz") inside a right-to-left row. */
+    .ec-swatch__label {
+        unicode-bidi: plaintext;
+    }
+
+    .ec-swatch__count {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-swatches:focus-visible {
+        border-radius: var(--apui-radius-md);
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-swatches__required {
+        margin-inline-start: 4px;
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-swatches[data-invalid] .ec-swatch {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-swatches__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 8px 0 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-swatches__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
+    @media (forced-colors: active) {
+        .ec-swatch:has(.ec-swatch__input:checked) {
+            outline: 2px solid Highlight;
+            outline-offset: 1px;
+        }
+
+        .ec-swatch__dot {
+            forced-color-adjust: none;
+        }
+    }
+
+    /*
+     * Quantity stepper (#79): a design-system Input whose box holds the
+     * minus and plus buttons around a centered number. 132px wide on the
+     * product page (lg), narrower in the cart and drawer.
+     */
+    .ec-quantity {
+        --ec-quantity-width: 120px;
+
+        display: inline-flex;
+        flex-direction: column;
+        inline-size: max-content;
+    }
+
+    .ec-quantity[data-size="lg"] {
+        --ec-quantity-width: 132px;
+    }
+
+    .ec-quantity[data-size="sm"] {
+        --ec-quantity-width: 108px;
+    }
+
+    .ec-quantity[data-size="xs"] {
+        --ec-quantity-width: 96px;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="box"] {
+        box-sizing: border-box;
+        inline-size: var(--ec-quantity-width);
+        gap: 0;
+        padding-inline: 2px;
+    }
+
+    .ec-quantity :is([data-scope="input"][data-part="prefix"], [data-scope="input"][data-part="suffix"]) {
+        display: inline-flex;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="control"] {
+        min-inline-size: 0;
+        padding-inline: 0;
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .ec-quantity [data-scope="input"][data-part="control"]::-webkit-inner-spin-button,
+    .ec-quantity [data-scope="input"][data-part="control"]::-webkit-outer-spin-button {
+        margin: 0;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    /* The error may run wider than the stepper. */
+    .ec-quantity [data-scope="input"][data-part="error"] {
+        max-inline-size: 24rem;
+    }
+
+    .ec-quantity .apui-button[aria-disabled="true"] {
+        color: var(--apui-text-disabled);
+        cursor: not-allowed;
+    }
+
+    /*
+     * Gallery (#80): the square main image (radius lg, hairline border) with
+     * the counter at the top start and Zoom at the bottom end, then the
+     * thumbnails in four columns (radius md); the current one has a 2px
+     * primary ring past a 2px gap in the page color. From 640px up the
+     * thumbnails can sit in a column beside the image.
+     */
+    /* The lightbox's teleported layer adds no box of its own. */
+    .ec-gallery__layer {
+        display: contents;
+    }
+
+    .ec-gallery__layout {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ec-gallery__stage,
+    .ec-gallery--empty {
+        position: relative;
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1;
+        inline-size: 100%;
+        overflow: hidden;
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-radius-lg);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-gallery--empty {
+        display: grid;
+        place-items: center;
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-gallery--empty svg {
+        inline-size: 48px;
+        block-size: 48px;
+    }
+
+    .ec-gallery__image {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: contain;
+    }
+
+    .ec-gallery[x-data] .ec-gallery__image {
+        cursor: zoom-in;
+    }
+
+    /* "1 / 4" reads left to right in every direction. */
+    .ec-gallery__counter {
+        position: absolute;
+        inset-block-start: 12px;
+        inset-inline-start: 12px;
+        direction: ltr;
+        font-variant-numeric: tabular-nums;
+        unicode-bidi: isolate;
+        pointer-events: none;
+    }
+
+    .ec-gallery__zoom.apui-button {
+        position: absolute;
+        inset-block-end: 12px;
+        inset-inline-end: 12px;
+        --apui-button-bg: var(--apui-surface-raised);
+        --apui-button-bg-hover: var(--apui-surface-sunken);
+        --apui-button-fg: var(--apui-text-default);
+        --apui-button-radius: var(--apui-radius-full);
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        box-shadow: var(--apui-elevation-overlay, var(--apui-elevation-raised));
+    }
+
+    .ec-gallery__thumbnails {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-gallery__thumbnail {
+        display: block;
+        box-sizing: border-box;
+        inline-size: 100%;
+        aspect-ratio: 1 / 1;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        cursor: pointer;
+        appearance: none;
+    }
+
+    .ec-gallery__thumbnail > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-gallery__thumbnail[aria-current="true"] {
+        border-color: transparent;
+        box-shadow:
+            0 0 0 2px var(--apui-surface-page),
+            0 0 0 4px var(--apui-color-primary);
+    }
+
+    .ec-gallery__thumbnail:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: 6px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__layout {
+            align-items: flex-start;
+        }
+
+        .ec-gallery[data-gallery-thumbnails="end"] .ec-gallery__layout {
+            flex-direction: row;
+        }
+
+        .ec-gallery[data-gallery-thumbnails="start"] .ec-gallery__layout {
+            flex-direction: row-reverse;
+        }
+
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__stage {
+            flex: 1;
+            min-inline-size: 0;
+        }
+
+        .ec-gallery:is([data-gallery-thumbnails="start"], [data-gallery-thumbnails="end"]) .ec-gallery__thumbnails {
+            display: flex;
+            flex: none;
+            flex-direction: column;
+            inline-size: 80px;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .ec-gallery__thumbnail[aria-current="true"] {
+            outline: 3px solid Highlight;
+            outline-offset: 2px;
+        }
+    }
+
+    /*
+     * Address (#81): name, street lines, city/region/postcode and country,
+     * then the phone muted, on a 22px line; in a Card when it has a title.
+     */
+    .ec-address {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-style: normal;
+        line-height: 22px;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-address__line {
+        display: block;
+    }
+
+    .ec-address__phone,
+    .ec-address--empty {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-address-card [data-scope="card"][data-part="title"] {
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    /* Account shell (#72): a 232px sidebar beside the content from 1024px. */
+    .ec-account {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__sidebar {
+        display: none;
+    }
+
+    .ec-account__content {
+        display: grid;
+        align-content: start;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__title [data-scope="page-header"][data-part="title"] {
+        font-size: var(--apui-type-heading-xl-font-size);
+        line-height: var(--apui-type-heading-xl-line-height);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-account__identity {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 8px 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-account__who {
+        min-inline-size: 0;
+    }
+
+    .ec-account__identity p {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ec-account__name {
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-account__email {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-account__signout {
+        margin: 0;
+        padding-block-start: 8px;
+    }
+
+    /* Below 1024px: who's signed in and "Sign out", above the tabs. */
+    .ec-account__bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        min-inline-size: 0;
+        margin-block-end: -12px;
+    }
+
+    .ec-account__bar-who {
+        margin: 0;
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-account__bar-signout {
+        margin: 0;
+        margin-inline-start: auto;
+    }
+
+    /* Below 1024px: a row of tabs that scrolls sideways, never the page. */
+    .ec-account__tabs {
+        min-inline-size: 0;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .ec-account__tabs ul {
+        display: flex;
+        gap: 8px;
+        margin: 0;
+        padding: 2px;
+        list-style: none;
+    }
+
+    .ec-account__tab {
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+        block-size: 32px;
+        padding-inline: 12px;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: 1;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .ec-account__tab:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-account__tab[aria-current="page"] {
+        border-color: var(--apui-selected-border, var(--apui-color-primary-border));
+        background: var(--apui-selected-bg);
+        color: var(--apui-color-primary-soft-foreground);
+    }
+
+    .ec-account__tab:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    @media (min-width: 64rem) {
+        .ec-account {
+            grid-template-columns: 232px minmax(0, 1fr);
+            gap: 32px;
+            align-items: start;
+        }
+
+        .ec-account__sidebar {
+            display: block;
+        }
+
+        .ec-account__tabs,
+        .ec-account__bar {
+            display: none;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .ec-account__tab[aria-current="page"] {
+            outline: var(--apui-border-width) solid Highlight;
+        }
+    }
+
+    /*
+     * Field (#83): the full-width wrapper, and the muted "(optional)" after
+     * an optional field's label. The control draws the label, asterisk, hint
+     * and error itself.
+     */
+    .ec-field {
+        display: block;
+        inline-size: 100%;
+        min-inline-size: 0;
+    }
+
+    .ec-field__optional {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /*
+     * Address form (#82): one column, then from 768px four tracks: names
+     * 2 + 2, street lines across, city / region / postcode at 2fr 1fr 1fr.
+     */
+    .ec-address-form__grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .ec-address-form__cell {
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-address-form__grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            column-gap: 16px;
+        }
+
+        .ec-address-form__cell[data-span="full"] {
+            grid-column: span 4;
+        }
+
+        .ec-address-form__cell[data-span="half"] {
+            grid-column: span 2;
+        }
+
+        .ec-address-form__cell[data-span="quarter"] {
+            grid-column: span 1;
+        }
+    }
+
+    /*
+     * Empty state (#84): the description stops at 44ch, and in a Card it
+     * fills the card's body.
+     */
+    .ec-empty-state [data-scope="empty-state"][data-part="description"] {
+        max-inline-size: 44ch;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-empty-state-card {
+        inline-size: 100%;
+    }
+
+    /*
+     * Add-to-cart row (#86): a 132px quantity, the button filling the rest
+     * (at least 200px) and any extra buttons, bottom-aligned; it wraps on a
+     * narrow screen.
+     */
+    .ec-add-to-cart {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ec-add-to-cart__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 12px;
+    }
+
+    .ec-add-to-cart__quantity {
+        flex: none;
+    }
+
+    .ec-add-to-cart__button {
+        flex: 1 1 200px;
+        min-inline-size: min(200px, 100%);
+    }
+
+    .ec-add-to-cart__actions {
+        display: flex;
+        flex: none;
+        gap: 8px;
+    }
+
+    .ec-add-to-cart__price {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-add-to-cart__blocked,
+    .ec-add-to-cart__error {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-add-to-cart__blocked {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-add-to-cart__error {
+        color: var(--apui-color-error-text);
+    }
+
+    /*
+     * Purchase forms (#99, #100, #101): under the product summary, the
+     * choices (swatches, selects, the grouped table) and then the shared
+     * add-to-cart row, 20px apart.
+     */
+    .ec-purchase-form {
+        display: grid;
+        gap: 20px;
+        min-inline-size: 0;
+    }
+
+    .ec-purchase-form__notice {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-purchase-form__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-purchase-form__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
+    /*
+     * Grouped table (#101): item, price and a 96px quantity per product; a
+     * product that can't be bought shows its badge and a dash. Then the
+     * running "2 items · $56.00" line, count at the start and total at the
+     * end.
+     */
+    .ec-grouped-table__item {
+        display: inline-flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-grouped-table__name {
+        unicode-bidi: plaintext;
+    }
+
+    .ec-grouped-table__quantity {
+        inline-size: 96px;
+        margin-inline-start: auto;
+    }
+
+    .ec-grouped-table__quantity input {
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-grouped-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+        min-block-size: var(--apui-type-body-md-line-height);
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-grouped-summary__total {
+        font-weight: var(--apui-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Order details (#87): the Items card (and Downloads) runs its rows edge
+     * to edge under a ruled header; below it, Addresses and payment beside
+     * the Order summary, stacking below 768px.
+     */
+    .ec-order-details {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-details__pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-order-details__pair {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-order-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 20px;
+    }
+
+    .ec-order-card--flush [data-scope="card"][data-part="body"] {
+        gap: 0;
+        padding: 0;
+    }
+
+    .ec-order-card__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+        letter-spacing: var(--apui-type-heading-sm-letter-spacing);
+    }
+
+    .ec-order-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: var(--apui-card-padding);
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-order-card__aside {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-card__footnote {
+        margin: 0;
+        padding: 12px var(--apui-card-padding) var(--apui-card-padding);
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-line.apui-list-item {
+        align-items: start;
+        padding-block: 14px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="title"],
+    .ec-order-line [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="description"] {
+        display: grid;
+        gap: 2px;
+    }
+
+    .ec-order-line [data-scope="list-item"][data-part="trailing"] {
+        align-self: center;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-line__thumb {
+        display: grid;
+        place-items: center;
+        inline-size: 64px;
+        block-size: 64px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-order-line__thumb > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-order-line__meta {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-order-line__sku {
+        font-family: var(--apui-font-family-mono);
+    }
+
+    .ec-order-line__total {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /* The Addresses and payment <dl>: two columns from 480px, one below. */
+    .ec-order-meta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px 24px;
+        margin: 0;
+    }
+
+    @media (min-width: 30rem) {
+        .ec-order-meta {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-order-meta__item {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        min-inline-size: 0;
+    }
+
+    .ec-order-meta__item > dt {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-meta__item > dd {
+        margin: 0;
+        min-inline-size: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-meta__with-icon {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-order-meta__with-icon > .apui-icon {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-order-meta__email {
+        overflow-wrap: anywhere;
+    }
+
+    /* The shopper's note on a sunken panel. */
+    .ec-order-note {
+        display: grid;
+        gap: 4px;
+        padding: 14px 16px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-order-note__label {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-note__body {
+        margin: 0;
+        color: var(--apui-text-default);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * Order totals (#88): muted labels, values at the end in tabular
+     * figures, a discount in the success tone, and the total at heading-lg
+     * weight 500 after a Divider.
+     */
+    .ec-totals {
+        display: grid;
+        gap: 14px;
+    }
+
+    .ec-totals__list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .ec-totals__row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-totals__row > dt {
+        min-inline-size: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-totals__row > dd {
+        flex: none;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
+    .ec-totals__row > dd.ec-totals__discount {
+        color: var(--apui-color-success-text);
+    }
+
+    .ec-totals__pending {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-totals__total {
+        align-items: center;
+    }
+
+    .ec-totals__total > dt {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-totals__total > dd {
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    /*
+     * Product suggestions placeholder (#90): skeleton cards the size of a
+     * product card, in the same grid as the list they stand in for.
+     */
+    .ec-suggestions {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-suggestions__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-suggestions__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-suggestions__grid[data-columns="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 48rem) {
+        .ec-suggestions__grid[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-suggestions__grid[data-columns="4"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-suggestions__grid[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-suggestions__item {
+        min-inline-size: 0;
+    }
+
+    .ec-skeleton-card {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-skeleton-card [data-scope="card"][data-part="media"] {
+        aspect-ratio: 1 / 1;
+    }
+
+    .ec-skeleton-card__media {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: 0;
+    }
+
+    .ec-skeleton-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 8px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-skeleton-card__line[data-length="short"] {
+        inline-size: 30%;
+    }
+
+    .ec-skeleton-card__line[data-length="medium"] {
+        inline-size: 45%;
+    }
+
+    .ec-skeleton-card__line[data-length="long"] {
+        inline-size: 80%;
+    }
+
+    .ec-skeleton-card__button {
+        block-size: 40px;
+        margin-block-start: 8px;
+        border-radius: var(--apui-radius-full);
+    }
+
+    /*
+     * Commerce block frame (#91): editor-only notices in a 1px dashed frame
+     * so they never read as storefront content; an error one takes the
+     * error border and an error-toned title.
+     */
+    .ec-block-notice {
+        display: grid;
+        gap: 6px;
+        padding: 16px 20px;
+        border: var(--apui-border-width) dashed var(--apui-border-default);
+        border-radius: var(--apui-radius-lg);
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-sans);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-block-notice--sample {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        margin-block-end: 16px;
+        padding: 10px 14px;
+        border-radius: var(--apui-radius-md);
+    }
+
+    .ec-block-notice--error {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-block-notice__title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-block-notice__title > .apui-icon {
+        flex: none;
+    }
+
+    .ec-block-notice--error .ec-block-notice__title {
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-block-notice__message {
+        flex: 1 1 20rem;
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    /*
+     * Header search (#92): the Input on the sunken fill with a "/" key hint,
+     * up to 440px wide from 768px; below that, a ghost icon button.
+     */
+    .ec-search-box {
+        inline-size: min(440px, 100%);
+    }
+
+    .ec-search-box.ec-header-search {
+        display: none;
+    }
+
+    @media (min-width: 768px) {
+        .ec-search-box.ec-header-search {
+            display: block;
+        }
+
+        .apui-button.ec-header-search-link {
+            display: none;
+        }
+    }
+
+    .ec-search {
+        position: relative;
+    }
+
+    .ec-search [data-scope='input'][data-part='box'] {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-search [data-scope='input'][data-part='iconEnd'] {
+        inline-size: auto;
+        block-size: auto;
+    }
+
+    /* The hint goes once the box is in use, and on touch screens with no keyboard. */
+    .ec-search:focus-within [data-scope='input'][data-part='iconEnd'],
+    .ec-search:has([role='combobox']:not(:placeholder-shown)) [data-scope='input'][data-part='iconEnd'] {
+        display: none;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+        .ec-search [data-scope='input'][data-part='iconEnd'] {
+            display: none;
+        }
+    }
+
+    .ec-search__popover {
+        position: absolute;
+        inset-block-start: calc(100% + 4px);
+        inset-inline: 0;
+        z-index: var(--apui-z-dropdown);
+        min-inline-size: 0;
+    }
+
+    .ec-search__popover[data-loading] {
+        opacity: 0.6;
+    }
+
+    .ec-search__message {
+        margin: 0;
+        padding: 8px 10px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-search__results {
+        display: grid;
+        gap: 2px;
+    }
+
+    .ec-search__option {
+        gap: 12px;
+        padding-block: 6px;
+    }
+
+    .ec-search__thumb {
+        flex: none;
+        inline-size: 36px;
+        block-size: 36px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-sm);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-search__thumb img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-search__text {
+        display: grid;
+        flex: 1;
+        min-inline-size: 0;
+    }
+
+    .ec-search__name {
+        flex: 1;
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ec-search__meta {
+        overflow: hidden;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ec-search__price {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    /* The match: weight and an underline, never color alone. */
+    .ec-search__match {
+        background: none;
+        color: inherit;
+        font-weight: var(--apui-font-weight-semibold);
+        text-decoration: underline;
+        text-decoration-color: var(--apui-color-primary-text);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 3px;
+    }
+
+    .ec-search__icon {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-search__option--all {
+        position: relative;
+        margin-block-start: 9px;
+        color: var(--apui-color-primary-text);
+    }
+
+    .ec-search__option--all::before {
+        content: '';
+        position: absolute;
+        inset-block-start: -6px;
+        inset-inline: -4px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-search__option--all .ec-search__icon {
+        color: inherit;
+    }
+
+    /* The keyboard's option shows the ring; the pointer's only the tint. */
+    .ec-search:has([role='combobox']:focus-visible) [data-scope='dropdown-menu'][data-part='item'][data-highlighted] {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow: inset 0 0 0 var(--apui-focus-ring-width) var(--apui-focus-ring-color);
+    }
+
+    @media (forced-colors: active) {
+        .ec-search [data-scope='dropdown-menu'][data-part='item'][data-highlighted] {
+            outline: 2px solid Highlight;
+            outline-offset: -2px;
+        }
+    }
+
+    /* Header cart button (#93): the bag icon, then the count badge. */
+    .ec-cart-button {
+        display: inline-flex;
+    }
+
+    /* Currency switcher (#94) */
+    .ec-currency {
+        display: inline-grid;
+        gap: 4px;
+    }
+
+    .ec-currency__error {
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    /*
+     * Cart drawer (#95): 420px on the end side (full width on a phone), the
+     * count beside the title, the lines in the body and the subtotal and
+     * actions in the footer.
+     */
+    .apui-drawer.ec-cart-drawer {
+        inline-size: min(420px, 100%);
+    }
+
+    .ec-cart-drawer [data-scope='drawer'][data-part='header'] {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: baseline;
+    }
+
+    .ec-cart-drawer [data-scope='drawer'][data-part='description'] {
+        grid-row: 1;
+        grid-column: 2;
+        margin: 0;
+    }
+
+    .ec-cart-drawer [data-scope='drawer'][data-part='close-trigger'] {
+        grid-column: 3;
+        align-self: center;
+    }
+
+    .ec-cart-drawer__panel {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+    }
+
+    .ec-cart-drawer__undo {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-drawer__loading {
+        display: grid;
+        place-items: center;
+        padding-block: 40px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-cart-drawer__loading p {
+        margin: 0;
+    }
+
+    .ec-cart-drawer__shipping {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-cart-drawer__shipping-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-drawer__shipping-text > .apui-icon {
+        flex: none;
+    }
+
+    .ec-cart-drawer__lines {
+        display: grid;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-cart-line {
+        display: flex;
+        gap: 16px;
+        padding-block: 16px;
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-cart-line:first-child {
+        padding-block-start: 0;
+    }
+
+    .ec-cart-line__thumb {
+        flex: none;
+        inline-size: 64px;
+        block-size: 64px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-cart-line__thumb img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-cart-line__body {
+        display: grid;
+        flex: 1;
+        align-content: start;
+        gap: 6px;
+        min-inline-size: 0;
+    }
+
+    .ec-cart-line__head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .ec-cart-line__name {
+        margin: 0;
+        min-inline-size: 0;
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-cart-line__name a {
+        border-radius: var(--apui-radius-xs);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .ec-cart-line__name a:hover {
+        text-decoration: underline;
+    }
+
+    .ec-cart-line__name a:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-cart-line__total {
+        flex: none;
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-cart-line__options,
+    .ec-cart-line__problem {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-line__options {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart-line__problem {
+        color: var(--apui-color-error-text);
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-cart-line__body > .apui-badge {
+        justify-self: start;
+    }
+
+    .ec-cart-line__controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+    }
+
+    .ec-cart-drawer__footer {
+        display: grid;
+        flex: 1 1 100%;
+        gap: 8px;
+    }
+
+    .ec-cart-drawer__subtotal {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-cart-drawer__note,
+    .ec-cart-drawer__blocked {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-drawer__note {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart-drawer__blocked {
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-cart-drawer__actions {
+        display: grid;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        gap: 12px;
+        margin-block-start: 8px;
+    }
+
+    .ec-cart-drawer__actions > .apui-button {
+        inline-size: 100%;
+    }
+
+    /* Cart merge prompt (#96) */
+    .ec-merge-prompt__details {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-merge-prompt__details p {
+        margin: 0;
+    }
+
+    .ec-merge-prompt__note {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Storefront toasts (#97): the toaster and its toasts are the library's
+     * (the ec-toaster component); a long product name wraps rather than
+     * widening the toast.
+     */
+    .apui-toast [data-part="title"],
+    .apui-toast [data-part="description"] {
+        overflow-wrap: anywhere;
+    }
+
+    /* "Ordered as a guest?" link (#98) */
+    .ec-order-lookup-link {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Bundled form (#102): the members as checked, disabled checkboxes
+     * under "In this set", then the total with its saving badge.
+     */
+    .ec-bundle-items {
+        display: grid;
+        gap: 12px;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-bundle-items__legend {
+        margin-block-end: 12px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-bundle-items__list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ec-bundle-total {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .ec-bundle-total__price {
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-md-font-size);
+        font-weight: var(--apui-type-heading-md-font-weight);
+        line-height: var(--apui-type-heading-md-line-height);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Digital form (#103): what the shopper gets, beside the download icon. */
+    .ec-digital-notes {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-digital-notes__icon {
+        flex: none;
+        inline-size: var(--apui-icon-size-sm);
+        block-size: var(--apui-icon-size-sm);
+        margin-block-start: 2px;
+    }
+
+    .ec-digital-notes__list {
+        display: grid;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    /*
+     * "Notify me" (2.0, Product-oos): the out-of-stock row's back-in-stock
+     * signup inside an outline Alert; the email field fills the row beside
+     * the button, and they stack below 400px.
+     */
+    .ec-notify-me__help {
+        margin: 0;
+    }
+
+    .ec-notify-me__form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+        margin-block-start: 12px;
+    }
+
+    .ec-notify-me__email {
+        flex: 1 1 220px;
+        min-inline-size: 0;
+    }
+
+    .ec-notify-me__button {
+        flex: none;
+    }
+
+    @media (max-width: 399px) {
+        .ec-notify-me__button {
+            flex: 1 1 100%;
+        }
+    }
+
+    /* Options form (#104): an info note and the character count. */
+    .ec-option-field {
+        display: grid;
+        gap: 6px;
+        min-inline-size: 0;
+    }
+
+    .ec-option-field__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-option-info {
+        display: grid;
+        gap: 4px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-option-info__label {
+        margin: 0;
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-option-info__list {
+        display: grid;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-option-info__help {
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-option-field__help {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /* The quoted price of the chosen options (2.0): "$40.00 including options". */
+    .ec-option-price {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 12px;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-option-price__amount {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-option-price__loading {
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    /*
+     * Choice cards (2.0): a radio field with `meta.display = cards`. Each
+     * card holds an optional 48px image, the name and hint, the price
+     * difference, and a check when chosen; two to a row from 480px.
+     */
+    .ec-choice-cards {
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-choice-cards__legend {
+        margin-block-end: 8px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-choice-cards__required {
+        margin-inline-start: 4px;
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-choice-cards__hint {
+        margin: -4px 0 8px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-choice-cards__options {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    @media (min-width: 480px) {
+        .ec-choice-cards__options {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-choice-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-sizing: border-box;
+        min-block-size: 56px;
+        padding: 12px 14px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-lg);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        cursor: pointer;
+        transition:
+            background-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+            border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+    }
+
+    .ec-choice-card:hover {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-choice-card__input {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        opacity: 0;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:checked) {
+        border-color: var(--apui-selected-border);
+        background: var(--apui-selected-bg);
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:disabled) {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:disabled):hover {
+        background: var(--apui-surface-default);
+    }
+
+    .ec-choice-card__image {
+        flex: none;
+        inline-size: 48px;
+        block-size: 48px;
+        border-radius: var(--apui-radius-md);
+        object-fit: cover;
+    }
+
+    .ec-choice-card__text {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-choice-card__label {
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+        unicode-bidi: plaintext;
+    }
+
+    .ec-choice-card__hint {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-choice-card__meta {
+        flex: none;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-choice-card__check {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        color: var(--apui-selected-border);
+        visibility: hidden;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:checked) .ec-choice-card__check {
+        visibility: visible;
+    }
+
+    .ec-choice-cards[data-invalid] .ec-choice-card {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-choice-cards:focus-visible {
+        border-radius: var(--apui-radius-md);
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-choice-cards__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 8px 0 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-choice-cards__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
+    @media (forced-colors: active) {
+        .ec-choice-card:has(.ec-choice-card__input:checked) {
+            outline: 2px solid Highlight;
+            outline-offset: 1px;
+        }
+    }
+
+    /*
+     * Product reviews (#105): the heading row, then a 320px summary card
+     * beside the list from 1024px (stacked under it).
+     */
+    .ec-reviews {
+        display: grid;
+        gap: 24px;
+        scroll-margin-block-start: 96px;
+    }
+
+    .ec-reviews__header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-reviews__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-reviews__ineligible {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-reviews__layout {
+        display: grid;
+        gap: 32px;
+        align-items: start;
+    }
+
+    @media (min-width: 64rem) {
+        .ec-reviews__layout:not(.ec-reviews__layout--single) {
+            grid-template-columns: 320px minmax(0, 1fr);
+            gap: 48px;
+        }
+    }
+
+    .ec-reviews__summary [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 20px;
+    }
+
+    .ec-reviews__overall {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .ec-reviews__average {
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-stat-lg-font-size);
+        font-weight: var(--apui-type-stat-lg-font-weight);
+        line-height: var(--apui-type-stat-lg-line-height);
+        letter-spacing: var(--apui-type-stat-lg-letter-spacing);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-reviews__overall-detail {
+        display: grid;
+        gap: 4px;
+    }
+
+    .ec-reviews__count {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-reviews__breakdown {
+        display: grid;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-reviews__bar {
+        display: grid;
+        grid-template-columns: 2.75rem minmax(0, 1fr) 2.5rem;
+        align-items: center;
+        gap: 12px;
+        inline-size: 100%;
+        min-block-size: 32px;
+        padding: 4px 8px;
+        border: 0;
+        border-radius: var(--apui-radius-sm);
+        background: transparent;
+        color: var(--apui-text-default);
+        font: inherit;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-align: start;
+        cursor: pointer;
+    }
+
+    .ec-reviews__bar:hover:not(:disabled),
+    .ec-reviews__bar[aria-pressed="true"] {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-reviews__bar[aria-pressed="true"] {
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-reviews__bar:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-reviews__bar:disabled {
+        cursor: default;
+    }
+
+    .ec-reviews__bar-stars {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .ec-reviews__bar-stars svg {
+        inline-size: var(--apui-icon-size-sm);
+        block-size: var(--apui-icon-size-sm);
+        color: var(--apui-color-accent);
+        fill: currentcolor;
+        stroke: var(--apui-color-accent-border);
+        stroke-width: 1.5;
+    }
+
+    .ec-reviews__bar-count {
+        color: var(--apui-text-muted);
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-reviews__main {
+        display: grid;
+        gap: 20px;
+        min-inline-size: 0;
+    }
+
+    .ec-reviews__filter {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-reviews__list {
+        display: grid;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-review {
+        padding-block: 24px;
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-review:first-child {
+        padding-block-start: 0;
+    }
+
+    .ec-review__article {
+        display: grid;
+        gap: 10px;
+    }
+
+    .ec-review__heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+    }
+
+    .ec-review__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+        letter-spacing: var(--apui-type-heading-sm-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-review__body {
+        max-inline-size: 68ch;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-review__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 12px;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-review__author {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-review-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-review-form__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+    }
+
+    .ec-review-form__title:focus {
+        outline: none;
+    }
+
+    .ec-review-form__pair {
+        display: grid;
+        gap: 16px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-review-form__pair {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-review-form__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /*
+     * Related products (#106): below 768px a scroll-snap row, two cards to a
+     * screen, with the previous/next buttons; from 768px a grid (two
+     * columns, then `data-columns` from 1024px) without them.
+     */
+    .ec-related {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-related__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .ec-related__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-related__controls {
+        display: flex;
+        flex: none;
+        gap: 8px;
+    }
+
+    /*
+     * The scroller clips its overflow on both axes, so its padding leaves
+     * room for a card's 4px focus ring; the negative margin keeps the cards
+     * on the column edges.
+     */
+    .ec-related__list {
+        display: flex;
+        gap: 16px;
+        margin: 0 -4px;
+        padding: 4px 4px 8px;
+        list-style: none;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: 4px;
+    }
+
+    .ec-related__item {
+        flex: none;
+        inline-size: calc((100% - 16px) / 2);
+        min-inline-size: 0;
+        scroll-snap-align: start;
+    }
+
+    .ec-related__list[data-columns="1"] .ec-related__item {
+        inline-size: 100%;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-related__controls {
+            display: none;
+        }
+
+        .ec-related__list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin: 0;
+            padding: 0;
+            overflow: visible;
+            scroll-snap-type: none;
+        }
+
+        .ec-related__list[data-columns="1"] {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .ec-related__item {
+            inline-size: auto;
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-related__list[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-related__list[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .ec-related__list[data-columns="5"] {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .ec-related__list[data-columns="6"] {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+    }
+
+    /*
+     * Recently viewed (#107): compact rows, each a Card with a 64px
+     * thumbnail, the name (whose link stretches over the row) and the
+     * price, in an auto-fill grid of rows at least 240px wide (or the whole
+     * width, when that is narrower) and at most `data-columns` to a line.
+     */
+    .ec-recent {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-recent__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-recent__list {
+        --ec-recent-columns: 4;
+
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(100%, max(240px, calc((100% - (var(--ec-recent-columns) - 1) * 16px) / var(--ec-recent-columns)))), 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-recent__list[data-columns="1"] {
+        --ec-recent-columns: 1;
+    }
+
+    .ec-recent__list[data-columns="2"] {
+        --ec-recent-columns: 2;
+    }
+
+    .ec-recent__list[data-columns="3"] {
+        --ec-recent-columns: 3;
+    }
+
+    .ec-recent__list[data-columns="5"] {
+        --ec-recent-columns: 5;
+    }
+
+    .ec-recent__list[data-columns="6"] {
+        --ec-recent-columns: 6;
+    }
+
+    .ec-recent__item {
+        min-inline-size: 0;
+    }
+
+    .ec-recent__card {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        block-size: 100%;
+        padding: 10px;
+    }
+
+    .ec-recent__card[data-interactive]:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-recent__card:has(.ec-recent__name a:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-recent__media {
+        display: grid;
+        flex: none;
+        place-items: center;
+        inline-size: 64px;
+        block-size: 64px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-recent__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-recent__body {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-recent__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-recent__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the row: one link per product. */
+    .ec-recent__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    /* The loading rows: a 64px block and two lines for the name and price. */
+    .ec-recent__skeleton-thumb {
+        flex: none;
+        inline-size: 64px;
+        block-size: 64px;
+        border-radius: var(--apui-radius-md);
+    }
+
+    .ec-recent__body--skeleton {
+        flex: 1;
+        gap: 10px;
+    }
+
+    .ec-recent__skeleton-line[data-length="long"] {
+        inline-size: 75%;
+    }
+
+    .ec-recent__skeleton-line[data-length="short"] {
+        inline-size: 35%;
+    }
+
+    .ec-recent__price .ec-price__amount:not([data-tone]) {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    /*
+     * Price range filter (#108): the two-thumb Range, then the lowest and
+     * highest price inputs with "to" between them.
+     */
+    .ec-price-range {
+        display: grid;
+        gap: 12px;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-price-range__legend {
+        margin-block-end: 4px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-price-range__inputs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-price-range__input {
+        flex: 1 1 0;
+        min-inline-size: 0;
+    }
+
+    .ec-price-range__to {
+        flex: none;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Star rating input (#109): the stars, then "3 of 5" in label text
+     * (which follows the hovered star while the pointer is over them).
+     */
+    .ec-rating-input__row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+    }
+
+    .ec-rating-input__value {
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Skeleton (#110): text lines (the last one shorter), product cards in
+     * the catalog grid, or a square image.
+     */
+    .ec-skeleton {
+        inline-size: 100%;
+    }
+
+    .ec-skeleton__shapes[data-variant="text"] {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-skeleton__line[data-last] {
+        inline-size: 66%;
+    }
+
+    .ec-skeleton__shapes[data-variant="card"] {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-skeleton__shapes[data-variant="card"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-skeleton__shapes[data-variant="card"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-skeleton__image {
+        display: block;
+        inline-size: 100%;
+        block-size: auto;
+        aspect-ratio: 1 / 1;
+    }
+
+    /*
+     * Redirect payment driver (#111): the icon tile beside the title and
+     * one line, then a full-width continue button.
+     */
+    .ec-redirect__card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-redirect__intro {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .ec-redirect__text {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-redirect__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-type-label-md-font-weight);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-redirect__description {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-redirect__continue {
+        inline-size: 100%;
+    }
+
+    /*
+     * Stripe Payment Element (#112): Stripe's form in a Card, the
+     * reassurance line and a full-width "Pay now". While it loads, field
+     * skeletons sit under the glass Loading overlay in the form's place.
+     */
+    .ec-stripe__card [data-scope="card"][data-part="body"] {
+        display: grid;
+    }
+
+    .ec-stripe__form {
+        display: grid;
+        gap: 12px;
+        min-inline-size: 0;
+    }
+
+    .ec-stripe__field {
+        position: relative;
+        min-inline-size: 0;
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-stripe__field[data-loading] {
+        min-block-size: 132px;
+    }
+
+    .ec-stripe__loading {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+        background: var(--apui-surface-default);
+    }
+
+    .ec-stripe__loading[hidden] {
+        display: none;
+    }
+
+    .ec-stripe__skeletons {
+        display: grid;
+        gap: 12px;
+        padding-block: 4px;
+    }
+
+    .ec-stripe__skeleton-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .ec-stripe__skeleton {
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-stripe__element {
+        min-inline-size: 0;
+    }
+
+    .ec-stripe__error {
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * The live region stays rendered before its first message, so that
+     * message is announced; while empty it takes back the form's row gap.
+     */
+    .ec-stripe__error:empty {
+        margin-block-start: -12px;
+    }
+
+    .ec-stripe__reassurance {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-stripe__reassurance > .apui-icon {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        margin-block-start: 1px;
+    }
+
+    .ec-stripe__pay {
+        inline-size: 100%;
+    }
+
+    /*
+     * Category grid (#115): Card tiles (a 4:3 image, the name whose link
+     * stretches over the tile, the product count and an arrow), two to a
+     * row on small screens and `data-columns` to a row from 1024px.
+     */
+    .ec-category-grid {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-category-grid__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-category-grid__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-category-grid__list[data-columns="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-category-grid__item {
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-category-grid__list:is([data-columns="4"], [data-columns="5"], [data-columns="6"]) {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-category-grid__list[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="5"] {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .ec-category-grid__list[data-columns="6"] {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+    }
+
+    /*
+     * Product grid (#119): the optional heading over product cards, two to a
+     * row on small screens, three from 640px for 4–6 columns and
+     * `data-columns` to a row from 1024px. No outer margin; the editor
+     * spaces blocks.
+     */
+    .ec-product-grid {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-product-grid__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-product-grid__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-product-grid__list[data-columns="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-product-grid__item {
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-product-grid__list:is([data-columns="4"], [data-columns="5"], [data-columns="6"]) {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .ec-product-grid__list[data-columns="3"] {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-product-grid__list[data-columns="4"] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .ec-product-grid__list[data-columns="5"] {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .ec-product-grid__list[data-columns="6"] {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+    }
+
+    .ec-category-tile {
+        block-size: 100%;
+        overflow: hidden;
+    }
+
+    .ec-category-tile[data-interactive]:hover {
+        border-color: var(--apui-border-strong);
+    }
+
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-category-tile:has(.ec-category-tile__name a:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-category-tile > .ec-category-tile__media {
+        display: grid;
+        place-items: center;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-category-tile__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-category-tile__placeholder {
+        inline-size: 40px;
+        block-size: 40px;
+    }
+
+    .ec-category-tile__body {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px 16px;
+    }
+
+    .ec-category-tile__text {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-category-tile__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-lg-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-category-tile__name a {
+        color: inherit;
+        text-decoration: none;
+        outline: none;
+    }
+
+    /* The name's link covers the tile: one link per category. */
+    .ec-category-tile__name a::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    .ec-category-tile__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-category-tile__arrow {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    /*
+     * Cart Contents preview (#114): the sample notice, then the lines Card
+     * beside the order summary Card (stacked when the block is narrow), and
+     * a dashed note where the cross-sells go.
+     */
+    .ec-cart-preview {
+        display: grid;
+        gap: 16px;
+        container-type: inline-size;
+        min-inline-size: 0;
+    }
+
+    .ec-cart-preview > .ec-block-notice--sample {
+        margin-block-end: 0;
+    }
+
+    .ec-cart-preview__layout {
+        display: grid;
+        align-items: start;
+        gap: 24px;
+    }
+
+    @container (min-width: 48rem) {
+        .ec-cart-preview__layout {
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        }
+    }
+
+    .ec-cart-preview__lines {
+        overflow: hidden;
+    }
+
+    .ec-cart-preview__lines [data-scope="card"][data-part="body"] {
+        padding: 0;
+    }
+
+    .ec-cart-preview__list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-cart-preview__line {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 20px;
+    }
+
+    .ec-cart-preview__line + .ec-cart-preview__line {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-cart-preview__media {
+        display: grid;
+        flex: none;
+        place-items: center;
+        inline-size: 96px;
+        block-size: 96px;
+        overflow: hidden;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-cart-preview__media > img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-cart-preview__details {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-cart-preview__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-cart-preview__quantity {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart-preview__amount {
+        flex: none;
+        margin: 0;
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-cart-preview__summary [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-cart-preview__totals {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .ec-cart-preview__total {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 4px 16px;
+    }
+
+    .ec-cart-preview__total dt {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart-preview__total dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        text-align: end;
+    }
+
+    .ec-cart-preview__checkout {
+        inline-size: 100%;
+    }
+
+    .ec-cart-preview__cross-sells {
+        display: block;
+    }
+
+    /*
+     * Checkout Steps preview (#116): the layout notice, then the Steps over
+     * the first step's Card (multi-step), or one Card per step with a
+     * numbered marker, the upcoming ones muted on the sunken surface
+     * (single page).
+     */
+    .ec-checkout-preview {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout-preview > .ec-block-notice--sample {
+        margin-block-end: 0;
+    }
+
+    .ec-checkout-preview__steps {
+        overflow-x: auto;
+    }
+
+    .ec-checkout-preview__placeholder {
+        display: grid;
+        justify-items: start;
+        gap: 16px;
+    }
+
+    .ec-checkout-preview__field {
+        inline-size: 100%;
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-field);
+    }
+
+    .ec-checkout-preview__button {
+        inline-size: min(160px, 100%);
+        block-size: var(--apui-control-height-lg);
+        border-radius: var(--apui-radius-full);
+    }
+
+    .ec-checkout-preview__sections {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-checkout-preview__section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    .ec-checkout-preview__section[data-upcoming] {
+        box-shadow: none;
+    }
+
+    .ec-checkout-preview__section[data-upcoming] .ec-checkout-preview__section-title {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-checkout-preview__marker {
+        display: grid;
+        flex: none;
+        place-items: center;
+        box-sizing: border-box;
+        inline-size: 28px;
+        block-size: 28px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-full);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-sm-font-size);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+    }
+
+    /*
+     * Featured products and Shop by category patterns (#125, #126): the
+     * title is a core heading block with this class, at the heading-xl type.
+     * The heading row's layout (title at the start, "Shop all" at the end)
+     * and the space between the pattern's blocks come from the editor's
+     * layout, so the title and the "Shop all" paragraph only drop their
+     * default margins. The default templates' page heading (#128) shares
+     * the title's type.
+     */
+    .ec-pattern__title,
+    .ec-template__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-pattern__link {
+        margin: 0;
+    }
+
+    /*
+     * Sale banner (#127): the accent soft fill, the copy on the start half
+     * and the image on the end half (stacked below 640px). The flex layout
+     * and the zero gap are the group's block attributes; this sets the
+     * columns, padding and type. Until the editor picks an image, the copy
+     * spans the banner.
+     */
+    .ec-sale-banner {
+        overflow: hidden;
+        border-radius: var(--apui-radius-surface);
+        background: var(--apui-color-accent-soft);
+        color: var(--apui-text-default);
+    }
+
+    .ec-sale-banner__copy {
+        display: grid;
+        flex: 1 1 320px;
+        align-content: center;
+        justify-items: start;
+        gap: 16px;
+        box-sizing: border-box;
+        min-inline-size: 0;
+        padding: 32px 24px;
+    }
+
+    @media (min-width: 768px) {
+        .ec-sale-banner__copy {
+            padding: 48px 40px;
+        }
+    }
+
+    .ec-sale-banner__media {
+        flex: 1 1 320px;
+        min-inline-size: 0;
+    }
+
+    .ec-sale-banner__media:not(:has(img[src])) {
+        display: none;
+    }
+
+    .ec-sale-banner__media img {
+        display: block;
+        inline-size: 100%;
+        object-fit: cover;
+    }
+
+    .ec-sale-banner__badge,
+    .ec-sale-banner__action {
+        margin: 0;
+    }
+
+    .ec-sale-banner__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-family: var(--apui-type-display-lg-font-family);
+        font-size: var(--apui-type-display-lg-font-size);
+        font-weight: var(--apui-type-display-lg-font-weight);
+        line-height: var(--apui-type-display-lg-line-height);
+        letter-spacing: var(--apui-type-display-lg-letter-spacing);
+    }
+
+    .ec-sale-banner__text {
+        max-inline-size: 48ch;
+        margin: 0;
+        color: var(--apui-color-accent-soft-foreground);
+        font-size: var(--apui-type-body-lg-font-size);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    @media (forced-colors: active) {
+        .ec-sale-banner {
+            border: var(--apui-border-width) solid CanvasText;
+        }
+    }
+
+    /*
+     * Pages (#130, #131): the breadcrumbs and page header (or category
+     * card) above the listing.
+     */
+    .ec-page {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    /*
+     * Chips: pill-shaped controls on the tokens. `filter` (an active
+     * filter on the sunken fill, with a remove icon) and `select` (an
+     * outlined choice; the current one on the primary soft fill).
+     */
+    .ec-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-sizing: border-box;
+        min-block-size: 28px;
+        padding-inline: 12px;
+        border: var(--apui-border-width) solid transparent;
+        border-radius: var(--apui-radius-full);
+        background: none;
+        color: var(--apui-text-default);
+        font: inherit;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-align: start;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+        cursor: pointer;
+        outline: none;
+        min-inline-size: 0;
+        max-inline-size: 100%;
+    }
+
+    .ec-chip:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-chip[data-variant="filter"] {
+        padding-inline: 10px 8px;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-chip[data-variant="filter"]:hover {
+        border-color: var(--apui-border-default);
+    }
+
+    .ec-chip__icon {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-chip[data-variant="select"] {
+        min-block-size: 32px;
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-chip[data-variant="select"]:hover {
+        background: var(--apui-state-hover);
+    }
+
+    /* The current choice: a 2px primary border, as on a selected swatch. */
+    .ec-chip[data-variant="select"][aria-current] {
+        border-color: var(--apui-color-primary);
+        background: var(--apui-color-primary-soft);
+        color: var(--apui-color-primary-soft-foreground);
+        box-shadow: inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary);
+    }
+
+    .ec-chip[data-variant="select"][aria-current]:focus-visible {
+        box-shadow:
+            inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary),
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    @media (forced-colors: active) {
+        .ec-chip {
+            border-color: ButtonText;
+        }
+
+        .ec-chip[aria-current] {
+            border-color: Highlight;
+            outline: var(--apui-border-width) solid Highlight;
+        }
+    }
+
+    /*
+     * Catalog listing (#130): the 240px filter sidebar from 1024px beside
+     * the results; below that, the toolbar's Filters button opens the
+     * drawer.
+     */
+    .ec-catalog {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-catalog__layout {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__sidebar {
+        display: none;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-catalog__layout[data-with-filters] {
+            grid-template-columns: 240px minmax(0, 1fr);
+            align-items: start;
+            gap: 32px;
+        }
+
+        .ec-catalog__sidebar {
+            display: block;
+        }
+
+        .ec-catalog__filters-button {
+            display: none;
+        }
+    }
+
+    .ec-catalog__sidebar-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin-block-end: 16px;
+    }
+
+    .ec-catalog__sidebar-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+    }
+
+    .ec-catalog__main {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .ec-catalog__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-catalog__controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* "Sort by" and "Per page": the label beside the select. */
+    .ec-catalog__select.apui-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-catalog__select [data-scope="select"][data-part="label"] {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        white-space: nowrap;
+    }
+
+    @media (max-width: 767.98px) {
+        .ec-catalog__sort [data-scope="select"][data-part="label"] {
+            position: absolute;
+            inline-size: 1px;
+            block-size: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            border: 0;
+            clip-path: inset(50%);
+            white-space: nowrap;
+        }
+
+        .ec-catalog__per-page.apui-select {
+            display: none;
+        }
+    }
+
+    .ec-catalog__chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-catalog__results {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    .ec-catalog__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    @media (min-width: 640px) {
+        .ec-catalog__grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .ec-catalog__grid[data-wide] {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .ec-catalog__item {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    /* Loading: skeleton cards stand in for the cards while the results are busy. */
+    .ec-catalog__skeleton {
+        display: none;
+    }
+
+    .ec-catalog__results[aria-busy="true"] > .ec-catalog__grid:not(.ec-catalog__skeleton) {
+        display: none;
+    }
+
+    .ec-catalog__results[aria-busy="true"] > .ec-catalog__skeleton {
+        display: grid;
+    }
+
+    .ec-catalog__pagination {
+        padding-block-start: 16px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-catalog__pagination .apui-pagination {
+        display: flex;
+        inline-size: 100%;
+    }
+
+    .ec-catalog__pagination [data-scope="pagination"][data-part="summary"] {
+        margin-inline-end: auto;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-catalog__tips {
+        margin: 0;
+        padding-inline-start: 1.25em;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        text-align: start;
+    }
+
+    /*
+     * Filters (#130): the groups between dividers. Radio rows put the count
+     * at the end, and sub-categories step in by depth. Toggles that follow
+     * each other share a group.
+     */
+    .ec-filters {
+        display: grid;
+    }
+
+    .ec-filters__group {
+        padding-block: 20px;
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-filters__group:first-child {
+        padding-block-start: 0;
+        border-block-start: 0;
+    }
+
+    .ec-filters__group:has(.ec-filters__toggle):has(+ .ec-filters__group .ec-filters__toggle) {
+        padding-block-end: 6px;
+    }
+
+    .ec-filters__group:has(.ec-filters__toggle) + .ec-filters__group:has(.ec-filters__toggle) {
+        padding-block-start: 6px;
+        border-block-start: 0;
+    }
+
+    .ec-filters__options [data-scope="radio-group"][data-part="items"] {
+        display: grid;
+        gap: 4px;
+    }
+
+    .ec-filters__option[data-scope="radio-group"][data-part="item"] {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        min-block-size: 28px;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-filters__option [data-scope="radio-group"][data-part="box"] {
+        grid-row: auto;
+        margin-block-start: 0;
+    }
+
+    .ec-filters__option[data-depth="1"] {
+        padding-inline-start: 24px;
+    }
+
+    .ec-filters__option[data-depth="2"] {
+        padding-inline-start: 48px;
+    }
+
+    .ec-filters__option[data-depth="3"] {
+        padding-inline-start: 72px;
+    }
+
+    .ec-filters__option[data-depth="4"] {
+        padding-inline-start: 96px;
+    }
+
+    .ec-filters__count[data-scope="radio-group"][data-part="item-meta"] {
+        grid-column: 3;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Category header card (#131): the eyebrow, the display-lg name, the
+     * description and the sub-category chips, with the image on the end
+     * half from 768px (above the text below that).
+     */
+    .ec-category-hero.apui-card {
+        display: grid;
+        overflow: hidden;
+    }
+
+    .ec-category-hero__body {
+        display: grid;
+        align-content: center;
+        justify-items: start;
+        gap: 12px;
+        min-inline-size: 0;
+        padding: 24px;
+    }
+
+    .ec-category-hero__media {
+        order: -1;
+        min-inline-size: 0;
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-category-hero__media img {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+    }
+
+    @media (min-width: 768px) {
+        .ec-category-hero[data-with-image] {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .ec-category-hero__body {
+            padding: 48px 32px;
+        }
+
+        .ec-category-hero__media {
+            order: 0;
+        }
+
+        .ec-category-hero__media img {
+            min-block-size: 280px;
+            aspect-ratio: auto;
+        }
+    }
+
+    .ec-category-hero__eyebrow {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-label-xs-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-label-xs-line-height);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .ec-category-hero__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-family: var(--apui-type-display-lg-font-family);
+        font-size: var(--apui-type-display-lg-font-size);
+        font-weight: var(--apui-type-display-lg-font-weight);
+        line-height: var(--apui-type-display-lg-line-height);
+        letter-spacing: var(--apui-type-display-lg-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-category-hero__description {
+        max-inline-size: 60ch;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-category-hero__description > :first-child {
+        margin-block-start: 0;
+    }
+
+    .ec-category-hero__description > :last-child {
+        margin-block-end: 0;
+    }
+
+    .ec-category-hero__chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 4px 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    /*
+     * Search page (#133): the title, then the large search field and the
+     * "Search" button in a row (the field's label visually hidden).
+     */
+    .ec-search-page__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-search-page__form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ec-search-page__field.apui-input {
+        flex: 1 1 280px;
+        max-inline-size: 456px;
+    }
+
+    .ec-search-page__field [data-scope="input"][data-part="label"] {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        border: 0;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .ec-search-page__suggestions {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-search-page__suggestions .apui-link {
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    /*
+     * Product page (#134): the gallery (1.1fr) beside the summary (1fr)
+     * from 1024px, then "Product details" beside its accordion, then the
+     * page sections.
+     */
+    .ec-product {
+        display: grid;
+        gap: 48px;
+        min-inline-size: 0;
+    }
+
+    .ec-product > .apui-breadcrumbs {
+        margin-block-end: -24px;
+    }
+
+    .ec-product__top,
+    .ec-product__details {
+        display: grid;
+        gap: 32px;
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-product__top,
+        .ec-product__details {
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+            align-items: start;
+            gap: 48px;
+        }
+    }
+
+    .ec-product__summary {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-product__category {
+        justify-self: start;
+        margin: 0;
+        border-radius: var(--apui-radius-xs);
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        text-decoration: none;
+        outline: none;
+    }
+
+    a.ec-product__category:hover {
+        color: var(--apui-text-default);
+        text-decoration: underline;
+    }
+
+    a.ec-product__category:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-product__name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-family: var(--apui-type-display-lg-font-family);
+        font-size: var(--apui-type-display-lg-font-size);
+        font-weight: var(--apui-type-display-lg-font-weight);
+        line-height: var(--apui-type-display-lg-line-height);
+        letter-spacing: var(--apui-type-display-lg-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-product__short-description {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-product__meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        padding-block-end: 16px;
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-product__sku {
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-product__sku code {
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-mono);
+    }
+
+    .ec-product__purchase {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-product__highlights {
+        display: grid;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-product__highlight {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 16px;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-product__highlight + .ec-product__highlight {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-product__highlight-icon {
+        flex: none;
+        inline-size: 20px;
+        block-size: 20px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-product__highlight-title {
+        display: block;
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-product__highlight-description {
+        display: block;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-product__section-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+    }
+
+    .ec-product__specs th {
+        inline-size: 40%;
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+        text-align: start;
+    }
+
+    .ec-product__section {
+        min-inline-size: 0;
+    }
+
+    /*
+     * Cart page (#135): the title and count, the undo bar, then the lines
+     * Card beside the 380px sticky summary Card from 1024px (the summary
+     * below the lines on smaller screens).
+     */
+    .ec-cart {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-cart__heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 12px;
+    }
+
+    .ec-cart__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-cart__count {
+        margin: 0;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart__undo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-block: 8px;
+        padding-inline: 16px 8px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-cart__undo > svg {
+        flex: none;
+        inline-size: 18px;
+        block-size: 18px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-cart__undo > p {
+        flex: 1;
+        margin: 0;
+    }
+
+    .ec-cart__layout {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-cart__layout {
+            grid-template-columns: minmax(0, 1fr) 380px;
+            align-items: start;
+            gap: 32px;
+        }
+
+        .ec-cart-summary {
+            position: sticky;
+            inset-block-start: calc(var(--apui-navbar-height) + 24px);
+        }
+    }
+
+    .ec-cart__main {
+        display: grid;
+        align-content: start;
+        justify-items: start;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-cart__lines.apui-card {
+        display: block;
+        inline-size: 100%;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-cart__line.ec-cart-line,
+    .ec-cart__line.ec-cart-line:first-child {
+        padding: 20px;
+    }
+
+    .ec-cart__line.ec-cart-line:last-child {
+        border-block-end: 0;
+    }
+
+    .ec-cart__line .ec-cart-line__thumb {
+        display: grid;
+        place-items: center;
+        inline-size: 96px;
+        block-size: 96px;
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-cart-summary {
+        display: grid;
+        gap: 20px;
+        padding: 24px;
+    }
+
+    .ec-cart-summary__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-md-font-size);
+        font-weight: var(--apui-type-heading-md-font-weight);
+        line-height: var(--apui-type-heading-md-line-height);
+    }
+
+    .ec-cart-summary__coupon {
+        display: grid;
+        justify-items: start;
+        gap: 12px;
+    }
+
+    .ec-cart-summary__actions {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-cart-summary__checkout.apui-button {
+        inline-size: 100%;
+    }
+
+    .ec-cart-summary__blocked {
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-cart-summary__note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        text-align: center;
+    }
+
+    /* An input with its button attached at the end (the coupon field). */
+    .ec-input-group {
+        display: flex;
+        align-items: flex-end;
+        inline-size: 100%;
+    }
+
+    .ec-input-group > .ec-field {
+        flex: 1;
+        min-inline-size: 0;
+    }
+
+    .ec-input-group [data-scope="input"][data-part="box"] {
+        border-start-end-radius: 0;
+        border-end-end-radius: 0;
+    }
+
+    .ec-input-group > .apui-button {
+        margin-inline-start: calc(-1 * var(--apui-border-width));
+        border-start-start-radius: 0;
+        border-end-start-radius: 0;
+    }
+
+    .ec-input-group:has([data-scope="input"][data-part="error"], [data-scope="input"][data-part="hint"]) {
+        align-items: flex-start;
+    }
+
+    .ec-input-group:has([data-scope="input"][data-part="error"], [data-scope="input"][data-part="hint"]) > .apui-button {
+        margin-block-start: calc(var(--apui-type-label-md-line-height, 20px) + 6px);
+    }
+
+    /* The applied coupon: a soft success chip with its remove button. */
+    .ec-chip[data-variant="coupon"] {
+        margin: 0;
+        padding-inline: 10px 4px;
+        background: var(--apui-color-success-soft);
+        color: var(--apui-color-success-soft-foreground);
+        font-weight: var(--apui-font-weight-medium);
+        cursor: default;
+    }
+
+    .ec-chip__remove {
+        display: inline-grid;
+        place-items: center;
+        inline-size: 24px;
+        block-size: 24px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--apui-radius-full);
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .ec-chip__remove:hover {
+        background: var(--apui-state-hover);
+    }
+
+    .ec-chip__remove:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-chip__remove svg {
+        inline-size: 14px;
+        block-size: 14px;
+    }
+
+    /* A native disclosure in a bordered box (the shipping estimate). */
+    .ec-disclosure {
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-radius-md);
+    }
+
+    .ec-disclosure__summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-radius: var(--apui-radius-md);
+        font-weight: var(--apui-font-weight-medium);
+        list-style: none;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .ec-disclosure__summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .ec-disclosure__summary:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-disclosure__summary > svg {
+        flex: none;
+        inline-size: 18px;
+        block-size: 18px;
+    }
+
+    .ec-disclosure__chevron {
+        margin-inline-start: auto;
+        color: var(--apui-text-muted);
+        transition: rotate var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+    }
+
+    .ec-disclosure[open] .ec-disclosure__chevron {
+        rotate: 180deg;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .ec-disclosure__chevron {
+            transition: none;
+        }
+    }
+
+    .ec-disclosure__body {
+        display: grid;
+        gap: 12px;
+        padding: 0 16px 16px;
+    }
+
+    .ec-cart-estimate__fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    .ec-cart-estimate__none,
+    .ec-cart-estimate__error {
+        margin: 0;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-cart-estimate__error {
+        color: var(--apui-color-error-text);
+    }
+
+    /*
+     * Checkout (#136): the slim secure header, then the steps beside the
+     * 380px sticky order summary from 1024px (the summary above the title,
+     * as a "Show order summary" bar, below that).
+     */
+    .ec-checkout-header {
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+        background: var(--apui-surface-default);
+    }
+
+    .ec-checkout-header__inner {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        max-inline-size: calc(var(--ec-content-max) + 2 * var(--ec-gutter));
+        min-block-size: var(--apui-navbar-height);
+        margin-inline: auto;
+        padding-inline: var(--ec-gutter);
+    }
+
+    .ec-checkout-header__secure {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding-inline-start: 16px;
+        border-inline-start: var(--apui-border-width) solid var(--apui-border-muted);
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-checkout-header__secure > svg {
+        inline-size: 14px;
+        block-size: 14px;
+    }
+
+    @media (min-width: 640px) {
+        .ec-checkout-header__secure {
+            display: inline-flex;
+        }
+    }
+
+    .ec-checkout-header__back.apui-link {
+        margin-inline-start: auto;
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-checkout {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout__layout {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout__layout > .ec-checkout-summary {
+        order: -1;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-checkout__layout {
+            grid-template-columns: minmax(0, 1fr) 380px;
+            align-items: start;
+            gap: 32px;
+        }
+
+        .ec-checkout__layout > .ec-checkout-summary {
+            position: sticky;
+            inset-block-start: 24px;
+            order: 0;
+        }
+    }
+
+    .ec-checkout__main {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-checkout__step-line {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-checkout__step-line > span {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    /* The decorative progress bar from 768px; it scrolls in its own box if it must. */
+    .ec-checkout__progress {
+        display: none;
+        contain: inline-size;
+        overflow-x: auto;
+    }
+
+    @media (min-width: 768px) {
+        .ec-checkout__step-line {
+            display: none;
+        }
+
+        .ec-checkout__progress {
+            display: block;
+        }
+    }
+
+    .ec-checkout__adjustments {
+        margin: 0;
+        padding-inline-start: 1.25em;
+    }
+
+    .ec-checkout__steps {
+        display: grid;
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    /* A step: a card, open (the form), done (what it chose) or to come (on the page color). */
+    .ec-checkout-step {
+        overflow: hidden;
+        border: var(--apui-border-width) solid var(--apui-border-muted);
+        border-radius: var(--apui-card-radius);
+        background: var(--apui-surface-default);
+    }
+
+    .ec-checkout-step[data-state="upcoming"] {
+        background: transparent;
+    }
+
+    .ec-checkout-step__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 20px;
+    }
+
+    .ec-checkout-step[data-state="current"] .ec-checkout-step__header {
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-checkout-step__title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-sm-font-size);
+        font-weight: var(--apui-type-heading-sm-font-weight);
+        line-height: var(--apui-type-heading-sm-line-height);
+        outline: none;
+    }
+
+    .ec-checkout-step[data-state="upcoming"] .ec-checkout-step__title {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-checkout-step__number {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        box-sizing: border-box;
+        inline-size: 28px;
+        block-size: 28px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-full);
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-label-sm-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-checkout-step[data-state="current"] .ec-checkout-step__number {
+        border-width: 2px;
+        border-color: var(--apui-color-primary);
+        color: var(--apui-color-primary-text);
+    }
+
+    .ec-checkout-step[data-state="complete"] .ec-checkout-step__number {
+        border-color: var(--apui-color-success-border);
+        background: var(--apui-color-success-soft);
+        color: var(--apui-color-success-soft-foreground);
+    }
+
+    .ec-checkout-step__number > svg {
+        inline-size: 14px;
+        block-size: 14px;
+    }
+
+    .ec-checkout-step__body {
+        padding: 20px;
+    }
+
+    .ec-checkout-step__summary,
+    .ec-checkout-step__locked {
+        margin: 0;
+        padding-block: 0 16px;
+        padding-inline: 60px 20px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-step-summary__text,
+    .ec-step-summary__label {
+        margin: 0;
+    }
+
+    .ec-step-summary__label {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-step-summary__addresses {
+        display: grid;
+        gap: 16px;
+    }
+
+    @media (min-width: 640px) {
+        .ec-step-summary__addresses {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    /*
+     * The step forms (#137–#141): fields 16px apart (24px between the
+     * address and review steps' groups), then a "Continue" at least 200px
+     * wide.
+     */
+    .ec-checkout-form,
+    .ec-checkout-form__group {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout-form--loose {
+        gap: 24px;
+    }
+
+    .ec-checkout-form__note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-form__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-form__error > svg {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        margin-block-start: 3px;
+    }
+
+    .ec-checkout-form__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .ec-checkout-form__submit {
+        min-inline-size: min(200px, 100%);
+    }
+
+    /*
+     * A prompt on the sunken surface (#137, #140): the contact step's
+     * sign-in line with its icon and an outline button, or — stacked —
+     * the review step's account checkbox with the password under it. The
+     * transparent border shows in forced colors, where the surface doesn't.
+     */
+    .ec-checkout-callout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        padding: 12px 16px;
+        border: var(--apui-border-width) solid transparent;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-callout__icon {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-checkout-callout__text {
+        flex: 1 1 12rem;
+        margin: 0;
+    }
+
+    .ec-checkout-callout--stacked {
+        display: grid;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    /* Under the checkbox's text: past the 18px box and its 10px gap. */
+    .ec-checkout-callout__nested {
+        padding-inline-start: 28px;
+    }
+
+    /* The shipping step's "Shipping to …" line, with "Change address" at the end. */
+    .ec-checkout-ship-to {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 16px;
+    }
+
+    .ec-checkout-ship-to__text {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-checkout-ship-to__address {
+        color: var(--apui-text-default);
+    }
+
+    /*
+     * Radio cards one per row (saved addresses, shipping rates); priced
+     * ones put the price at the end of the first line.
+     */
+    .ec-checkout-choices.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="items"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-checkout-choices--priced.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="item"] {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .ec-checkout-choices--priced.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="item-meta"] {
+        grid-column: 3;
+        grid-row: 1;
+        margin-block-start: 0;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /*
+     * The payment step's gateways (#141): radio cards on the RadioGroup
+     * contract, where the card is the wrapper (so it can hold the driver
+     * when chosen) and the radio's label is its header.
+     */
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="items"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-payment-method {
+        min-inline-size: 0;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-default);
+    }
+
+    /* Cards with a radio follow it (so a click shows at once); the lone card, the server. */
+    .ec-payment-method:has([data-part="control"]:checked),
+    .ec-payment-method[data-selected]:not(:has([data-part="control"])) {
+        border-color: var(--apui-selected-border);
+        background: var(--apui-selected-bg);
+        box-shadow: inset 0 0 0 1px var(--apui-selected-border);
+    }
+
+    .ec-payment-methods[data-invalid] .ec-payment-method {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] .ec-payment-method__header[data-scope="radio-group"][data-part="item"],
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] .ec-payment-method__header[data-scope="radio-group"][data-part="item"]:has([data-part="control"]:checked) {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        box-sizing: border-box;
+        inline-size: 100%;
+        padding-block: 12px;
+        padding-inline: 14px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* One gateway: no radio, so the text starts the row. */
+    div.ec-payment-method__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        row-gap: 2px;
+        column-gap: 10px;
+        padding-block: 12px;
+        padding-inline: 14px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-payment-method__description {
+        grid-column: 1;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-payment-method__icon {
+        grid-column: -2;
+        grid-row: 1;
+        inline-size: 18px;
+        block-size: 18px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-payment-method__panel {
+        padding-block: 0 14px;
+        padding-inline: 14px;
+    }
+
+    @media (forced-colors: active) {
+        .ec-checkout-step[data-state="current"],
+        .ec-payment-method:has([data-part="control"]:checked),
+        .ec-payment-method[data-selected]:not(:has([data-part="control"])) {
+            border-color: Highlight;
+        }
+    }
+
+    /* The order summary: a card from 1024px; below that, a bar that opens it. */
+    .ec-checkout-summary.apui-card {
+        display: grid;
+        gap: 16px;
+        padding: 16px 20px;
+    }
+
+    .ec-checkout-summary__toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        inline-size: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--apui-text-default);
+        font: inherit;
+        font-weight: var(--apui-font-weight-medium);
+        cursor: pointer;
+        outline: none;
+    }
+
+    .ec-checkout-summary__toggle:focus-visible {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-checkout-summary__toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-checkout-summary__toggle-label > svg {
+        inline-size: 18px;
+        block-size: 18px;
+    }
+
+    .ec-checkout-summary__body {
+        display: none;
+        gap: 16px;
+    }
+
+    .ec-checkout-summary__body.is-open {
+        display: grid;
+    }
+
+    @media (min-width: 1024px) {
+        .ec-checkout-summary.apui-card {
+            padding: 24px;
+        }
+
+        .ec-checkout-summary__toggle {
+            display: none;
+        }
+
+        .ec-checkout-summary__body {
+            display: grid;
+        }
+    }
+
+    .ec-checkout-summary__header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .ec-checkout-summary__title {
+        margin: 0;
+        font-size: var(--apui-type-heading-md-font-size);
+        font-weight: var(--apui-type-heading-md-font-weight);
+        line-height: var(--apui-type-heading-md-line-height);
+    }
+
+    .ec-checkout-summary__header .apui-link {
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    .ec-checkout-summary__lines {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0 0 16px;
+        border-block-end: var(--apui-border-width) solid var(--apui-border-muted);
+        list-style: none;
+    }
+
+    .ec-checkout-summary__line {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-summary__thumb {
+        position: relative;
+        display: grid;
+        place-items: center;
+        inline-size: 56px;
+        block-size: 56px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-subtle);
+    }
+
+    .ec-checkout-summary__thumb img {
+        inline-size: 100%;
+        block-size: 100%;
+        border-radius: inherit;
+        object-fit: cover;
+    }
+
+    .ec-checkout-summary__quantity {
+        position: absolute;
+        inset-block-start: -6px;
+        inset-inline-end: -6px;
+        display: inline-grid;
+        place-items: center;
+        box-sizing: border-box;
+        min-inline-size: 20px;
+        block-size: 20px;
+        padding-inline: 5px;
+        border-radius: var(--apui-radius-full);
+        background: var(--apui-surface-inverse);
+        color: var(--apui-text-inverse);
+        font-size: var(--apui-type-label-xs-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-checkout-summary__details {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout-summary__name {
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-checkout-summary__meta {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-checkout-summary__amount {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /*
+     * Unpaid order (#142): one centered Card at most 640px wide: the
+     * warning icon tile, the title and lead, the error Alert, the items,
+     * shipping and total as a meta list, then the order's payment driver.
+     */
+    .ec-placement {
+        display: grid;
+        gap: 16px;
+        inline-size: 100%;
+        max-inline-size: 40rem;
+        margin-inline: auto;
+    }
+
+    .ec-placement__card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 20px;
+    }
+
+    .ec-placement__intro {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-placement__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-placement__title:focus {
+        outline: none;
+    }
+
+    .ec-placement__title:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    .ec-placement__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-placement__meta {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .ec-placement__meta-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-placement__meta-row > dt {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-placement__meta-row > dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-placement__meta-row--total > dd {
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-placement__payment {
+        display: grid;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .ec-placement__error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Order confirmation (#143): the success icon tile, the title and the
+     * email line; a meta strip Card whose three cells are ruled apart (they
+     * stack below 640px); the guest hints side by side from 768px; the
+     * order details; then the actions.
+     */
+    .ec-confirmation {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-confirmation__header {
+        display: grid;
+        justify-items: start;
+        gap: 12px;
+        max-inline-size: 36rem;
+    }
+
+    .ec-confirmation__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-confirmation__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-confirmation__strip [data-scope="card"][data-part="body"] {
+        padding: 0;
+    }
+
+    .ec-confirmation__facts {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        margin: 0;
+    }
+
+    .ec-confirmation__fact {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        padding: 16px var(--apui-card-padding);
+        min-inline-size: 0;
+    }
+
+    .ec-confirmation__fact + .ec-confirmation__fact {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    @media (min-width: 40rem) {
+        .ec-confirmation__facts {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-confirmation__fact + .ec-confirmation__fact {
+            border-block-start: 0;
+            border-inline-start: var(--apui-border-width) solid var(--apui-border-muted);
+        }
+    }
+
+    .ec-confirmation__fact > dt {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-confirmation__fact > dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-confirmation__number {
+        font-family: var(--apui-font-family-mono);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-confirmation__hints {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-confirmation__hints {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-confirmation__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    /*
+     * Guest order lookup (#144): a centered 480px column: the title and
+     * lead, the failure Alert, the form in a Card with a full-width submit,
+     * and the sign-in line centered under it.
+     */
+    .ec-lookup {
+        display: grid;
+        gap: 16px;
+        inline-size: 100%;
+        max-inline-size: 30rem;
+        margin-inline: auto;
+        padding-block: 32px;
+    }
+
+    .ec-lookup__intro {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-lookup__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-lookup__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    /* The live region stays in the tree (so a failure is announced), but adds no gap while it's empty. */
+    .ec-lookup__failure:not(:has(*)) {
+        margin-block-start: -16px;
+    }
+
+    .ec-lookup__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-lookup__number input {
+        font-family: var(--apui-font-family-mono);
+    }
+
+    .ec-lookup__submit {
+        inline-size: 100%;
+    }
+
+    .ec-lookup__login {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-align: center;
+    }
+
+    /*
+     * Order detail (#145): the back link or breadcrumb, the title with the
+     * placed line, the status Badge and the reorder button at the end (below the
+     * title under 640px); then the shipment Cards (Steps, and the carrier
+     * and tracking on a sunken panel), the store's messages, the details
+     * and the refunds.
+     */
+    .ec-order-show {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-show__header {
+        display: grid;
+        gap: 12px;
+        margin-block-end: 8px;
+    }
+
+    .ec-order-show__back {
+        justify-self: start;
+    }
+
+    .ec-order-show__heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-order-show__titles {
+        display: grid;
+        gap: 4px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-show__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-show__meta {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-show__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-order-show__shipments {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-order-shipment__steps {
+        min-inline-size: 0;
+        overflow-x: auto;
+    }
+
+    .ec-order-shipment__panel {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+        padding: 14px 16px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-order-shipment__details {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-shipment__carrier {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-shipment__tracking {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-shipment__tracking-number {
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-mono);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-notes [data-scope="timeline"][data-part="body"] {
+        padding: 10px 12px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-default);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * Account dashboard (#146): the greeting, Recent orders (package icon
+     * tiles, the status Badge and total at the end), three Cards that stack
+     * below 768px, the outline claim prompt, and the profile links.
+     */
+    .ec-dashboard {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-dashboard__greeting {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-dashboard__lead {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    .ec-dashboard__card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: var(--apui-card-padding) var(--apui-card-padding) 8px;
+    }
+
+    .ec-dashboard__empty {
+        padding: 8px var(--apui-card-padding) var(--apui-card-padding);
+    }
+
+    .ec-dashboard__order.apui-list-item {
+        align-items: center;
+        padding-block: 12px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    .ec-dashboard__order-link {
+        color: inherit;
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+    }
+
+    .ec-dashboard__order-link:hover {
+        text-decoration: underline;
+    }
+
+    .ec-dashboard__order-link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    .ec-dashboard__order-end {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px 16px;
+    }
+
+    .ec-dashboard__order-total {
+        color: var(--apui-text-default);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-dashboard__cards {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-dashboard__cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    .ec-dashboard__card [data-scope="card"][data-part="body"] {
+        align-content: start;
+        gap: 12px;
+    }
+
+    .ec-dashboard__card p {
+        margin: 0;
+    }
+
+    .ec-dashboard__card .apui-link {
+        justify-self: start;
+    }
+
+    .ec-dashboard__card-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-dashboard__muted {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-dashboard__claim {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-dashboard__claim-body {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 16px;
+    }
+
+    .ec-dashboard__claim-body > .apui-icon {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-dashboard__claim-text {
+        display: grid;
+        flex: 1 1 16rem;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-dashboard__claim-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-dashboard__claim-description {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-dashboard__links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /*
+     * Account page titles (#147–#151): the h1 a component brings when its
+     * row also holds an action, sized like the account shell's title.
+     */
+    .ec-orders__title,
+    .ec-addresses__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    /* The lead under the shell's title sits 8px below it, not the shell's 24px. */
+    .ec-downloads__lead,
+    .ec-claim__lead {
+        margin: 0;
+        max-inline-size: 40rem;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-account__title + .ec-downloads > .ec-downloads__lead:first-child,
+    .ec-account__title + .ec-claim > .ec-claim__lead:first-child {
+        margin-block-start: -16px;
+    }
+
+    /*
+     * Order history (#147): the title with the "Show" filter at the end; a
+     * Table from 768px, a List in a Card below it.
+     */
+    .ec-orders {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-orders__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-orders__head--untitled {
+        justify-content: flex-end;
+    }
+
+    .ec-orders__filter.apui-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-orders__filter [data-scope="select"][data-part="label"] {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        white-space: nowrap;
+    }
+
+    .ec-orders__number {
+        font-family: var(--apui-font-family-mono);
+        font-size: var(--apui-type-code-md-font-size);
+        white-space: nowrap;
+    }
+
+    .ec-orders__table [data-scope="table"][data-part="cell"] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-orders__table {
+        display: none;
+    }
+
+    .ec-orders__compact {
+        display: grid;
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-orders__table {
+            display: block;
+        }
+
+        .ec-orders__compact {
+            display: none;
+        }
+    }
+
+    .ec-orders__row.apui-list-item {
+        align-items: center;
+        padding-block: 12px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    /* The date, items and total wrap rather than clip beside the status Badge. */
+    .ec-orders__row [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-orders__row-link {
+        color: inherit;
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+    }
+
+    .ec-orders__row-link:hover {
+        text-decoration: underline;
+    }
+
+    .ec-orders__row-link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    /*
+     * Address book (#148): the title with "Add an address" at the end (it
+     * drops under the title below 640px), then Cards two across from 768px,
+     * each as tall as its row, their actions in the ruled footer with
+     * "Delete" at the end.
+     */
+    .ec-addresses {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-addresses__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-addresses__head:not(:has(.ec-addresses__title)) {
+        justify-content: flex-end;
+    }
+
+    .ec-addresses__list {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-addresses__list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-addresses__item {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    .ec-address-book-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+    }
+
+    .ec-address-book-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-address-book-card__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-address-book-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        inline-size: 100%;
+    }
+
+    .ec-address-book-card__delete {
+        margin-inline-start: auto;
+    }
+
+    .ec-addresses__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-addresses__flags {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ec-addresses__flag-note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Downloads (#149): the Files Card's rows run edge to edge under its
+     * title; the Licence keys Card lists each key's name and state Badge
+     * over the Clipboard field.
+     */
+    .ec-downloads {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-downloads__card-title {
+        padding: var(--apui-card-padding) var(--apui-card-padding) 8px;
+    }
+
+    .ec-downloads__file.apui-list-item {
+        align-items: center;
+        padding-block: 14px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    /* The product, version, allowance, expiry and order wrap rather than clip. */
+    .ec-downloads__file [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__name {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__pagination {
+        padding: 12px var(--apui-card-padding);
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-downloads__licences {
+        display: grid;
+        gap: 20px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-downloads__licence {
+        display: grid;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .ec-downloads__licence-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px 12px;
+    }
+
+    .ec-downloads__licence-name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__licence-name--inactive {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-downloads__licence-note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Profile (#150): three Cards; the names side by side from 640px, the
+     * phone at half width, and each form's button in the ruled footer.
+     */
+    .ec-profile {
+        display: grid;
+        gap: 20px;
+        min-inline-size: 0;
+    }
+
+    .ec-profile__card [data-scope="card"][data-part="body"] {
+        gap: 16px;
+    }
+
+    .ec-profile__intro {
+        display: grid;
+        gap: 4px;
+    }
+
+    .ec-profile__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-profile__fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-profile__fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-profile__phone {
+        min-inline-size: 0;
+    }
+
+    .ec-profile__links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ec-profile__channel {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-profile__legend {
+        margin-block-end: 4px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-profile__footer {
+        display: flex;
+        justify-content: flex-end;
+        inline-size: 100%;
+    }
+
+    /*
+     * Claim guest orders (#151): the lead, the success or failure Alert,
+     * then the form in a Card at most 560px wide, the two fields side by
+     * side from 640px.
+     */
+    .ec-claim {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    /* The live regions stay in the tree (so a change is announced), but add no gap while empty. */
+    .ec-claim__region:not(:has(*)) {
+        margin-block-start: -16px;
+    }
+
+    .ec-claim__card {
+        inline-size: 100%;
+        max-inline-size: 35rem;
+    }
+
+    .ec-claim__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-claim__fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-claim__fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-claim__number input {
+        font-family: var(--apui-font-family-mono);
+    }
+}

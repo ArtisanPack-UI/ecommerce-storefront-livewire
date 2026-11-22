@@ -30,17 +30,28 @@ use Illuminate\View\Component;
  * `<x-artisanpack-ec-sf-product-card :product="$product" />`
  *
  * The card every product listing uses: catalog grids, search, related
- * products, and visual-editor blocks (spec §8.1). It shows the image
- * (media-library sizes when installed), the name linked to the product
- * page, the display price, the rating, the stock state, and, for simple
- * products that can be bought, an "Add to cart" button that calls the
- * parent component's `quickAdd()` ({@see \ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart}).
+ * products, and visual-editor blocks (spec §8.1), built on the design
+ * system's Card. It shows the square image (media-library sizes when
+ * installed) with its badges (a solid "Sale" on a sale, then any the filter
+ * adds) and the satellites' actions over it, the category, the name, the
+ * display price, the rating and a compact stock badge, and at the bottom:
+ *
+ * - for simple products that can be bought, an "Add to cart" button that
+ *   calls the parent component's `quickAdd()` ({@see \ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart});
+ * - for products that need choices, "Choose options", which leads to the
+ *   product page through the card's link;
+ * - for products that can't be bought, a disabled "Sold out", with the
+ *   image dimmed.
+ *
+ * The name's link stretches over the card, so there is one link per
+ * product; the actions and "Add to cart" sit above it.
  *
  * The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard`
  * filter (the data array and the product) so a satellite can add a badge or
  * change the link; see {@see self::cardData()} for the keys.
  *
- * Eager-load the product's `images` when rendering many cards.
+ * Eager-load {@see self::relations()} when rendering many cards; the
+ * category shows only when the `categories` relation is loaded.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -54,7 +65,7 @@ class ProductCard extends Component
      *
      * @since 1.0.0
      *
-     * @var array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, price: DisplayPrice|null, stock: EngineStockStatus, rating: float, reviews: int, reviews_url: string|null, quick_add: bool, badges: array<int, string>, actions: array<string, mixed>, heading_level: int}
+     * @var array{id: int, name: string, url: string|null, image: array{url: string, srcset: string|null, alt: string}|null, category: string|null, price: DisplayPrice|null, stock: EngineStockStatus, rating: float, reviews: int, reviews_url: string|null, quick_add: bool, badges: array<int, string>, actions: array<string, mixed>, heading_level: int}
      */
     public array $card;
 
@@ -87,13 +98,15 @@ class ProductCard extends Component
      * The card's data, through the `productCard` filter.
      *
      * Keys: `id`, `name`, `url` (null renders the name unlinked), `image`
-     * (`url`, `srcset`, `alt`, or null), `price` (a `DisplayPrice` or null),
+     * (`url`, `srcset`, `alt`, or null), `category` (the first category's
+     * name, or null), `price` (a `DisplayPrice` or null),
      * `stock` (a `StockStatus`), `rating`, `reviews`, `reviews_url`,
      * `quick_add`, `badges` (extra badge texts), `actions` (buttons over
      * the image, such as a wishlist heart: key => view name, rendered with
      * `$product`, or an `Htmlable`), and `heading_level`.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `category`.
      *
      * @return array<string, mixed>
      */
@@ -112,6 +125,7 @@ class ProductCard extends Component
             'name'          => (string) $product->name,
             'url'           => $url,
             'image'         => ProductImages::card( $product ),
+            'category'      => $product->relationLoaded( 'categories' ) ? $product->categories->first()?->name : null,
             'price'         => $price,
             'stock'         => $stock,
             'rating'        => (float) $product->avg_rating,
@@ -149,17 +163,58 @@ class ProductCard extends Component
     }
 
     /**
+     * What the bottom of the card offers: `add` ("Add to cart"), `options`
+     * ("Choose options", for a product that needs choices), `sold_out` (a
+     * disabled "Sold out"), or null for nothing. Only with `quickAdd` on and
+     * a price.
+     *
+     * @since 2.0.0
+     *
+     * @return string|null
+     */
+    public function cta(): ?string
+    {
+        if ( $this->card['quick_add'] ) {
+            return 'add';
+        }
+
+        if ( ! $this->quickAdd || null === $this->card['price'] ) {
+            return null;
+        }
+
+        if ( ! $this->card['stock']->purchasable() ) {
+            return 'sold_out';
+        }
+
+        return null !== $this->card['url'] && ! self::quickAddable( $this->product ) ? 'options' : null;
+    }
+
+    /**
+     * Whether the product can't be bought: its image is dimmed.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function soldOut(): bool
+    {
+        return ! $this->card['stock']->purchasable();
+    }
+
+    /**
      * The relations a card reads, for listings to eager-load so a page of
-     * cards runs no query per product: the gallery (for the image) and the
-     * engine's display data (prices, stock, variants).
+     * cards runs no query per product: the gallery (for the image), the
+     * categories (for the category line) and the engine's display data
+     * (prices, stock, variants).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `categories`.
      *
      * @return array<int|string, Closure|string>
      */
     public static function relations(): array
     {
-        return [ 'images', ...Product::displayRelations() ];
+        return [ 'images', 'categories', ...Product::displayRelations() ];
     }
 
     /**
@@ -191,6 +246,7 @@ class ProductCard extends Component
             'name'          => static fn ( mixed $value ): bool => is_string( $value ),
             'url'           => static fn ( mixed $value ): bool => null === $value || is_string( $value ),
             'image'         => static fn ( mixed $value ): bool => null === $value || ( is_array( $value ) && is_string( $value['url'] ?? null ) ),
+            'category'      => static fn ( mixed $value ): bool => null === $value || is_string( $value ),
             'price'         => static fn ( mixed $value ): bool => null === $value || $value instanceof DisplayPrice,
             'stock'         => static fn ( mixed $value ): bool => $value instanceof EngineStockStatus,
             'rating'        => static fn ( mixed $value ): bool => is_int( $value ) || is_float( $value ),

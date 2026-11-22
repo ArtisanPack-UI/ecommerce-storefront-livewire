@@ -24,6 +24,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -81,6 +82,29 @@ class Lookup extends Component
     public ?string $failure = null;
 
     /**
+     * Whether the last attempt found no order (rather than being locked
+     * out): the failure then says what to check, and the order number
+     * field is marked invalid.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $notFound = false;
+
+    /**
+     * Show the "Find your order" title (the lookup page does; a host's
+     * own page, under its own heading, doesn't).
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Looks the order up and, when it matches, opens it.
      *
      * @since 1.0.0
@@ -91,7 +115,8 @@ class Lookup extends Component
     {
         $this->newErrorSummary();
         $this->resetErrorBag();
-        $this->failure = null;
+        $this->failure  = null;
+        $this->notFound = false;
 
         $this->email       = trim( $this->email );
         $this->orderNumber = trim( $this->orderNumber );
@@ -128,7 +153,8 @@ class Lookup extends Component
         }
 
         if ( ! $outcome instanceof Order ) {
-            $this->failure = is_string( $outcome ) ? $outcome : __( 'We couldn\'t find an order with that email address and order number.' );
+            $this->failure  = is_string( $outcome ) ? $outcome : __( 'We couldn\'t find an order with that email address and order number.' );
+            $this->notFound = ! is_string( $outcome );
 
             return;
         }
@@ -151,6 +177,7 @@ class Lookup extends Component
         $loginRoute = (string) config( 'artisanpack.ecommerce-storefront-livewire.auth.login_route', 'login' );
 
         return view( 'ecommerce-storefront::livewire.order.lookup', [
+            'fieldIds' => $this->fieldIds(),
             'loginUrl' => null === auth()->user() && '' !== $loginRoute && Route::has( $loginRoute ) ? route( $loginRoute ) : null,
         ] );
     }
@@ -196,5 +223,24 @@ class Lookup extends Component
         $minutes = (int) ceil( $seconds / 60 );
 
         return trans_choice( 'Too many attempts. Try again in :minutes minute.|Too many attempts. Try again in :minutes minutes.', $minutes, [ 'minutes' => $minutes ] );
+    }
+
+    /**
+     * The form's field ids, by error key: prefixed and unique to this
+     * component instance, so they can't collide with the host page's own
+     * fields (or a second copy of this form), and never dotted.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    protected function fieldIds(): array
+    {
+        $base = 'ec-order-lookup-' . preg_replace( '/[^A-Za-z0-9_-]+/', '', (string) $this->getId() ) . '-';
+
+        return [
+            'email'       => $base . 'email',
+            'orderNumber' => $base . 'number',
+        ];
     }
 }

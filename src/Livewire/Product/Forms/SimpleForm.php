@@ -13,7 +13,11 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms;
 
+use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
+use Money\Money;
 
 /**
  * `<livewire:artisanpack-ecommerce-storefront-product-form-simple :product="$product" />`
@@ -43,5 +47,20 @@ class SimpleForm extends PurchaseForm
             'canAdd'        => null === $blockedReason,
             'blockedReason' => $blockedReason,
         ] );
+    }
+
+    /**
+     * The product's price in the shopper's currency, unless it is a range.
+     *
+     * @since 2.0.0
+     *
+     * @return Money|null
+     */
+    protected function unitPrice(): ?Money
+    {
+        $cart  = app( StorefrontCart::class );
+        $price = app( PriceDisplayResolver::class )->for( DisplayData::for( $this->product ), $cart->currency(), null, $cart->customer() );
+
+        return null === $price || $price->isRange() ? null : $price->price;
     }
 }

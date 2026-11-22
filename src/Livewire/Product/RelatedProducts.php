@@ -171,11 +171,11 @@ class RelatedProducts extends Component
     public function render(): View
     {
         return view( 'ecommerce-storefront::livewire.product.related-products', [
-            'products'  => $this->products(),
-            'headingId' => 'ec-related-' . $this->type . '-' . ( $this->product?->id ?? 'cart' ),
-            'title'     => $this->headingText(),
-            'currency'  => app( StorefrontCart::class )->currency(),
-            'gridClass' => GridColumns::large( $this->columns ),
+            'products'    => $this->products(),
+            'headingId'   => 'ec-related-' . $this->type . '-' . ( $this->product?->id ?? 'cart' ),
+            'title'       => $this->headingText(),
+            'currency'    => app( StorefrontCart::class )->currency(),
+            'gridColumns' => GridColumns::clamp( $this->columns ),
         ] );
     }
 

@@ -1,8 +1,13 @@
 {{--
-    Form field with a linked error and hint. See Field.
+    Form field (#83). See Field.
 
-    The library control gets `omit-error` and its hint is printed here
-    instead, so each has an id `aria-describedby` can point at.
+    A thin wrapper over the design-system control: the control prints its
+    own label (with the required asterisk), hint and error (with the alert
+    icon), each with an id it links from `aria-describedby`, and sets
+    `data-invalid`, `data-disabled` and `aria-invalid` itself. This adds the
+    muted "(optional)" mark and the `.ec-field` block. The error is read
+    from `error-field`, else the `wire:model` path. The wrapper carries
+    `data-field-key`, which the form's error summary uses to find the field.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -11,65 +16,49 @@
 --}}
 @php
     $ecommerceFieldKey     = $errorKey();
-    $ecommerceFieldError   = null === $ecommerceFieldKey || ! isset( $errors ) ? '' : (string) $errors->first( $ecommerceFieldKey );
-    $ecommerceFieldInvalid = '' !== $ecommerceFieldError;
-    $ecommerceFieldHint    = 'checkbox' === $control || null === $hint || '' === $hint ? null : $hint;
-    $ecommerceFieldErrorId = $baseId() . '-error';
-    $ecommerceFieldHintId  = $baseId() . '-hint';
-    $ecommerceFieldAria    = array_filter( [
-        // The library labels selects and textareas with a <legend>, which doesn't name the control (#117).
-        'aria-label'       => in_array( $control, [ 'select', 'textarea' ], true ) && null !== $label && ! $attributes->has( 'aria-label' ) && ! $attributes->has( 'aria-labelledby' ) ? $label : null,
-        'aria-invalid'     => $ecommerceFieldInvalid ? 'true' : null,
-        'aria-describedby' => trim( implode( ' ', array_filter( [
-            (string) $attributes->get( 'aria-describedby', '' ),
-            $ecommerceFieldInvalid ? $ecommerceFieldErrorId : '',
-            null !== $ecommerceFieldHint ? $ecommerceFieldHintId : '',
-        ] ) ) ),
-    ], static fn ( ?string $value ): bool => null !== $value && '' !== $value );
-    $ecommerceFieldClasses = [
-        '!input-error'    => $ecommerceFieldInvalid && in_array( $control, [ 'input', 'password' ], true ),
-        '!select-error'   => $ecommerceFieldInvalid && 'select' === $control,
-        '!textarea-error' => $ecommerceFieldInvalid && 'textarea' === $control,
-        'checkbox-error'  => $ecommerceFieldInvalid && 'checkbox' === $control,
-    ];
+    $ecommerceFieldLabel   = $labelContent();
+    $ecommerceFieldOptions = 'select' === $control ? $selectOptions() : [];
+    $ecommerceFieldHint    = null === $hint || '' === $hint ? null : $hint;
 @endphp
-<div class="w-full" data-ec-field="{{ $id }}" @if ( null !== $ecommerceFieldKey ) data-field-key="{{ $ecommerceFieldKey }}" @endif>
+<div class="ec-field" data-ec-field="{{ $id }}" @if ( null !== $ecommerceFieldKey ) data-field-key="{{ $ecommerceFieldKey }}" @endif>
     @switch ( $control )
         @case( 'select' )
-            <x-artisanpack-select
-                :id="$id"
-                :label="$label"
-                :options="$options"
-                :placeholder="$placeholder"
-                :placeholder-value="$placeholderValue"
-                :option-value="$optionValue"
-                :option-label="$optionLabel"
-                omit-error
-                {{ $attributes->except( [ 'aria-describedby', 'aria-invalid' ] )->merge( $ecommerceFieldAria )->class( $ecommerceFieldClasses ) }}
-            />
+            <x-artisanpack-select :id="$id" :hint="$ecommerceFieldHint" :options="$ecommerceFieldOptions" :placeholder="$placeholder" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+                @if ( null !== $ecommerceFieldLabel )
+                    <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
+                @endif
+            </x-artisanpack-select>
             @break
 
         @case( 'textarea' )
-            <x-artisanpack-textarea :id="$id" :label="$label" omit-error {{ $attributes->except( [ 'aria-describedby', 'aria-invalid' ] )->merge( $ecommerceFieldAria )->class( $ecommerceFieldClasses ) }} />
+            <x-artisanpack-textarea :id="$id" :hint="$ecommerceFieldHint" :placeholder="$placeholder" :max-length="$maxLength" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+                @if ( null !== $ecommerceFieldLabel )
+                    <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
+                @endif
+            </x-artisanpack-textarea>
             @break
 
         @case( 'password' )
-            <x-artisanpack-password :id="$id" :label="$label" omit-error {{ $attributes->except( [ 'aria-describedby', 'aria-invalid' ] )->merge( $ecommerceFieldAria )->class( $ecommerceFieldClasses ) }} />
+            <x-artisanpack-password :id="$id" :hint="$ecommerceFieldHint" :leading-icon="$leadingIcon" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+                @if ( null !== $ecommerceFieldLabel )
+                    <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
+                @endif
+            </x-artisanpack-password>
             @break
 
         @case( 'checkbox' )
-            <x-artisanpack-checkbox :id="$id" :label="$label" :hint="$hint" omit-error {{ $attributes->except( [ 'aria-describedby', 'aria-invalid' ] )->merge( $ecommerceFieldAria )->class( $ecommerceFieldClasses ) }} />
+            <x-artisanpack-checkbox :id="$id" :description="$ecommerceFieldHint" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+                @if ( null !== $ecommerceFieldLabel )
+                    <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
+                @endif
+            </x-artisanpack-checkbox>
             @break
 
         @default
-            <x-artisanpack-input :id="$id" :label="$label" omit-error {{ $attributes->except( [ 'aria-describedby', 'aria-invalid' ] )->merge( $ecommerceFieldAria )->class( $ecommerceFieldClasses ) }} />
+            <x-artisanpack-input :id="$id" :hint="$ecommerceFieldHint" :placeholder="$placeholder" :leading-icon="$leadingIcon" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+                @if ( null !== $ecommerceFieldLabel )
+                    <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
+                @endif
+            </x-artisanpack-input>
     @endswitch
-
-    @if ( $ecommerceFieldInvalid )
-        <p id="{{ $ecommerceFieldErrorId }}" class="mt-1 text-xs text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-field-error>{{ $ecommerceFieldError }}</p>
-    @endif
-
-    @if ( null !== $ecommerceFieldHint )
-        <p id="{{ $ecommerceFieldHintId }}" class="mt-1 text-xs text-base-content/70" data-field-hint>{{ $ecommerceFieldHint }}</p>
-    @endif
 </div>

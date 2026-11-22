@@ -53,18 +53,19 @@ beforeEach( function (): void {
     } );
 } );
 
-it( 'shows the lines, addresses, shipping, totals, note, and "Continue to payment" on review', function (): void {
+it( 'shows the note and "Continue to payment" on review, with the lines, addresses, shipping and totals around it', function (): void {
     checkoutAtReview( $this->gateway )
         ->assertSeeHtml( 'data-checkout-review-form' )
-        ->assertSeeHtml( 'data-checkout-review-lines' )
         ->assertSee( 'Mug' )
+        ->assertSeeHtml( 'data-checkout-step-summary="address"' )
         ->assertSee( '1 Main Street' )
+        ->assertSeeHtml( 'data-checkout-step-summary="shipping"' )
         ->assertSee( 'Standard' )
         ->assertSeeHtml( 'data-cart-tax' )
         ->assertSeeHtml( 'data-checkout-order-note' )
         ->assertSeeHtml( 'data-checkout-review-submit' )
         ->assertSee( 'Continue to payment' )
-        ->assertSee( 'You\'ll pay $25.00.' )
+        ->assertDontSeeHtml( 'data-checkout-review-lines' )
         ->assertDontSeeHtml( 'data-checkout-place-order' )
         ->assertDontSeeHtml( 'data-checkout-terms' );
 
@@ -378,11 +379,40 @@ it( 'sends the shopper back to payment when the payment no longer matches', func
         $this->gateway->sessions['fake_ps_other'] = $this->gateway->sessions['fake_ps_1'];
     } );
 
-    payAtCheckout( $component, $this->gateway )->assertHasErrors();
+    payAtCheckout( $component, $this->gateway );
+
+    // Engine 1.4+ keeps a history of a cart's payment sessions and holds an
+    // order for a confirmed payment on a replaced session; that order goes to
+    // its confirmation and is never asked to be paid again.
+    if ( class_exists( ArtisanPackUI\Ecommerce\Services\StrandedPaymentService::class ) ) {
+        $order = Order::query()->sole();
+
+        $component->assertHasNoErrors()
+            ->assertDontSeeHtml( 'data-checkout-placement' )
+            ->assertSet( 'placement', null );
+
+        expect( $order->meta[ CheckoutPlacement::PAYMENT_MISMATCH_META_KEY ] ?? null )->toBeArray()
+            ->and( placedRedirect( $component ) )->toStartWith( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => $order->id ] ) )
+            ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( 'We\'re reviewing your order and will email you shortly.' );
+
+        return;
+    }
+
+    $component->assertHasErrors();
 
     expect( Order::query()->count() )->toBe( 0 )
         ->and( $component->get( 'step' ) )->toBe( 'payment' )
         ->and( $component->get( 'confirmedPayment' ) )->toBeNull();
+} );
+
+it( 'treats an order the engine held for a stranded payment as held', function (): void {
+    $order = Order::factory()->create( [
+        'payment_status' => 'pending',
+        'meta'           => [ CheckoutPlacement::PAYMENT_MISMATCH_META_KEY => [ 'reason' => 'superseded', 'reference' => 'fake_ps_1' ] ],
+    ] );
+
+    expect( CheckoutPlacement::isHeld( $order ) )->toBeTrue()
+        ->and( CheckoutPlacement::isHeld( Order::factory()->create( [ 'payment_status' => 'pending' ] ) ) )->toBeFalse();
 } );
 
 it( 'shows a generic message when placing the order fails unexpectedly', function (): void {
@@ -561,7 +591,7 @@ it( 'sends a shopper whose payment is held for review to the confirmation', func
     expect( placedRedirect( $component ) )->toStartWith( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => $order->id ] ) )
         ->and( $order->payment_status )->toBe( 'pending' )
         ->and( session()->has( CheckoutPlacement::SESSION_KEY ) )->toBeFalse()
-        ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( e( 'We\'re reviewing your order and will email you shortly.' ) );
+        ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( 'We\'re reviewing your order and will email you shortly.' );
 
     // Coming back to checkout doesn't ask for the payment again.
     Livewire::test( Index::class )->assertDontSeeHtml( 'data-checkout-placement' );
@@ -744,4 +774,118 @@ it( 'finishes a placed order from the payment return even after the shopper star
     $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1' ] ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout' ) )
         ->assertSessionHas( Index::CONFIRMED_PAYMENT_SESSION_KEY, [ 'reference' => 'fake_ps_1', 'total' => (int) $order->total_amount ] );
+} );
+
+it( 'throttles the review step\'s account check, so it can\'t test emails in bulk', function (): void {
+    config()->set( 'artisanpack.ecommerce.checkout.account_creation', true );
+    makeUser( [ 'email' => 'grace@example.test' ] );
+
+    $component = checkoutAtReview( $this->gateway, 'grace@example.test' )
+        ->set( 'createAccount', true )
+        ->set( 'password', 'correct-horse-battery' );
+
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 3 );
+
+    foreach ( range( 1, 6 ) as $attempt ) {
+        $component->call( 'saveReview' );
+    }
+
+    $component->assertHasNoErrors( 'password' )
+        ->assertSet( 'step', 'review' );
+
+    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Slow down' );
+} );
+
+it( 'throttles saving the contact email', function (): void {
+    $component = Livewire::test( Index::class );
+
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 2 );
+
+    foreach ( range( 1, 4 ) as $attempt ) {
+        $component->set( 'email', 'probe' . $attempt . '@example.test' )->call( 'saveContact' );
+    }
+
+    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Slow down' )
+        ->and( $this->cart->refresh()->email )->not->toBe( 'probe4@example.test' );
+} );
+
+it( 'checks the account again when the shopper changes their email after review', function (): void {
+    config()->set( 'artisanpack.ecommerce.checkout.account_creation', true );
+    makeUser( [ 'email' => 'taken@example.test' ] );
+
+    $component = checkoutAtReview( $this->gateway, 'new@example.test' )
+        ->set( 'createAccount', true )
+        ->set( 'password', 'correct-horse-battery' )
+        ->call( 'saveReview' )
+        ->assertHasNoErrors()
+        ->assertSet( 'step', 'payment' )
+        ->call( 'goTo', 'contact' )
+        ->set( 'email', 'taken@example.test' )
+        ->call( 'saveContact' )
+        ->assertSet( 'createAccount', true )
+        ->call( 'goTo', 'payment' )
+        ->assertNotSet( 'step', 'payment' )
+        ->call( 'goTo', 'review' )
+        ->assertSet( 'step', 'review' )
+        ->call( 'saveReview' )
+        ->assertHasErrors( 'password' )
+        ->assertSee( 'There\'s already an account for taken@example.test.' );
+
+    expect( Order::query()->count() )->toBe( 0 );
+} );
+
+it( 'keeps the review when the email changes but no account was asked for', function (): void {
+    checkoutAtPaymentStep( $this->gateway, 'new@example.test' )
+        ->call( 'goTo', 'contact' )
+        ->set( 'email', 'other@example.test' )
+        ->call( 'saveContact' )
+        ->call( 'goTo', 'payment' )
+        ->assertSet( 'step', 'payment' );
+} );
+
+it( 'leaves an existing guest customer\'s marketing choice alone and asks the host to confirm it', function (): void {
+    $existing = Customer::factory()->create( [ 'email' => 'grace@example.test', 'user_id' => null, 'accepts_marketing' => false ] );
+
+    $pending = [];
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.marketingConsentPending', static function ( Order $order, Customer $customer ) use ( &$pending ): void {
+        $pending[] = [ $order->id, $customer->id ];
+    } );
+
+    $component = Livewire::test( Index::class )
+        ->set( 'email', 'grace@example.test' )
+        ->set( 'marketingConsent', true )
+        ->call( 'saveContact' )
+        ->set( 'shipping', checkoutAddress() )
+        ->call( 'saveAddress' );
+
+    $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' )->call( 'saveReview' );
+
+    payAtCheckout( $component, $this->gateway );
+
+    $order = Order::query()->sole();
+
+    expect( $existing->refresh()->accepts_marketing )->toBeFalse()
+        ->and( $order->meta[ CheckoutMarketingConsent::ORDER_META_KEY ] )
+        ->toMatchArray( [ 'given' => true, 'customer_id' => $existing->id, 'customer_created' => false, 'applied' => false ] )
+        ->and( $pending )->toBe( [ [ $order->id, $existing->id ] ] );
+} );
+
+it( 'renders the placed state under the page\'s h1, with focus moved to it', function (): void {
+    app( 'router' )->getRoutes()->getByName( 'artisanpack.ecommerce.storefront.confirmation' )->name( 'renamed-confirmation' );
+    app( 'router' )->getRoutes()->refreshNameLookups();
+
+    $component = Livewire::test( Index::class, [ 'showTitle' => true ] )
+        ->set( 'email', 'ada@example.test' )
+        ->call( 'saveContact' )
+        ->set( 'shipping', checkoutAddress() )
+        ->call( 'saveAddress' );
+
+    $component->set( 'shippingRate', (string) $component->get( 'rates' )[0]['id'] )->call( 'saveShipping' )->call( 'saveReview' );
+
+    payAtCheckout( $component, $this->gateway );
+
+    $html = $component->html();
+
+    expect( $html )->toMatch( '/data-checkout-placed[^>]*>.*?<h1[^>]*>\s*Checkout\s*<\/h1>.*Thank you for your order/s' )
+        ->toContain( 'heading.focus()' );
 } );

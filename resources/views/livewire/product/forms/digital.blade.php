@@ -1,33 +1,40 @@
 {{--
     Digital product purchase form. See Product\Forms\DigitalForm.
 
+    Under the product summary (#103): the licence types as design-system
+    radio cards (when the product offers them), then what the shopper gets
+    as muted notes beside the download icon, then the shared add-to-cart
+    row with the line price on the button.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
 @php( $ecommerceFormId = 'ec-product-' . $product->id )
-<div class="flex flex-col gap-4" data-purchase-form="digital">
-    <ul role="list" class="flex flex-col gap-1 text-sm" data-digital-notes>
-        @foreach ( $notes as $note )
-            <li class="flex items-start gap-2">
-                <x-artisanpack-icon name="o-arrow-down-tray" class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span>{{ $note }}</span>
-            </li>
-        @endforeach
-    </ul>
-
+<div class="ec-purchase-form" data-purchase-form="digital">
     @if ( [] !== $licenseTypes )
-        <x-artisanpack-ec-field
-            control="select"
+        <x-artisanpack-radio-group
             :id="$ecommerceFormId . '-license'"
             :label="__( 'Licence' )"
-            :options="collect( $licenseTypes )->map( fn ( string $label, string $value ): array => [ 'id' => $value, 'name' => $label ] )->values()->all()"
-            :placeholder="__( 'Choose a licence' )"
+            variant="cards"
+            :options="collect( $licenseTypes )->map( fn ( string $label, string $value ): array => [ 'value' => $value, 'label' => $label ] )->values()->all()"
+            :value="'' === $licenseType ? null : $licenseType"
+            required
             wire:model="licenseType"
             error-field="licenseType"
+            data-license-types
         />
     @endif
+
+    <div class="ec-digital-notes" data-digital-notes>
+        <x-artisanpack-icon name="download" class="ec-digital-notes__icon" aria-hidden="true" />
+        <ul role="list" class="ec-digital-notes__list">
+            @foreach ( $notes as $note )
+                <li>{{ $note }}</li>
+            @endforeach
+        </ul>
+    </div>
 
     @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [ 'formId' => $ecommerceFormId ] )
 </div>

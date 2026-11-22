@@ -19,6 +19,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -46,9 +47,22 @@ class CategoryShow extends Component
     public ProductCategory $category;
 
     /**
+     * The level of the category's heading: 1, or 2 when the page already has
+     * its own `<h1>` (a saved template that heads the page, such as the
+     * `product-archive` fallback).
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $headingLevel = 1;
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
+     * @since 2.0.0 Passes the category's own `url`, for its "All" chip.
      *
      * @return View
      */
@@ -59,6 +73,8 @@ class CategoryShow extends Component
 
         return view( 'ecommerce-storefront::livewire.catalog.category-show', [
             'breadcrumbs'   => $this->breadcrumbs( $paths, $id ),
+            'heading'       => 2 === $this->headingLevel ? 'h2' : 'h1',
+            'url'           => $paths->url( $id ),
             'subcategories' => array_map( static fn ( array $node ): array => [
                 'id'   => $node['id'],
                 'name' => $node['name'],

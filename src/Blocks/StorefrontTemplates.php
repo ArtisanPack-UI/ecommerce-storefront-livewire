@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Models\ProductTag;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Route;
 use Throwable;
 
 /**
@@ -40,12 +41,24 @@ use Throwable;
  * page renders as it does without templates, which is what the default
  * templates show. Templates are rendered by visual-editor's
  * `<x-ve-template>` and looked up through cms-framework's template
- * resolver, so both must be installed.
+ * resolver, so both must be installed. Each template is a group of its
+ * blocks, spaced by the editor; the archive, cart, checkout and search
+ * templates start with their page heading (`ec-template__title`, the page
+ * header's heading-xl type, #128).
  *
  * **Patterns** — "Featured products", "Shop by category", and "Sale banner +
  * grid", through `ap.visualEditor.patterns` (after
  * `ap.ecommerceStorefrontLivewire.patterns`) whenever the blocks are
- * registered.
+ * registered. "Featured products" (#125) is a heading row (the heading-xl
+ * title, and a standalone "Shop all" Link at the row's end) over a
+ * four-column grid of featured products; "Shop by category" (#126) is the
+ * heading-xl title over three columns of top-level categories (two on small
+ * screens). "Sale banner + grid" (#127) is a banner on the accent soft
+ * fill (a "Sale" Badge, the heading, a line of text and a "Shop the sale"
+ * Button, beside an image the editor picks) over four products on sale.
+ * Their blocks are spaced by the editor, and their layout comes from block
+ * attributes; their classes (`ec-pattern__*`, `ec-sale-banner*`) only
+ * carry tokens.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -100,6 +113,73 @@ final class StorefrontTemplates
     public const PATTERN_CATEGORY = 'commerce';
 
     /**
+     * The class on a pattern's outer group.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_CLASS = 'ec-pattern';
+
+    /**
+     * The class on a pattern's heading row (a flex group: the heading at
+     * the start, a link at the end).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_HEADER_CLASS = 'ec-pattern__header';
+
+    /**
+     * The class on a pattern's heading: the design system's heading-xl
+     * type (ec-pattern__title in resources/css/storefront.css).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_TITLE_CLASS = 'ec-pattern__title';
+
+    /**
+     * The class on a pattern's standalone link paragraph.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const PATTERN_LINK_CLASS = 'ec-pattern__link';
+
+    /**
+     * The class on the sale banner's group; its parts are `__copy`,
+     * `__badge`, `__title`, `__text`, `__action` and `__media`.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const SALE_BANNER_CLASS = 'ec-sale-banner';
+
+    /**
+     * The class on a default template's group.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const TEMPLATE_CLASS = 'ec-template';
+
+    /**
+     * The class on a default template's page heading: the page header's
+     * heading-xl type (ec-template__title in resources/css/storefront.css).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const TEMPLATE_TITLE_CLASS = 'ec-template__title';
+
+    /**
      * The default template slugs.
      *
      * @since 1.0.0
@@ -125,6 +205,17 @@ final class StorefrontTemplates
         'checkout' => 'checkout',
         'search'   => 'search-results',
     ];
+
+    /**
+     * The template {@see self::for()} picked last: the page, its subject's
+     * key, and the slug. Reset on every lookup, so a long-lived worker
+     * can't carry it into the next request's page.
+     *
+     * @since 2.0.0
+     *
+     * @var array{page: string, subject: string|null, slug: string}|null
+     */
+    protected static ?array $resolved = null;
 
     /**
      * Wires the patterns (and, with `visual_editor.templates` on, the
@@ -189,6 +280,8 @@ final class StorefrontTemplates
      */
     public static function for( string $page, ?Model $subject = null ): ?string
     {
+        self::$resolved = null;
+
         if ( ! self::enabled() ) {
             return null;
         }
@@ -200,6 +293,8 @@ final class StorefrontTemplates
                 $entity = $resolver->resolve( $slug );
 
                 if ( null !== $entity && is_array( $entity->blocks ?? null ) ) {
+                    self::$resolved = [ 'page' => $page, 'subject' => null === $subject ? null : (string) $subject->getKey(), 'slug' => $slug ];
+
                     return $slug;
                 }
             }
@@ -208,6 +303,29 @@ final class StorefrontTemplates
         }
 
         return null;
+    }
+
+    /**
+     * The template {@see self::for()} last picked for this page and
+     * subject, or null when it picked none (or was asked about another
+     * page). Blocks use it to fit the template they render in, e.g. the
+     * Product Catalog block on a category page that fell back to the
+     * `product-archive` template, which has its own `<h1>`.
+     *
+     * @since 2.0.0
+     *
+     * @param  string      $page     A key of {@see self::PAGES}.
+     * @param  Model|null  $subject  The product, category, or tag.
+     *
+     * @return string|null
+     */
+    public static function resolved( string $page, ?Model $subject = null ): ?string
+    {
+        $subjectKey = null === $subject ? null : (string) $subject->getKey();
+
+        return null !== self::$resolved && $page === self::$resolved['page'] && $subjectKey === self::$resolved['subject']
+            ? self::$resolved['slug']
+            : null;
     }
 
     /**
@@ -257,32 +375,32 @@ final class StorefrontTemplates
             'product-archive'  => [
                 'title'       => __( 'Product Catalog' ),
                 'description' => __( 'The shop page, and category and tag pages without their own template.' ),
-                'content'     => self::stack( self::heading( __( 'Shop' ) ), $catalog ),
+                'content'     => self::template( self::heading( __( 'Shop' ), 1, self::TEMPLATE_TITLE_CLASS ), $catalog ),
             ],
             'product-category' => [
                 'title'       => __( 'Product Category' ),
                 'description' => __( 'Every category page. Add product-category-{slug} for one category.' ),
-                'content'     => self::stack( $catalog ),
+                'content'     => self::template( $catalog ),
             ],
             'product-tag'      => [
                 'title'       => __( 'Product Tag' ),
                 'description' => __( 'Every tag page. Add product-tag-{slug} for one tag.' ),
-                'content'     => self::stack( $catalog ),
+                'content'     => self::template( $catalog ),
             ],
             'cart'             => [
                 'title'       => __( 'Cart' ),
                 'description' => __( 'The cart page.' ),
-                'content'     => self::stack( self::heading( __( 'Cart' ) ), self::block( 'cart-contents' ) ),
+                'content'     => self::template( self::heading( __( 'Cart' ), 1, self::TEMPLATE_TITLE_CLASS ), self::block( 'cart-contents' ) ),
             ],
             'checkout'         => [
                 'title'       => __( 'Checkout' ),
                 'description' => __( 'The checkout page.' ),
-                'content'     => self::stack( self::heading( __( 'Checkout' ) ), self::block( 'checkout-steps' ) ),
+                'content'     => self::template( self::heading( __( 'Checkout' ), 1, self::TEMPLATE_TITLE_CLASS ), self::block( 'checkout-steps' ) ),
             ],
             'search-results'   => [
                 'title'       => __( 'Product Search Results' ),
                 'description' => __( 'The product search page.' ),
-                'content'     => self::stack( self::heading( __( 'Search' ) ), $catalog ),
+                'content'     => self::template( self::heading( __( 'Search' ), 1, self::TEMPLATE_TITLE_CLASS ), $catalog ),
             ],
         ];
 
@@ -302,30 +420,29 @@ final class StorefrontTemplates
         $defaults = [
             StorefrontBlock::NAMESPACE . '/featured-products' => [
                 'title'       => __( 'Featured products' ),
-                'description' => __( 'A heading and a grid of featured products.' ),
-                'content'     => self::stack(
-                    self::heading( __( 'Featured products' ), 2 ),
+                'description' => __( 'A heading with a "Shop all" link and a grid of featured products.' ),
+                'content'     => self::section(
+                    self::row(
+                        self::heading( __( 'Featured products' ), 2, self::PATTERN_TITLE_CLASS ),
+                        ...array_filter( [ self::shopAllLink() ] ),
+                    ),
                     self::block( 'product-grid', [ 'source' => 'featured', 'limit' => 4, 'columns' => 4 ] ),
                 ),
             ],
             StorefrontBlock::NAMESPACE . '/shop-by-category' => [
                 'title'       => __( 'Shop by category' ),
                 'description' => __( 'A heading and the top-level categories.' ),
-                'content'     => self::stack(
-                    self::heading( __( 'Shop by category' ), 2 ),
+                'content'     => self::section(
+                    self::heading( __( 'Shop by category' ), 2, self::PATTERN_TITLE_CLASS ),
                     self::block( 'category-grid', [ 'limit' => 6, 'columns' => 3 ] ),
                 ),
             ],
             StorefrontBlock::NAMESPACE . '/sale-banner-grid' => [
                 'title'       => __( 'Sale banner + grid' ),
                 'description' => __( 'A sale banner above a grid of products on sale.' ),
-                'content'     => self::stack(
-                    self::group(
-                        'rounded-box bg-base-200 p-8 text-center',
-                        self::heading( __( 'On sale now' ), 2 ),
-                        self::paragraph( __( 'Save on these favourites while they last.' ) ),
-                    ),
-                    self::block( 'product-grid', [ 'source' => 'on_sale', 'limit' => 8, 'columns' => 4 ] ),
+                'content'     => self::section(
+                    self::saleBanner(),
+                    self::block( 'product-grid', [ 'source' => 'on_sale', 'limit' => 4, 'columns' => 4 ] ),
                 ),
             ],
         ];
@@ -473,17 +590,18 @@ final class StorefrontTemplates
     }
 
     /**
-     * Blocks stacked in a group, spaced like the storefront pages.
+     * A template's blocks in a group, spaced by the editor's block spacing
+     * (the group's default flow layout).
      *
-     * @since 1.0.0
+     * @since 2.0.0
      *
      * @param  string  ...$blocks  Block markup.
      *
      * @return string
      */
-    private static function stack( string ...$blocks ): string
+    private static function template( string ...$blocks ): string
     {
-        return self::group( 'flex flex-col gap-6', ...$blocks );
+        return self::group( self::TEMPLATE_CLASS, ...$blocks );
     }
 
     /**
@@ -498,27 +616,191 @@ final class StorefrontTemplates
      */
     private static function group( string $class, string ...$blocks ): string
     {
-        return '<!-- wp:group ' . json_encode( [ 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
-            . '<div class="wp-block-group ' . e( $class ) . "\">\n" . implode( "\n\n", $blocks ) . "\n</div>\n"
+        return self::groupWith( [ 'className' => $class ], ...$blocks );
+    }
+
+    /**
+     * A core group block with the given attributes (`className` is
+     * required).
+     *
+     * @since 2.0.0
+     *
+     * @param  array<string, mixed>  $attrs      The group's attributes.
+     * @param  string                ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function groupWith( array $attrs, string ...$blocks ): string
+    {
+        return '<!-- wp:group ' . json_encode( $attrs, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<div class="wp-block-group ' . e( $attrs['className'] ) . "\">\n" . implode( "\n\n", $blocks ) . "\n</div>\n"
             . '<!-- /wp:group -->';
+    }
+
+    /**
+     * A pattern's outer group. Its blocks are spaced by the editor's block
+     * spacing (the group's default flow layout), so the pattern adds no
+     * spacing of its own.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function section( string ...$blocks ): string
+    {
+        return self::group( self::PATTERN_CLASS, ...$blocks );
+    }
+
+    /**
+     * A pattern's heading row: a flex group with the heading at the start
+     * and anything after it at the end (`space-between`, mirrored in
+     * right-to-left layouts), wrapping when the row is too narrow. The
+     * editor's flex layout lays it out, on the canvas and the site alike.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  ...$blocks  Block markup.
+     *
+     * @return string
+     */
+    private static function row( string ...$blocks ): string
+    {
+        return self::groupWith(
+            [ 'className' => self::PATTERN_HEADER_CLASS, 'layout' => [ 'type' => 'flex', 'justifyContent' => 'space-between', 'verticalAlignment' => 'center' ] ],
+            ...$blocks,
+        );
+    }
+
+    /**
+     * The "Shop all" link to the catalog: a paragraph holding a standalone
+     * design-system Link with a forward arrow (mirrored in right-to-left
+     * layouts). The href is root-relative, since an inserted pattern is
+     * saved into the page and must survive a change of domain. Null when the
+     * storefront's catalog route isn't registered.
+     *
+     * @since 2.0.0
+     *
+     * @return string|null
+     */
+    private static function shopAllLink(): ?string
+    {
+        if ( ! Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ) {
+            return null;
+        }
+
+        $link = self::component(
+            '<x-artisanpack-link :href="$href" standalone trailing-icon="arrow-right" :navigate="false">{{ $label }}</x-artisanpack-link>',
+            [ 'href' => route( 'artisanpack.ecommerce.storefront.catalog', [], false ), 'label' => __( 'Shop all' ) ],
+        );
+
+        return self::paragraph( $link, self::PATTERN_LINK_CLASS, false );
+    }
+
+    /**
+     * The sale banner (#127): a flex group on the accent soft fill (the one
+     * place a page uses the accent), the copy on the start half and an image
+     * on the end half, stacking below 640px. The copy is a solid accent
+     * "Sale" Badge, the heading, a line of text and, with the storefront
+     * routes, a large solid neutral "Shop the sale" Button to the catalog's
+     * on-sale products. The image block starts empty for the editor to
+     * fill; the banner's copy spans it until it has an image.
+     *
+     * The group's flex layout and zero block gap are block attributes, so
+     * the editor and the renderer lay the banner out; `ec-sale-banner*`
+     * (resources/css/storefront.css) only adds the fill, radius, padding,
+     * type and column sizes.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    private static function saleBanner(): string
+    {
+        $copy = [
+            self::paragraph(
+                self::component( '<x-artisanpack-badge variant="solid" color="accent" leading-icon="tag">{{ $label }}</x-artisanpack-badge>', [ 'label' => __( 'Sale' ) ] ),
+                self::SALE_BANNER_CLASS . '__badge',
+                false,
+            ),
+            self::heading( __( 'On sale now' ), 2, self::SALE_BANNER_CLASS . '__title' ),
+            self::paragraph( __( 'Save on these favourites while they last.' ), self::SALE_BANNER_CLASS . '__text' ),
+        ];
+
+        if ( Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ) {
+            $copy[] = self::paragraph(
+                self::component(
+                    '<x-artisanpack-button :href="$href" color="neutral" size="lg">{{ $label }}</x-artisanpack-button>',
+                    [ 'href' => route( 'artisanpack.ecommerce.storefront.catalog', [ 'on_sale' => 1 ], false ), 'label' => __( 'Shop the sale' ) ],
+                ),
+                self::SALE_BANNER_CLASS . '__action',
+                false,
+            );
+        }
+
+        return self::groupWith(
+            [
+                'className' => self::SALE_BANNER_CLASS,
+                'layout'    => [ 'type' => 'flex', 'flexWrap' => 'wrap', 'verticalAlignment' => 'stretch' ],
+                'style'     => [ 'spacing' => [ 'blockGap' => '0' ] ],
+            ],
+            self::group( self::SALE_BANNER_CLASS . '__copy', ...$copy ),
+            self::image( self::SALE_BANNER_CLASS . '__media' ),
+        );
+    }
+
+    /**
+     * An empty core image block for the editor to fill: full width, cropped
+     * to 4:3, with no bottom margin.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $class  The block's class.
+     *
+     * @return string
+     */
+    private static function image( string $class ): string
+    {
+        $attrs = [ 'width' => '100%', 'aspectRatio' => '4/3', 'scale' => 'cover', 'className' => $class, 'style' => [ 'spacing' => [ 'margin' => [ 'bottom' => '0' ] ] ] ];
+
+        return '<!-- wp:image ' . json_encode( $attrs, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<figure class="wp-block-image ' . e( $class ) . "\" style=\"margin-bottom:0\"><img alt=\"\"/></figure>\n"
+            . '<!-- /wp:image -->';
+    }
+
+    /**
+     * A design-system component rendered to one line of HTML, for a
+     * paragraph's content.
+     *
+     * @since 2.0.0
+     *
+     * @param  string                $template  Blade.
+     * @param  array<string, mixed>  $data      Its data (escaped where it is echoed).
+     *
+     * @return string
+     */
+    private static function component( string $template, array $data ): string
+    {
+        return trim( (string) preg_replace( '/\s*\n\s*/', ' ', Blade::render( $template, $data ) ) );
     }
 
     /**
      * A core heading block.
      *
      * @since 1.0.0
+     * @since 2.0.0 Takes the heading's class (no more Tailwind default).
      *
      * @param  string  $text   The heading.
      * @param  int     $level  1–6.
+     * @param  string  $class  The heading's class.
      *
      * @return string
      */
-    private static function heading( string $text, int $level = 1 ): string
+    private static function heading( string $text, int $level, string $class ): string
     {
-        $class = 1 === $level ? 'text-3xl font-bold' : 'text-2xl font-bold';
-
         return '<!-- wp:heading ' . json_encode( [ 'level' => $level, 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
-            . '<h' . $level . ' class="wp-block-heading ' . $class . '">' . e( $text ) . '</h' . $level . ">\n"
+            . '<h' . $level . ' class="wp-block-heading ' . e( $class ) . '">' . e( $text ) . '</h' . $level . ">\n"
             . '<!-- /wp:heading -->';
     }
 
@@ -526,13 +808,23 @@ final class StorefrontTemplates
      * A core paragraph block.
      *
      * @since 1.0.0
+     * @since 2.0.0 Takes a class, and already-escaped HTML.
      *
-     * @param  string  $text  The text.
+     * @param  string       $text    The text (or HTML when `$escape` is false).
+     * @param  string|null  $class   The paragraph's class.
+     * @param  bool         $escape  Whether to escape `$text`.
      *
      * @return string
      */
-    private static function paragraph( string $text ): string
+    private static function paragraph( string $text, ?string $class = null, bool $escape = true ): string
     {
-        return "<!-- wp:paragraph -->\n<p>" . e( $text ) . "</p>\n<!-- /wp:paragraph -->";
+        $content = $escape ? e( $text ) : $text;
+
+        if ( null === $class ) {
+            return "<!-- wp:paragraph -->\n<p>" . $content . "</p>\n<!-- /wp:paragraph -->";
+        }
+
+        return '<!-- wp:paragraph ' . json_encode( [ 'className' => $class ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . " -->\n"
+            . '<p class="' . e( $class ) . '">' . $content . "</p>\n<!-- /wp:paragraph -->";
     }
 }

@@ -40,7 +40,7 @@ it( 'sends a cart with lines that can\'t be bought back to the cart page', funct
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.cart' ) );
 
     expect( session( ToastPayload::SESSION_KEY )['toast'] )
-        ->title->toBe( e( 'Some items can\'t be bought' ) )
+        ->title->toBe( 'Some items can\'t be bought' )
         ->description->toBe( 'Remove the item marked in your cart to check out.' );
 } );
 
@@ -201,7 +201,7 @@ it( 'validates the email', function ( string $email, string $message ): void {
         ->assertHasErrors( 'email' )
         ->assertSee( $message )
         ->assertSeeHtml( 'data-checkout-errors' )
-        ->assertSeeHtml( 'data-checkout-error="email"' )
+        ->assertSeeHtml( 'href="#email"' )
         ->assertSet( 'step', 'contact' )
         ->assertSet( 'errorSummary', 1 );
 } )->with( [

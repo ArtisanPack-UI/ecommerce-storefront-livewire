@@ -75,12 +75,18 @@ it( 'clears the consent date when the shopper opts out of marketing', function (
 it( 'validates the profile', function (): void {
     [ , $customer ] = shopper( [ 'first_name' => 'Ada' ] );
 
-    Livewire::test( Profile::class )
+    $component = Livewire::test( Profile::class )
         ->set( 'profile.first_name', str_repeat( 'a', 256 ) )
         ->set( 'profile.phone', 'call me maybe' )
-        ->call( 'saveProfile' )
+        ->call( 'saveProfile' );
+    $base = 'ec-account-profile-' . $component->id() . '-';
+
+    $component
         ->assertHasErrors( [ 'profile.first_name', 'profile.phone' ] )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-profile-phone-error"' );
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="' . $base . 'phone-error"' )
+        ->assertSeeHtml( 'href="#' . $base . 'first-name"' )
+        ->assertDontSeeHtml( 'id="profile.' );
 
     expect( $customer->refresh()->first_name )->toBe( 'Ada' );
 } );
@@ -230,4 +236,53 @@ it( 'warns the shopper when marketing couldn\'t be switched off after withdrawin
     expect( $toasts )->toContain( 'news and offers may still be on' )
         ->and( $toasts )->not->toContain( '"Profile saved"' )
         ->and( $customer->refresh()->accepts_marketing )->toBeFalse();
+} );
+
+it( 'won\'t make a customer record for a user who hasn\'t verified their email', function (): void {
+    $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email' => 'squat@example.com' ] )->id );
+    $this->actingAs( $user );
+
+    $component = Livewire::test( Profile::class )
+        ->set( 'profile.first_name', 'Mallory' )
+        ->call( 'saveProfile' );
+
+    expect( Customer::query()->where( 'email', 'squat@example.com' )->exists() )->toBeFalse()
+        ->and( Customer::forUser( $user ) )->toBeNull()
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Verify your email address' );
+
+    $component->call( 'savePreferences' );
+
+    expect( Customer::query()->count() )->toBe( 0 );
+} );
+
+it( 'still saves for an unverified user who already has a customer record', function (): void {
+    $user     = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser()->id );
+    $customer = Customer::factory()->create( [ 'user_id' => $user->id, 'email' => $user->email ] );
+    $this->actingAs( $user );
+
+    Livewire::test( Profile::class )
+        ->set( 'profile.first_name', 'Grace' )
+        ->call( 'saveProfile' )
+        ->assertHasNoErrors();
+
+    expect( $customer->refresh()->first_name )->toBe( 'Grace' );
+} );
+
+it( 'rate limits saving the profile and preferences with the shopper write policy', function (): void {
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_cart', 1 );
+    config()->set( 'artisanpack.ecommerce.rate_limits.cart.mutate.per_ip', 1 );
+
+    [ , $customer ] = shopper( [ 'first_name' => 'Ada' ] );
+
+    Livewire::test( Profile::class )->set( 'profile.first_name', 'Grace' )->call( 'saveProfile' );
+
+    $component = Livewire::test( Profile::class )->set( 'profile.first_name', 'Hedy' )->call( 'saveProfile' );
+
+    expect( $customer->refresh()->first_name )->toBe( 'Grace' )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Slow down' );
+
+    $preferences = Livewire::test( Profile::class )->set( 'preferences.mail.review-requests', false )->call( 'savePreferences' );
+
+    expect( json_encode( $preferences->effects['xjs'] ?? [] ) )->toContain( 'Slow down' )
+        ->and( CustomerNotificationPreference::query()->where( 'customer_id', $customer->id )->where( 'category', 'review-requests' )->where( 'is_enabled', false )->exists() )->toBeFalse();
 } );

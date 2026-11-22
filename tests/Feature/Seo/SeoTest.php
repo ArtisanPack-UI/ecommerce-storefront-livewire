@@ -149,17 +149,21 @@ it( 'drops an unknown category filter from the catalog\'s canonical URL', functi
     $this->get( $url . '?category=nope' )->assertSee( '<link rel="canonical" href="' . $url . '">', false );
 } );
 
-it( 'keeps a category filter and the page in the catalog\'s canonical URL, and drops the rest', function (): void {
-    ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+it( 'points a category filter\'s canonical URL at the category page, keeps the page, and drops the rest', function (): void {
+    $kitchen = ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+    ProductCategory::factory()->create( [ 'name' => 'Tea', 'slug' => 'tea', 'parent_id' => $kitchen->id ] );
     CategoryTree::flush();
 
     $url = route( 'artisanpack.ecommerce.storefront.catalog' );
 
     $this->get( $url . '?sort=-price&price_min=100&category=kitchen&attr[colour][]=red&page=3' )
-        ->assertSee( '<link rel="canonical" href="' . $url . '?category=kitchen&amp;page=3">', false )
+        ->assertSee( '<link rel="canonical" href="' . route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'kitchen' ] ) . '?page=3">', false )
         ->assertSee( '<title>Shop – Page 3', false );
 
     $this->get( $url . '?per_page=48&on_sale=1' )->assertSee( '<link rel="canonical" href="' . $url . '">', false );
+
+    $this->get( $url . '?category=tea&page=2' )
+        ->assertSee( '<link rel="canonical" href="' . route( 'artisanpack.ecommerce.storefront.category', [ 'path' => 'kitchen/tea' ] ) . '?page=2">', false );
 } );
 
 it( 'describes a tag page', function (): void {

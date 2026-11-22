@@ -33,6 +33,10 @@ use Throwable;
  * with its image and how many storefront products it holds (sub-categories
  * included, each product once). Counts and images can be turned off.
  *
+ * Each tile is a design-system Card (#115): a 4:3 image, the name (its
+ * link stretched over the tile), the product count and an arrow, in a
+ * grid of up to `columns` tiles to a row (`data-columns`).
+ *
  * The counts come from one grouped query, cached ({@see StorefrontCache})
  * and dropped whenever the catalog changes.
  *
@@ -40,6 +44,7 @@ use Throwable;
  * @subpackage EcommerceStorefrontLivewire
  *
  * @since      1.0.0
+ * @since      2.0.0 The grid is laid out by `data-columns`; `gridClass` is gone.
  */
 class CategoryGrid extends Component
 {
@@ -71,20 +76,11 @@ class CategoryGrid extends Component
     public string $headingId;
 
     /**
-     * The grid classes.
-     *
-     * @since 1.0.0
-     *
-     * @var string
-     */
-    public string $gridClass;
-
-    /**
      * @since 1.0.0
      *
      * @param  int|string|null  $parent      The parent category (id or slug); empty for top-level categories.
      * @param  int              $limit       How many categories (1–24).
-     * @param  int              $columns     Columns from `lg` up (1–6).
+     * @param  int              $columns     The most tiles to a row, from 1024px (1–6).
      * @param  bool             $showCounts  Show product counts.
      * @param  bool             $showImages  Show category images.
      * @param  string|null      $heading     A heading above the grid.
@@ -98,7 +94,7 @@ class CategoryGrid extends Component
         public ?string $heading = null,
     ) {
         $this->limit     = max( 1, min( self::MAX_LIMIT, $limit ) );
-        $this->gridClass = GridColumns::classes( $columns );
+        $this->columns   = GridColumns::clamp( $columns );
         $this->heading   = null === $heading || '' === trim( $heading ) ? null : trim( $heading );
         $this->headingId = 'ec-category-grid-' . Str::lower( Str::random( 8 ) );
         $this->tiles     = $this->tiles();
@@ -130,7 +126,8 @@ class CategoryGrid extends Component
 
         if ( null !== $this->parent && '' !== trim( (string) $this->parent ) ) {
             $key    = trim( (string) $this->parent );
-            $parent = ( ctype_digit( $key ) ? $paths->node( (int) $key ) : $paths->bySlug( $key ) )['id'] ?? null;
+            // A slug first (`2024` can be one), then an id.
+            $parent = ( $paths->bySlug( $key ) ?? ( ctype_digit( $key ) ? $paths->node( (int) $key ) : null ) )['id'] ?? null;
 
             if ( null === $parent ) {
                 return [];

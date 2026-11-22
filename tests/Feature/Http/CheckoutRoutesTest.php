@@ -8,6 +8,7 @@ use ArtisanPackUI\Ecommerce\Services\CheckoutService;
 use ArtisanPackUI\Ecommerce\ValueObjects\Address;
 use ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StrandedPayments;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 use Livewire\Livewire;
 use Tests\Fixtures\Gateways\FakeClientGateway;
@@ -123,7 +124,7 @@ it( 'sends the shopper back to payment when the payment didn\'t go through', fun
         ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
 
     expect( session( ToastPayload::SESSION_KEY )['toast'] )
-        ->title->toBe( e( 'Your payment wasn\'t completed.' ) )
+        ->title->toBe( 'Your payment wasn\'t completed.' )
         ->description->toBe( e( $description ) );
 } )->with( [
     'needs 3-D Secure' => [ PaymentSession::STATUS_REQUIRES_ACTION, 'Your bank needs you to confirm this payment. Try again.' ],
@@ -131,16 +132,51 @@ it( 'sends the shopper back to payment when the payment didn\'t go through', fun
     'cancelled'        => [ PaymentSession::STATUS_CANCELED, 'Try again or use another payment method.' ],
 ] );
 
-it( 'sends the shopper back to payment when the confirmed payment was for an older total', function (): void {
-    [ 'gateway' => $gateway ] = cartAwaitingPayment();
+it( 'tells the shopper not to pay again when the confirmed payment was for an older total, and locks the checkout', function (): void {
+    [ 'cart' => $cart, 'gateway' => $gateway ] = cartAwaitingPayment();
+
+    $mismatches = [];
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.paymentMismatch', static function ( $cart, string $gatewayKey, string $reference ) use ( &$mismatches ): void {
+        $mismatches[] = [ $gatewayKey, $reference ];
+    } );
 
     $gateway->sessions['fake_ps_1'] = new PaymentSession( 'fake', 'fake_ps_1', new Money\Money( 100, new Money\Currency( 'USD' ) ), status: PaymentSession::STATUS_SUCCEEDED );
 
     $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_1' ] ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
-        ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
+        ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY )
+        ->assertSessionHas( StrandedPayments::SESSION_KEY, [ 'cart' => (int) $cart->id, 'reference' => 'fake_ps_1' ] );
 
-    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'Your order total has changed.' );
+    expect( session( ToastPayload::SESSION_KEY )['toast'] )
+        ->title->toBe( StrandedPayments::title() )
+        ->description->toBe( StrandedPayments::message() )
+        ->and( json_encode( session( ToastPayload::SESSION_KEY ) ) )->not->toContain( 'Pay again' )
+        ->and( $mismatches )->toBe( [ [ 'fake', 'fake_ps_1' ] ] );
+
+    $sessions = count( $gateway->sessions );
+
+    Livewire::withQueryParams( [ 'step' => 'payment' ] )->test( Index::class )
+        ->assertSet( 'strandedPayment', 'fake_ps_1' )
+        ->assertSet( 'payment', null )
+        ->assertSeeHtml( 'data-checkout-payment-stranded' )
+        ->set( 'gateway', 'fake' )
+        ->assertHasErrors( 'payment' );
+
+    expect( $gateway->sessions )->toHaveCount( $sessions )
+        ->and( $cart->refresh()->payment_reference )->toBe( 'fake_ps_1' );
+} );
+
+it( 'tells the shopper not to pay again when they return from a payment the checkout replaced', function (): void {
+    [ 'cart' => $cart, 'gateway' => $gateway ] = cartAwaitingPayment();
+
+    StrandedPayments::remember( $cart, 'fake', 'fake_ps_0' );
+    $gateway->sessions['fake_ps_0'] = new PaymentSession( 'fake', 'fake_ps_0', new Money\Money( 100, new Money\Currency( 'USD' ) ), status: PaymentSession::STATUS_SUCCEEDED );
+
+    $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return', [ 'payment_intent' => 'fake_ps_0' ] ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
+        ->assertSessionHas( StrandedPayments::SESSION_KEY, [ 'cart' => (int) $cart->id, 'reference' => 'fake_ps_0' ] );
+
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( StrandedPayments::title() );
 } );
 
 it( 'refuses a return for another payment', function (): void {
@@ -151,7 +187,7 @@ it( 'refuses a return for another payment', function (): void {
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) )
         ->assertSessionMissing( Index::CONFIRMED_PAYMENT_SESSION_KEY );
 
-    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( e( 'That payment doesn\'t belong to this checkout.' ) );
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'That payment doesn\'t belong to this checkout.' );
 } );
 
 it( 'says so when the provider can\'t be reached', function (): void {
@@ -161,7 +197,7 @@ it( 'says so when the provider can\'t be reached', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.checkout.return' ) )
         ->assertRedirect( route( 'artisanpack.ecommerce.storefront.checkout', [ 'step' => 'payment' ] ) );
 
-    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( e( 'We couldn\'t check your payment.' ) );
+    expect( session( ToastPayload::SESSION_KEY )['toast']['title'] )->toBe( 'We couldn\'t check your payment.' );
 } );
 
 it( 'ignores a returned payment the cart has since replaced', function (): void {

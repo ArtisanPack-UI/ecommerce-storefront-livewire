@@ -1,26 +1,52 @@
 {{--
     Bundled product purchase form. See Product\Forms\BundledForm.
 
+    Under the product summary (#102): "In this set", each member a checked,
+    disabled design-system Checkbox described "Included" ("2 × Brush" when
+    the bundle holds more than one); then the total for the quantity with a
+    success "You save $26.00" badge when the members cost more on their
+    own; then the shared add-to-cart row with "Add set to cart" (the total
+    carries the price, so the button doesn't).
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="flex flex-col gap-4" data-purchase-form="bundled">
+@php( $ecommerceFormId = 'ec-product-' . $product->id )
+<div class="ec-purchase-form" data-purchase-form="bundled">
     @if ( [] !== $items )
-        <div class="flex flex-col gap-2">
-            <h2 id="ec-product-{{ $product->id }}-includes" class="text-sm font-semibold">{{ __( 'This bundle includes' ) }}</h2>
+        <fieldset class="ec-bundle-items" data-bundle-items>
+            <legend class="ec-bundle-items__legend">{{ __( 'In this set' ) }}</legend>
 
-            <ul role="list" class="flex flex-col gap-1" aria-labelledby="ec-product-{{ $product->id }}-includes">
+            <div class="ec-bundle-items__list">
                 @foreach ( $items as $item )
-                    <li class="flex items-center gap-2" wire:key="bundle-item-{{ $item['id'] }}" data-bundle-item="{{ $item['id'] }}">
-                        <x-artisanpack-icon name="o-check" class="h-4 w-4 text-success" aria-hidden="true" />
-                        <span>{{ __( ':quantity × :name', [ 'quantity' => $item['quantity'], 'name' => $item['name'] ] ) }}</span>
-                    </li>
+                    <x-artisanpack-checkbox
+                        :id="$ecommerceFormId . '-bundle-item-' . $item['id']"
+                        :label="1 === $item['quantity'] ? $item['name'] : __( ':quantity × :name', [ 'quantity' => $item['quantity'], 'name' => $item['name'] ] )"
+                        :description="__( 'Included' )"
+                        checked
+                        disabled
+                        data-bundle-item="{{ $item['id'] }}"
+                    />
                 @endforeach
-            </ul>
-        </div>
+            </div>
+        </fieldset>
     @endif
 
-    @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [ 'formId' => 'ec-product-' . $product->id ] )
+    @if ( null !== $total )
+        <p class="ec-bundle-total" aria-live="polite" aria-atomic="true" data-bundle-total>
+            <span class="apui-sr-only">{{ __( 'Total' ) }}</span>
+            <bdi class="ec-bundle-total__price">{{ $total }}</bdi>
+            @if ( null !== $saving )
+                <x-artisanpack-badge variant="soft" color="success" data-bundle-saving>{{ __( 'You save :amount', [ 'amount' => $saving ] ) }}</x-artisanpack-badge>
+            @endif
+        </p>
+    @endif
+
+    @include( 'ecommerce-storefront::livewire.product.forms.partials.add-to-cart', [
+        'formId'        => $ecommerceFormId,
+        'buttonLabel'   => $buttonText ?? __( 'Add set to cart' ),
+        'priceOnButton' => false,
+    ] )
 </div>

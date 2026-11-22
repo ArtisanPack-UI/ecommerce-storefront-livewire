@@ -14,6 +14,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Index;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\RelatedProducts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 /**
@@ -78,7 +79,7 @@ it( 'lists the lines and the totals', function (): void {
         ->assertSee( 'Red / M' )
         ->assertSee( '$12.50' )
         ->assertSee( '$25.00' )
-        ->assertSeeHtml( 'aria-label="Increase quantity of Mug"' )
+        ->assertSeeHtml( 'aria-label="Increase quantity, Mug"' )
         ->assertSeeHtml( 'aria-label="Remove Mug"' )
         ->assertSee( 'Order summary' )
         ->assertSee( '$45.00' )
@@ -151,7 +152,7 @@ it( 'shows the engine\'s refusal and puts the quantity back', function (): void 
         ->set( 'quantities.' . $line->id, 5 )
         ->assertHasErrors( 'quantities.' . $line->id )
         ->assertSet( 'quantities.' . $line->id, 1 )
-        ->assertSeeHtml( 'data-quantity-error' )
+        ->assertSeeHtml( 'data-scope="input" data-part="error"' )
         ->assertNotDispatched( 'ecommerce-cart-updated' );
 } );
 
@@ -167,7 +168,11 @@ it( 'removes a line at quantity 0 or with Remove, and can undo it', function ():
         ->assertSee( 'Undo' )
         ->assertSee( 'Your cart is empty' );
 
-    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Removed from your cart' );
+    // The inverse toast with Undo (#97).
+    expect( collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' ) )
+        ->toContain( '"title":"Mug was removed from your cart."' )
+        ->toContain( '"variant":"inverse","id":"ecommerce-cart-line-removed","icon":"trash"' )
+        ->toContain( 'label: ["Undo"][0], onClick: () => $wire.call( ["undoRemove"][0] )' );
 
     $component->call( 'undoRemove' )
         ->assertSet( 'removedLine', null )
@@ -180,6 +185,29 @@ it( 'removes a line at quantity 0 or with Remove, and can undo it', function ():
         ->assertSet( 'removedLine.quantity', 2 );
 
     expect( Cart::query()->sole()->items()->count() )->toBe( 0 );
+} );
+
+it( 'replaces the last removal toast so an earlier Undo can\'t restore a later removal', function (): void {
+    $mug  = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    $bowl = makeProduct( 1500, [ 'name' => 'Bowl' ] );
+    $cart = shopperCartWith( [ $mug, $bowl ] );
+
+    [ $mugLine, $bowlLine ] = [ $cart->items()->where( 'product_id', $mug->id )->sole(), $cart->items()->where( 'product_id', $bowl->id )->sole() ];
+
+    $component = Livewire::test( Index::class )->call( 'removeLine', $mugLine->id );
+    $first     = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    $component->call( 'removeLine', $bowlLine->id );
+    $second = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    // Both toasts share an id, so the Bowl toast takes the Mug toast's place.
+    expect( $first )->toContain( '"id":"ecommerce-cart-line-removed"' )->toContain( 'Mug was removed' )
+        ->and( $second )->toContain( '"id":"ecommerce-cart-line-removed"' )->toContain( 'Bowl was removed' );
+
+    // The one Undo left restores the line removed last, and only it.
+    $component->call( 'undoRemove' )->assertSee( 'Bowl is back in your cart.' );
+
+    expect( Cart::query()->sole()->items()->pluck( 'product_id' )->all() )->toBe( [ $bowl->id ] );
 } );
 
 it( 'ignores another cart\'s line', function (): void {
@@ -224,7 +252,8 @@ it( 'shows the engine\'s coupon messages inline', function ( string $code, strin
         ->call( 'applyCoupon' )
         ->assertHasErrors( 'couponCode' )
         ->assertSee( $message )
-        ->assertSeeHtml( 'aria-invalid="true" aria-describedby="ec-field-ec-cart-coupon-error"' );
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="ec-cart-coupon-error"' );
 } )->with( [
     'empty'   => [ '  ', 'Enter a coupon code.' ],
     'unknown' => [ 'NOPE', 'That coupon code is not valid.' ],
@@ -470,3 +499,164 @@ it( 'skips its own cart event and follows the drawer\'s', function (): void {
         ->dispatch( 'ecommerce-cart-updated', count: 4, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
         ->assertSet( "quantities.{$line->id}", 4 );
 } );
+
+/**
+ * A cart page with US shipping quoted and the "Standard" rate chosen,
+ * whose price then moves to `$newAmount`, so the engine drops the rate on
+ * the cart's next change.
+ */
+function cartWithChosenRateThatMoves( int $newAmount = 700 ): Testable
+{
+    usShipping( [ 'Standard' => 500 ] );
+    shopperCartWith( [ makeProduct( 2000 ) ] );
+
+    $component = Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->set( 'estimatePostcode', '60601' )
+        ->call( 'estimateShipping' );
+
+    $component->set( 'selectedRate', $component->get( 'rates' )[0]['id'] )
+        ->assertSeeHtml( 'data-cart-shipping="chosen"' );
+
+    ShippingMethod::query()->sole()->update( [ 'config' => [ 'amount' => $newAmount ] ] );
+
+    return $component;
+}
+
+it( 'clears the estimate when a quantity change makes the engine drop the chosen rate', function (): void {
+    $component = cartWithChosenRateThatMoves();
+    $line      = Cart::query()->sole()->items()->sole();
+
+    $component->set( 'quantities.' . $line->id, 3 )
+        ->assertHasNoErrors()
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertDontSeeHtml( 'data-cart-estimate-rates' )
+        ->assertSet( 'announcement', 'Cart updated. Your shipping estimate changed. Get shipping rates again. Total: $60.00.' );
+} );
+
+it( 'clears the estimate when a coupon makes the engine drop the chosen rate', function (): void {
+    percentCoupon( 'SAVE10', 10 );
+    $component = cartWithChosenRateThatMoves();
+
+    $component->set( 'couponCode', 'SAVE10' )
+        ->call( 'applyCoupon' )
+        ->assertHasNoErrors()
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertSet( 'announcement', 'Coupon applied. Your shipping estimate changed. Get shipping rates again. Total: $18.00.' );
+} );
+
+it( 'clears the estimate when a drawer change made the engine drop the chosen rate', function (): void {
+    $component = cartWithChosenRateThatMoves();
+    $cart      = Cart::query()->sole();
+
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+    app( StorefrontCart::class )->remember( $cart->fresh() );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 2, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertSet( 'announcement', 'Your shipping estimate changed. Get shipping rates again.' );
+} );
+
+it( 'keeps the chosen rate when the engine keeps it', function (): void {
+    $component = cartWithChosenRateThatMoves( 500 );
+    $chosen    = $component->get( 'selectedRate' );
+    $line      = Cart::query()->sole()->items()->sole();
+
+    $component->set( 'quantities.' . $line->id, 2 )
+        ->assertSet( 'selectedRate', $chosen )
+        ->assertSeeHtml( 'data-cart-shipping="chosen"' )
+        ->assertSeeHtml( 'data-cart-estimate-rates' )
+        ->assertSet( 'announcement', 'Cart updated. Total: $45.00.' );
+} );
+
+it( 'counts units, not lines, in the item count', function (): void {
+    $mug   = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    $plate = makeProduct( 500, [ 'name' => 'Plate' ] );
+    $cart  = app( StorefrontCart::class )->current( true );
+
+    app( StorefrontCartService::class )->addItem( $cart, $mug->id, null, 3 );
+    app( StorefrontCartService::class )->addItem( $cart, $plate->id, null, 2 );
+
+    Livewire::test( Index::class, [ 'showTitle' => true ] )
+        ->assertSeeHtml( '<p class="ec-cart__count" data-cart-item-count>5 items</p>' );
+} );
+
+it( 'names the product in each quantity field\'s label', function (): void {
+    $line = shopperCartWith( [ makeProduct( 1000, [ 'name' => 'Oxbow mug' ] ) ] )->items()->sole();
+
+    Livewire::test( Index::class )
+        ->assertSeeHtml( 'for="ec-cart-quantity-' . $line->id . '"' )
+        ->assertSee( 'Quantity, Oxbow mug' );
+} );
+
+it( 'sends quantity changes on change, with no debounce to lose before Checkout', function (): void {
+    $line = shopperCartWith( [ makeProduct() ] )->items()->sole();
+
+    Livewire::test( Index::class )
+        ->assertSeeHtml( 'wire:model.live.change="quantities.' . $line->id . '"' )
+        ->assertDontSeeHtml( 'debounce' );
+} );
+
+it( 'ties a refused rate\'s error to the rate radios and announces it', function (): void {
+    usShipping( [ 'Standard' => 500, 'Express' => 1500 ] );
+    shopperCartWith( [ makeProduct( 2000 ) ] );
+
+    $component = Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->call( 'estimateShipping' );
+
+    $express = collect( $component->get( 'rates' ) )->firstWhere( 'label', 'Express' );
+
+    // The method goes away between the quote and the choice, so the engine refuses it.
+    ShippingMethod::query()->where( 'label', 'Express' )->delete();
+
+    $component->set( 'selectedRate', $express['id'] )
+        ->assertHasErrors( 'selectedRate' )
+        ->assertSet( 'selectedRate', '' )
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="ec-cart-estimate-rate-error"' )
+        ->assertSeeHtml( 'id="ec-cart-estimate-rate-error"' )
+        ->assertDontSeeHtml( 'data-cart-estimate-error' );
+
+    expect( $component->get( 'announcement' ) )->not->toBe( '' );
+} );
+
+it( 'shows a rates failure as an alert when there are no rates to tie it to', function (): void {
+    shopperCartWith( [ makeProduct() ] );
+
+    app()->instance( StorefrontCartService::class, Mockery::mock( app( StorefrontCartService::class ) )->makePartial()
+        ->shouldReceive( 'quoteShipping' )->andThrow( new RuntimeException( 'Carrier down' ) )->getMock() );
+
+    Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->call( 'estimateShipping' )
+        ->assertHasErrors( 'selectedRate' )
+        ->assertSeeHtml( 'role="alert" data-cart-estimate-error' )
+        ->assertSee( 'Shipping rates are unavailable right now. You can still check out.' );
+} );
+
+it( 'hands focus to the coupon field after the coupon is removed', function (): void {
+    percentCoupon( 'SAVE10', 10 );
+    shopperCartWith( [ makeProduct( 5000 ) ] );
+
+    Livewire::test( Index::class )
+        ->set( 'couponCode', 'SAVE10' )
+        ->call( 'applyCoupon' )
+        ->assertDontSeeHtml( 'data-cart-coupon-focus' )
+        ->call( 'removeCoupon', 'SAVE10' )
+        ->assertSet( 'couponChanges', 1 )
+        ->assertSeeHtml( 'wire:key="cart-coupon-focus-1"' )
+        ->assertSeeHtml( "document.getElementById( 'ec-cart-coupon' )?.focus()" );
+} );
+
+it( 'keeps the coupon focus counter out of the browser\'s reach', function (): void {
+    shopperCartWith( [ makeProduct() ] );
+
+    Livewire::test( Index::class )->set( 'couponChanges', 5 );
+} )->throws( CannotUpdateLockedPropertyException::class );

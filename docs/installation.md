@@ -1,5 +1,6 @@
 ---
-title: Installation Overview
+title: Installation
+menu_order: 20
 ---
 
 # Installation
@@ -8,10 +9,10 @@ Everything you need to install the storefront and wire it into your application.
 
 ## In this section
 
-- [Requirements](Installation-Requirements) - PHP, Laravel, Livewire, the engine, and optional packages
-- [Configuration](Installation-Configuration) - Every configuration key and the store settings that override them
-- [Front-End Setup](Installation-Front-End) - Tailwind sources, daisyUI, Vite entries, and Stripe.js
-- [Layouts](Installation-Layouts) - The package layout, your own Blade layout, or a component layout
+- [Requirements](installation/requirements.md) - PHP, Laravel, Livewire, the engine, and optional packages
+- [Configuration](installation/configuration.md) - Every configuration key and the store settings that override them
+- [Front-End Setup](installation/front-end.md) - The design system, Tailwind sources, Vite entries, Stripe.js, and a Content Security Policy
+- [Layouts](installation/layouts.md) - The package layout, your own Blade layout, or a component layout
 
 ## Install via Composer
 
@@ -30,13 +31,13 @@ php artisan ecommerce-storefront:install
 It:
 
 1. Publishes the config to `config/artisanpack/ecommerce-storefront-livewire.php`. If that file already exists it asks before overwriting it; `--force` overwrites without asking.
-2. Prints the Tailwind `@source` lines to add to your main stylesheet. See [Front-End Setup](Installation-Front-End).
-3. Prints the line your own layout needs (`@include( 'ecommerce-storefront::partials.global' )`), the `@stack( 'head' )` reminder, and the wrapper view for component layouts. See [Layouts](Installation-Layouts).
+2. Prints the front-end setup: the design system's npm packages, the stylesheet lines (the `@layer` line, the design system's `@import`, and the storefront's and component library's `@source` lines), the behavior engine's lines for `resources/js/app.js`, the build step, and a reminder to remove daisyUI. Each step is explained in [Front-End Setup](installation/front-end.md).
+3. Prints the line your own layout needs (`@include( 'ecommerce-storefront::partials.global' )`), the `@stack( 'head' )` and `@apuiThemeScript` reminders, and the wrapper view for component layouts. See [Layouts](installation/layouts.md).
 4. Checks that the routes named in `auth.login_route` and `auth.register_route` exist. The host owns sign-in and registration; the storefront only links to them.
 5. Checks that a payment gateway is registered and configured. The engine's Stripe gateway counts as configured once both `artisanpack.ecommerce.gateways.stripe.secret_key` and `publishable_key` are set; other gateways count once registered.
 6. When `artisanpack-ui/visual-editor` is installed, says whether storefront pages render through its templates (`visual_editor.templates`).
 
-The checks only warn. Nothing fails the install. See [Artisan Commands](Advanced-Artisan-Commands).
+The checks only warn. Nothing fails the install. See [Artisan Commands](reference/commands.md).
 
 ## Publishing
 
@@ -56,7 +57,7 @@ The config loads under `artisanpack.ecommerce-storefront-livewire`:
 config( 'artisanpack.ecommerce-storefront-livewire.storefront.route_prefix' ); // 'shop'
 ```
 
-Views load under the `ecommerce-storefront::` namespace. Translations are not namespaced: they are JSON catalogues (`lang/{locale}.json`) keyed by their English text, as with `__( 'Add to cart' )`. A published catalogue in `lang/vendor/ecommerce-storefront` overrides the package's strings, and your app's own `lang/{locale}.json` overrides both. Prefer the [extension points](Extending) over published views: a published view does not pick up fixes in later releases.
+Views load under the `ecommerce-storefront::` namespace. Translations are not namespaced: they are JSON catalogues (`lang/{locale}.json`) keyed by their English text, as with `__( 'Add to cart' )`. A published catalogue in `lang/vendor/ecommerce-storefront` overrides the package's strings, and your app's own `lang/{locale}.json` overrides both. Prefer the [extension points](extending.md) over published views: a published view does not pick up fixes in later releases.
 
 ## Routes
 
@@ -67,7 +68,7 @@ The storefront registers two route groups:
 | Storefront (catalog, product, search, cart, checkout, confirmation, order lookup) | `storefront.route_prefix` (`shop`) | `artisanpack.ecommerce.storefront.*` | `storefront.middleware` (`web`) |
 | Customer account | `account.route_prefix` (`account`) | `artisanpack.ecommerce.account.*` | `account.middleware` (`web`, `auth`) |
 
-Every route is a controller action returning a page view, so `php artisan route:cache` works. Set `storefront.routes_enabled` to `false` to register your own routes and embed the components; that turns off both groups. See [Embedding Components](Extending-Embedding-Components).
+Every route is a controller action returning a page view, so `php artisan route:cache` works. Set `storefront.routes_enabled` to `false` to register your own routes and embed the components; that turns off both groups. See [Embedding Components](extending/embedding-components.md).
 
 ## Uninstalling
 
@@ -75,7 +76,7 @@ The storefront registers itself with the engine's `SatelliteRegistry`. It owns n
 
 ## Next steps
 
-- [Front-End Setup](Installation-Front-End) — required before the storefront is styled
-- [Layouts](Installation-Layouts) — render the shop inside your site's layout
-- [Configuration](Installation-Configuration) — every key you can tune
-- [Quick Start Guide](Getting-Started) — install to a seeded demo store
+- [Front-End Setup](installation/front-end.md) — required before the storefront is styled
+- [Layouts](installation/layouts.md) — render the shop inside your site's layout
+- [Configuration](installation/configuration.md) — every key you can tune
+- [Getting Started](getting-started.md) — install to a seeded demo store

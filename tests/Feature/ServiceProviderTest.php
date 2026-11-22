@@ -32,6 +32,8 @@ it( 'merges the config under the artisanpack key', function (): void {
         'middleware'     => [ 'web' ],
         'layout'         => 'ecommerce-storefront::layouts.app',
         'rtl_locales'    => [ 'ar', 'he', 'fa', 'ur' ],
+        'tagline'        => null,
+        'nav_categories' => 3,
     ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.account' ) )->toBe( [
             'route_prefix'                  => 'account',
@@ -45,8 +47,9 @@ it( 'merges the config under the artisanpack key', function (): void {
             'default_sort'      => 'newest',
             'show_stock_count'  => false,
             'filter_attributes' => null,
+            'description'       => null,
         ] )
-        ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart.after_add' ) )->toBe( 'drawer' )
+        ->and( config( 'artisanpack.ecommerce-storefront-livewire.cart' ) )->toBe( [ 'after_add' => 'drawer', 'free_shipping_threshold' => null ] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.checkout.layout' ) )->toBe( 'multi_step' )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.payments.drivers' ) )->toBe( [] )
         ->and( config( 'artisanpack.ecommerce-storefront-livewire.visual_editor' ) )->toBe( [ 'blocks' => true, 'templates' => false ] );
@@ -152,3 +155,22 @@ it( 'registers the install command', function (): void {
 it( 'registers the publish tags', function ( string $tag ): void {
     expect( ServiceProvider::pathsToPublish( EcommerceStorefrontLivewireServiceProvider::class, $tag ) )->not->toBeEmpty();
 } )->with( [ 'ecommerce-storefront-config', 'ecommerce-storefront-views', 'ecommerce-storefront-lang' ] );
+
+it( 'registers the icons the storefront draws that the component library lacks', function (): void {
+    foreach ( array_keys( EcommerceStorefrontLivewireServiceProvider::ICONS ) as $icon ) {
+        expect( ArtisanPack\LivewireUiComponents\Support\IconRegistry::has( $icon ) )->toBeTrue( $icon );
+    }
+} );
+
+it( 'registers its catalogues before any provider boots, so an early __() cannot cache a locale without them', function (): void {
+    $translator = new Illuminate\Translation\Translator(
+        new Illuminate\Translation\FileLoader( new Illuminate\Filesystem\Filesystem(), $this->app->langPath() ),
+        'es',
+    );
+    $this->app->instance( 'translator', $translator );
+
+    ( new EcommerceStorefrontLivewireServiceProvider( $this->app ) )->register();
+
+    expect( $translator->get( 'Add to cart' ) )->toBe( json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/lang/es.json' ), true )['Add to cart'] )
+        ->not->toBe( 'Add to cart' );
+} );

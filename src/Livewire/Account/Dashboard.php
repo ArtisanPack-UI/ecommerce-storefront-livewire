@@ -23,6 +23,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesOrder;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -31,9 +32,10 @@ use Throwable;
  *
  * The account's front page (spec §7.5, S25): a greeting, the latest
  * orders, the default shipping and billing addresses, and how many
- * downloads the shopper has, with links to the account pages and to the
- * host's own profile and password screens (`auth.profile_route`,
- * `auth.password_route`; the host owns auth, D6).
+ * downloads the shopper can still use (not expired or used up), with
+ * links to the account pages and to the host's own profile and password
+ * screens (`auth.profile_route`, `auth.password_route`; the host owns
+ * auth, D6).
  *
  * When guest orders were placed with the shopper's (verified) email and
  * haven't been claimed, it prompts them to claim those orders (S30).
@@ -61,6 +63,17 @@ class Dashboard extends Component
     public const RECENT_ORDERS = 3;
 
     /**
+     * Show the greeting as the page's h1 (the dashboard page does);
+     * otherwise it's a lead paragraph under the host's own heading.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0
@@ -85,7 +98,10 @@ class Dashboard extends Component
                 $addresses = $customer->addresses()->where( fn ( $query ) => $query->where( 'is_default_shipping', true )->orWhere( 'is_default_billing', true ) )->get();
                 $shipping  = $addresses->firstWhere( 'is_default_shipping', true );
                 $billing   = $addresses->firstWhere( 'is_default_billing', true );
-                $count     = app( DigitalDownloadService::class )->forCustomer( $customer )->count();
+                $count     = app( DigitalDownloadService::class )->forCustomer( $customer )
+                    ->where( fn ( $query ) => $query->whereNull( 'expires_at' )->orWhere( 'expires_at', '>', now() ) )
+                    ->where( fn ( $query ) => $query->whereNull( 'downloads_remaining' )->orWhere( 'downloads_remaining', '>', 0 ) )
+                    ->count();
             } catch ( Throwable $exception ) {
                 report( $exception );
 
@@ -98,6 +114,7 @@ class Dashboard extends Component
             'orders'          => $orders,
             'shippingAddress' => $shipping instanceof CustomerAddress ? $shipping->toArray() : null,
             'billingAddress'  => $billing instanceof CustomerAddress ? $billing->toArray() : null,
+            'billingSame'     => $shipping instanceof CustomerAddress && $billing instanceof CustomerAddress && $shipping->is( $billing ),
             'downloads'       => $count,
             'failed'          => $failed,
             'claimable'       => $this->claimableOrders( $customer ),
@@ -136,7 +153,8 @@ class Dashboard extends Component
 
     /**
      * How many unclaimed guest orders were placed with the shopper's email.
-     * None while the shopper can't claim (`OrderAccess::canClaim()`), so an
+     * None while the shopper can't claim (`OrderAccess::claimEmail()`: not
+     * verified, or their customer record is under an older email), so an
      * account can't learn what a stranger's address ordered.
      *
      * @since 1.0.0
@@ -147,10 +165,9 @@ class Dashboard extends Component
      */
     protected function claimableOrders( ?Customer $customer ): int
     {
-        $user  = auth()->user();
-        $email = $customer?->email ?? ( is_string( $user?->email ?? null ) ? $user->email : null );
+        $email = OrderAccess::claimEmail( auth()->user(), $customer );
 
-        if ( ! OrderAccess::canClaim( $user ) || ! is_string( $email ) || '' === trim( $email ) ) {
+        if ( null === $email ) {
             return 0;
         }
 
@@ -158,7 +175,7 @@ class Dashboard extends Component
             return Order::query()
                 ->whereNull( 'customer_id' )
                 ->where( 'is_claimed', false )
-                ->where( 'email', mb_strtolower( trim( $email ) ) )
+                ->where( 'email', $email )
                 ->where( 'email', '!=', CustomerService::ANONYMIZED_EMAIL )
                 ->count();
         } catch ( Throwable $exception ) {

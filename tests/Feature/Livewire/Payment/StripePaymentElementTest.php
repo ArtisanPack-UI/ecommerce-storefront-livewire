@@ -77,6 +77,60 @@ it( 'renders the Payment Element mount point, the pay button, and its script', f
         ] );
 } );
 
+it( 'lays the form out in a Card with the reassurance line and a full-width pay button', function (): void {
+    $html = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->html();
+
+    preg_match( '#<button[^>]*data-stripe-pay[^>]*>#s', $html, $button );
+
+    expect( $html )->toContain( 'apui-card ec-stripe__card' )
+        ->toContain( 'class="ec-stripe__reassurance"' )
+        ->toContain( 'Your card details go straight to Stripe. This store never sees or stores them.' )
+        ->toMatch( '#ec-stripe__reassurance">\s*<span[^>]*apui-icon[^>]*aria-hidden="true"#' )
+        ->and( $button[0] ?? '' )->toContain( 'ec-stripe__pay' )
+        ->toContain( 'disabled' )
+        ->toContain( 'data-color="primary"' );
+} );
+
+it( 'loads with field skeletons under the glass Loading overlay', function (): void {
+    $html = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->html();
+
+    preg_match( '#<div class="ec-stripe__loading" data-stripe-loading>(.*?)<div class="ec-stripe__element"#s', $html, $loading );
+
+    expect( $loading[1] ?? '' )->not->toBe( '' )
+        ->and( substr_count( $loading[1], 'apui-skeleton' ) )->toBe( 3 )
+        ->and( $loading[1] )->toContain( 'class="ec-stripe__skeletons" aria-hidden="true"' )
+        ->toMatch( '#<span[^>]*apui-loading[^>]*role="status"[^>]*data-overlay#s' )
+        ->toContain( 'Loading the payment form…' )
+        ->and( $html )->toContain( 'class="ec-stripe__field" data-loading' );
+} );
+
+it( 'builds Stripe\'s appearance from the design-system tokens, not DaisyUI', function (): void {
+    $script = implode( "\n", (array) ( Livewire::test( StripePaymentElement::class, stripeDriverProps() )->effects['scripts'] ?? [] ) );
+
+    expect( $script )->toContain( '--apui-color-primary' )
+        ->toContain( '--apui-surface-default' )
+        ->toContain( '--apui-text-default' )
+        ->toContain( '--apui-color-error-text' )
+        ->toContain( '--apui-radius-field' )
+        ->toContain( '--apui-border-default' )
+        ->toContain( '--apui-focus-ring-color' )
+        ->toContain( "'.Input:focus'" )
+        ->toContain( '0 0 0 ${ spread }px ${ ring }' )
+        ->toContain( 'px solid transparent`' )
+        ->not->toContain( "outline: 'none'" )
+        ->toContain( '$wire.__instance?.addCleanup?.( teardown )' )
+        ->not->toContain( 'calc(${' )
+        ->toContain( 'elements.update( { appearance: appearance() } )' )
+        ->not->toContain( '--color-primary' )
+        ->not->toContain( '--color-base-100' )
+        ->not->toContain( '--radius-field\'' );
+} );
+
+it( 'leaves no DaisyUI or Tailwind classes', function ( array $config ): void {
+    expect( classTokens( Livewire::test( StripePaymentElement::class, stripeDriverProps( $config ) )->html() ) )
+        ->not->toContain( 'flex', 'flex-col', 'gap-3', 'text-sm', 'text-xs', 'text-base-content/70', 'empty:hidden' );
+} )->with( [ 'available' => [ [] ], 'unavailable' => [ [ 'publishable_key' => '' ] ] ] );
+
 it( 'says the method isn\'t available without a publishable key or client secret', function ( array $config ): void {
     $component = Livewire::test( StripePaymentElement::class, stripeDriverProps( $config ) )
         ->assertSeeHtml( 'data-payment-unavailable' )
@@ -173,4 +227,50 @@ it( 'returns to the page it was mounted on when the return route is off, even af
     expect( $mountedOn )->not->toBe( '' )
         ->and( $mountedOn )->not->toEndWith( '/livewire/update' )
         ->and( $component->instance()->render()->getData()['stripe']['returnUrl'] )->toBe( $mountedOn );
+} );
+
+it( 'keeps "Pay now" disabled after Stripe confirms, saying the order is being placed', function (): void {
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
+    $script    = implode( "\n", (array) ( $component->effects['scripts'] ?? [] ) );
+
+    expect( $script )->not->toContain( 'finally' )
+        ->toContain( 'placing();' )
+        ->toContain( "setAttribute( 'aria-busy', 'true' )" )
+        ->toMatch( '/\$wire\.on\( \'payment-failed\'.*?release\(\);/s' )
+        ->and( $component->viewData( 'stripe' )['messages'] )->toMatchArray( [ 'placing' => 'Placing your order…' ] );
+} );
+
+it( 'asks whether the session still pays for the order before confirming it', function (): void {
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
+    $script    = implode( "\n", (array) ( $component->effects['scripts'] ?? [] ) );
+
+    expect( strpos( $script, '$wire.stillPayable()' ) )->toBeInt()->toBeLessThan( strpos( $script, 'stripe.confirmPayment' ) );
+} );
+
+it( 'says the session still pays for the cart only when it is the cart\'s, for its total', function (): void {
+    $gateway = stripeLikeGateway();
+    $cart    = checkoutCart( [ makeProduct( 2500 ) ] );
+
+    $cart->forceFill( [ 'payment_reference' => 'pi_123', 'payment_gateway_key' => 'stripe', 'total_amount' => 2500, 'currency' => 'USD' ] )->save();
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeTrue();
+    $component->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    // The cart's total moved on in another tab.
+    $gateway->sessions['pi_123'] = new PaymentSession( 'stripe', 'pi_123', new Money( 1000, new Currency( 'USD' ) ), 'pi_123_secret_abc' );
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeFalse();
+    $component->assertDispatched( 'ecommerce-cart-updated' );
+
+    // The cart has a new session.
+    $cart->forceFill( [ 'payment_reference' => 'pi_456' ] )->save();
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeFalse();
+    $component->assertDispatched( 'ecommerce-cart-updated' );
 } );

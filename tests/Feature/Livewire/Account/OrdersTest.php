@@ -21,6 +21,16 @@ it( 'lists the shopper\'s orders with number, date, status, total, and item coun
         ->assertDontSee( $other->order_number );
 } );
 
+it( 'shows each order\'s status as a soft design-system badge', function (): void {
+    [ , $customer ] = shopper();
+    placedOrder( [ 'order_number' => 'DONE1', 'system_status' => 'complete' ], $customer );
+
+    $html = Livewire::test( Orders::class )->html();
+
+    expect( $html )->toMatch( '/class="apui-badge" data-order-status="data-order-status"\s+data-variant="soft"\s+data-color="success"/' )
+        ->not->toContain( 'badge-success' );
+} );
+
 it( 'filters by status group, in the query string', function (): void {
     [ , $customer ] = shopper();
     $open           = placedOrder( [ 'order_number' => 'OPEN1' ], $customer );
@@ -100,4 +110,10 @@ it( 'says when the engine can\'t load the orders', function (): void {
     } );
 
     Livewire::test( Orders::class )->assertOk()->assertSeeHtml( 'data-account-orders-failed' );
+} );
+
+it( 'offers only the status filters, without a placeholder option', function (): void {
+    shopper();
+
+    Livewire::test( Orders::class )->assertDontSee( 'Select…' );
 } );

@@ -34,8 +34,8 @@ it( 'adds to the cart from the keyboard, moves focus into the drawer, and return
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
         ->keys( '[data-add-to-cart]', 'Enter' )
         ->assertScript( '[ ...document.querySelectorAll( "[data-cart-announcement]" ) ].some( ( el ) => el.textContent.includes( "Added to your cart." ) )' )
-        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-panel' ) )
-        ->keys( '#ecommerce-cart-drawer-panel [data-cart-drawer-close]', 'Escape' )
+        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-content' ) )
+        ->keys( '#ecommerce-cart-drawer-content', 'Escape' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-add-to-cart" )' );
 } );
 
@@ -44,9 +44,9 @@ it( 'opens the cart drawer from the header button and returns focus to it', func
 
     visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->keys( '[data-header-action="cart"]', 'Enter' )
-        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-panel' ) )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Drawer mug' )
-        ->keys( '#ecommerce-cart-drawer-panel [data-cart-drawer-close]', 'Enter' )
+        ->assertScript( focusIsIn( '#ecommerce-cart-drawer-content' ) )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Drawer mug' )
+        ->keys( '#ecommerce-cart-drawer-close-trigger', 'Enter' )
         ->assertScript( 'document.activeElement?.dataset.headerAction', 'cart' );
 } );
 
@@ -89,7 +89,7 @@ it( 'focuses the error summary, then the next step, and announces the step', fun
         ->keys( '[data-checkout-contact-submit]', 'Enter' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-checkout-errors" )' )
         ->assertSeeIn( '[data-checkout-errors]', 'There is 1 problem to fix:' )
-        ->keys( '[data-checkout-error="email"]', 'Enter' )
+        ->keys( '[data-checkout-errors] a[href="#email"]', 'Enter' )
         ->assertScript( focusIsIn( '[data-field="email"]' ) )
         ->type( Locators::label( 'Email' ), 'ada@example.test' )
         ->keys( Locators::label( 'Email' ), 'Enter' )
@@ -109,7 +109,7 @@ it( 'moves through header search suggestions with the arrow keys and closes on E
         ->assertAttribute( 'input[role="combobox"]', 'aria-expanded', 'false' );
 } );
 
-it( 'shows where focus is on a product card link', function (): void {
+it( 'shows where focus is on a product card link, as a ring around the card', function (): void {
     $product = makeProduct( 1900, [ 'name' => 'Outline mug' ] );
     $link    = '[data-product-card="' . $product->id . '"] [data-product-link]';
 
@@ -117,7 +117,7 @@ it( 'shows where focus is on a product card link', function (): void {
         ->keys( 'html > body', 'Tab' )
         ->keys( $link, 'Shift' )
         ->assertScript( 'document.activeElement?.matches( ' . json_encode( $link . ':focus-visible' ) . ' )' )
-        ->assertScript( 'getComputedStyle( document.activeElement ).outlineStyle !== "none"' );
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( "[data-product-card]" ) ).boxShadow.includes( "0px 0px 0px" )' );
 } );
 
 it( 'announces why an item could not be added', function (): void {
@@ -139,7 +139,7 @@ it( 'focuses the error summary after an empty review submit', function (): void 
         ->click( '[data-review-submit]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-error-summary" )' )
         ->assertSeeIn( '[data-error-summary]', 'Choose a rating.' )
-        ->click( '[data-error-summary-link="rating"]' )
+        ->click( '[data-error-summary] a[href="#rating"]' )
         ->assertScript( focusIsIn( '[data-field-key="rating"]' ) );
 } );
 
@@ -157,7 +157,7 @@ it( 'keeps focus in the drawer when a line is removed, then on the restored line
 
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
         ->keys( '[data-add-to-cart]', 'Enter' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Removable mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Removable mug' )
         ->keys( '#ecommerce-cart-drawer-panel [data-cart-line-remove]', 'Enter' )
         ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-undo-button]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-undo-button" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' )
@@ -212,7 +212,38 @@ it( 'shows where focus is in the rating input and the chosen rating in words', f
         ->click( '[data-review-open]' )
         ->keys( '#ec-review-form-' . $product->id . '-heading', 'Tab' )
         ->assertScript( 'document.activeElement?.closest( "[data-rating-input]" ) !== null' )
-        ->assertScript( 'getComputedStyle( document.activeElement.closest( ".rating" ) ).outlineStyle !== "none"' )
+        ->assertScript( 'getComputedStyle( document.activeElement.closest( "[data-part=item]" ) ).boxShadow !== "none"' )
         ->keys( '#ec-review-form-' . $product->id . '-rating-1', 'ArrowRight' )
-        ->assertSeeIn( '[data-rating-input-value]', '2 out of 5' );
+        ->assertSeeIn( '[data-rating-input-value]', '2 of 5' )
+        ->assertScript( 'document.activeElement?.getAttribute( "aria-label" )', '2 stars' );
+} );
+
+it( 'keeps the price range thumbs and inputs in step', function (): void {
+    $dear  = makeProduct( 50000, [ 'name' => 'Dear vase' ] );
+    $end   = '[data-filters-sidebar] [data-price-slider][data-thumb="end"]';
+    $start = '[data-filters-sidebar] [data-price-slider][data-thumb="start"]';
+
+    $page = visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
+        ->assertPresent( '[data-product-card="' . $dear->id . '"]' )
+        ->assertAttribute( $end, 'aria-valuetext', '$500.00' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-max]" ).value', '500.00' );
+
+    $page->type( '[data-filters-sidebar] [data-price-max]', '50' )
+        ->keys( '[data-filters-sidebar] [data-price-max]', 'Tab' )
+        ->assertScript( 'document.querySelector( ' . json_encode( $end ) . ' ).value', '5000' )
+        ->assertAttribute( $end, 'aria-valuetext', '$50.00' )
+        ->assertNotPresent( '[data-product-card="' . $dear->id . '"]' );
+
+    $page->keys( $start, 'ArrowRight' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-min]" ).value === ( ( Number( document.querySelector( ' . json_encode( $start ) . ' ).min ) + 100 ) / 100 ).toFixed( 2 )' );
+} );
+
+it( 'shows a price bound from the URL outside the range at the range\'s end', function (): void {
+    makeProduct( 50000, [ 'name' => 'Dear vase' ] );
+    $end = '[data-filters-sidebar] [data-price-slider][data-thumb="end"]';
+
+    visit( route( 'artisanpack.ecommerce.storefront.catalog', [ 'price_max' => 999999 ] ) )
+        ->assertScript( 'document.querySelector( ' . json_encode( $end ) . ' ).value', '50000' )
+        ->assertAttribute( $end, 'aria-valuetext', '$500.00' )
+        ->assertScript( 'document.querySelector( "[data-filters-sidebar] [data-price-max]" ).value', '500.00' );
 } );

@@ -23,14 +23,17 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CurrencyNames;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
  * `<livewire:artisanpack-ecommerce-storefront-currency-switcher />`
  *
  * Lets the shopper pick a currency (spec §7.3, S16). It renders only when
- * the store sells in more than one (the engine's `StoreCurrencies`); each
- * option names the currency, its code, and its symbol ("Euro (EUR, €)").
+ * the store sells in more than one (the engine's `StoreCurrencies`), as a
+ * design-system DropdownMenu: the trigger shows the current code, and each
+ * radio item names the currency in the shopper's language with its code
+ * ("Euro", EUR).
  *
  * A choice is stored through the engine's `CurrencyResolver` (the default
  * keeps it in the session) and in the engine's `currency.cookie` cookie,
@@ -42,8 +45,10 @@ use Livewire\Component;
  * and the shopper told why. The page then reloads in the new currency with
  * a toast saying the cart total changed.
  *
- * The package layout shows it in the header; a host layout can place it
- * anywhere.
+ * The package layout shows it in the header (from 768px) and in the
+ * footer; a host layout can place it anywhere. Give each copy on a page its
+ * own `placement`, which keeps their ids apart:
+ * `<livewire:artisanpack-ecommerce-storefront-currency-switcher placement="footer" />`.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -73,6 +78,18 @@ class Switcher extends Component
      * @var string
      */
     public string $currency = '';
+
+    /**
+     * Where the switcher sits (`header`, `footer`, …): the header's menu is
+     * `ecommerce-currency-switcher`, any other's
+     * `ecommerce-currency-switcher-{placement}` (see {@see self::menuId()}).
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    #[Locked]
+    public string $placement = 'header';
 
     /**
      * Starts on the shopper's current currency.
@@ -159,6 +176,7 @@ class Switcher extends Component
      * Renders the component.
      *
      * @since 1.0.0
+     * @since 2.0.0 Passes the menu's radio `items` instead of select `options`, and its `menuId`.
      *
      * @return View
      */
@@ -167,9 +185,42 @@ class Switcher extends Component
         $enabled = app( StoreCurrencies::class )->enabled();
 
         return view( 'ecommerce-storefront::livewire.currency.switcher', [
-            'options' => array_map( static fn ( string $code ): array => [ 'id' => $code, 'name' => CurrencyNames::label( $code ) ], $enabled ),
-            'show'    => count( $enabled ) > 1,
+            'items' => array_map( fn ( string $code ): array => [
+                'type'     => 'radio',
+                'value'    => $code,
+                'label'    => CurrencyNames::name( $code ),
+                'shortcut' => $code,
+                'checked'  => $code === $this->currency,
+            ], $enabled ),
+            'show'   => count( $enabled ) > 1,
+            'menuId' => $this->menuId(),
         ] );
+    }
+
+    /**
+     * The menu's id: `ecommerce-currency-switcher` in the header, else
+     * `ecommerce-currency-switcher-{placement}`. A placement with characters
+     * an id can't hold is stripped to the safe ones and given a short hash
+     * of the original, so two placements never share an id (`footer.left`
+     * and `footerleft` differ).
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    protected function menuId(): string
+    {
+        if ( 'header' === $this->placement ) {
+            return 'ecommerce-currency-switcher';
+        }
+
+        $safe = (string) preg_replace( '/[^a-z0-9_-]/i', '', $this->placement );
+
+        if ( '' === $safe || $safe !== $this->placement ) {
+            $safe = ( '' === $safe ? 'other' : $safe ) . '-' . substr( hash( 'sha256', $this->placement ), 0, 8 );
+        }
+
+        return 'ecommerce-currency-switcher-' . $safe;
     }
 
     /**

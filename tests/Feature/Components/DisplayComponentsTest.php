@@ -20,6 +20,32 @@ describe( 'money', function (): void {
             ->assertSee( '&mdash;', false )
             ->assertSee( 'No amount' );
     } );
+
+    it( 'uses tabular figures isolated left to right', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="USD" />' )
+            ->assertSee( 'class="ec-money"', false )
+            ->assertSee( '<bdi dir="ltr">$28.00</bdi>', false );
+    } );
+
+    it( 'writes a negative amount with a true minus sign and reads it as "Minus"', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-money :amount="-1250" currency="USD" />' );
+
+        expect( $html )->toContain( '<span aria-hidden="true">' . "\u{2212}" . '</span>' )
+            ->toContain( '<span class="apui-sr-only">Minus </span>$12.50' )
+            ->not->toContain( '-$12.50' );
+    } );
+
+    it( 'shows a converted amount\'s store-currency equivalent after it', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2590" currency="EUR" :equivalent="2800" equivalent-currency="USD" />' )
+            ->assertSeeInOrder( [ '€25.90', 'data-money-equivalent', '&asymp;', 'approximately', '$28.00' ], false );
+    } );
+
+    it( 'leaves the equivalent out when it is in the same currency or missing', function (): void {
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="USD" :equivalent="2800" equivalent-currency="USD" />' )
+            ->assertDontSee( 'data-money-equivalent', false );
+        $this->blade( '<x-artisanpack-ec-money :amount="2800" currency="EUR" />' )
+            ->assertDontSee( 'data-money-equivalent', false );
+    } );
 } );
 
 describe( 'stock status', function (): void {
@@ -34,6 +60,28 @@ describe( 'stock status', function (): void {
         'backorder'    => [ StockStatus::BACKORDER, 'Available on backorder' ],
         'out of stock' => [ StockStatus::OUT_OF_STOCK, 'Out of stock' ],
     ] );
+
+    it( 'shows a soft badge in the state\'s color with its icon', function ( string $status, string $color ): void {
+        $this->blade( '<x-artisanpack-ec-stock-status :status="$status" />', [ 'status' => new StockStatus( $status ) ] )
+            ->assertSee( 'data-variant="soft"', false )
+            ->assertSee( 'data-color="' . $color . '"', false )
+            ->assertSee( 'data-part="icon"', false );
+    } )->with( [
+        'in stock'     => [ StockStatus::IN_STOCK, 'success' ],
+        'low stock'    => [ StockStatus::LOW_STOCK, 'warning' ],
+        'backorder'    => [ StockStatus::BACKORDER, 'info' ],
+        'out of stock' => [ StockStatus::OUT_OF_STOCK, 'error' ],
+    ] );
+
+    it( 'is a ghost badge with a dot when compact, and leaves out "In stock"', function (): void {
+        $this->blade( '<x-artisanpack-ec-stock-status :status="$status" compact />', [ 'status' => new StockStatus( StockStatus::BACKORDER ) ] )
+            ->assertSee( 'data-variant="ghost"', false )
+            ->assertSee( 'data-part="dot"', false )
+            ->assertDontSee( 'data-part="icon"', false )
+            ->assertSee( 'Available on backorder' );
+
+        expect( trim( (string) $this->blade( '<x-artisanpack-ec-stock-status :status="$status" compact />', [ 'status' => new StockStatus( StockStatus::IN_STOCK ) ] ) ) )->toBe( '' );
+    } );
 
     it( 'says how many are left when the store shows stock counts', function (): void {
         config()->set( 'artisanpack.ecommerce-storefront-livewire.catalog.show_stock_count', true );
@@ -67,14 +115,48 @@ describe( 'stock status', function (): void {
 } );
 
 describe( 'rating summary', function (): void {
-    it( 'reads the rating aloud and links the review count', function (): void {
+    it( 'is one link named with the whole summary', function (): void {
         $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.46" :count="12" href="/p#reviews" />' )
-            ->assertSee( 'Rated 4.5 out of 5' )
-            ->assertSee( '12 reviews' )
+            ->assertSee( '<a', false )
             ->assertSee( 'href="/p#reviews"', false )
-            ->assertSee( 'aria-hidden="true"', false );
+            ->assertSee( 'aria-label="Rated 4.5 out of 5, 12 reviews"', false )
+            ->assertSee( '12 reviews' )
+            ->assertSee( 'class="apui-rating', false )
+            ->assertDontSee( 'text-warning', false );
+    } );
 
-        expect( substr_count( (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" />' ), 'text-warning' ) )->toBe( 4 );
+    it( 'does not link to an unsafe address', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" href="javascript:alert(1)" />' );
+
+        expect( $html )->not->toContain( 'javascript:' )
+            ->and( $html )->not->toContain( '<a' )
+            ->and( $html )->toContain( 'Rated 4 out of 5, 3 reviews' );
+    } );
+
+    it( 'reads the summary from hidden text when it does not link', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4" :count="3" />' );
+
+        expect( $html )->toContain( '<span class="apui-sr-only">Rated 4 out of 5, 3 reviews</span>' )
+            ->and( $html )->not->toContain( '<a' )
+            ->and( substr_count( $html, 'data-filled' ) )->toBe( 4 );
+    } );
+
+    it( 'draws the stars to the nearest half', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.4" :count="3" />' );
+
+        expect( substr_count( $html, 'data-filled' ) )->toBe( 4 )
+            ->and( substr_count( $html, 'data-half' ) )->toBe( 1 );
+    } );
+
+    it( 'draws one star and "4.8 (126)" in its compact form', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-rating-summary :rating="4.8" :count="126" compact />' );
+
+        expect( $html )->toContain( 'data-compact' )
+            ->and( $html )->toContain( 'data-rating-star' )
+            ->and( $html )->not->toContain( 'apui-rating' )
+            ->and( $html )->toContain( '4.8' )
+            ->and( $html )->toContain( '(126)' )
+            ->and( $html )->toContain( 'Rated 4.8 out of 5, 126 reviews' );
     } );
 
     it( 'uses the singular for one review and the locale\'s decimal mark', function (): void {
@@ -128,30 +210,121 @@ describe( 'address', function (): void {
     it( 'says when there is no address', function (): void {
         $this->blade( '<x-artisanpack-ec-address :address="null" />' )->assertSee( 'No address' );
     } );
+
+    it( 'renders a plain address element with the phone muted', function (): void {
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'first_name\' => \'Dana\', \'address1\' => \'1408 Magnolia Ave\', \'phone\' => \'(817) 555-0142\' ]" />' )
+            ->assertSee( '<address class="ec-address"', false )
+            ->assertSee( 'class="ec-address__line ec-address__phone"', false )
+            ->assertDontSee( 'apui-card', false );
+    } );
+
+    it( 'sits in a card with a heading and an Edit link when it has a title', function (): void {
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'first_name\' => \'Dana\', \'address1\' => \'1408 Magnolia Ave\' ]" title="Ship to" edit-href="/account/addresses" />' )
+            ->assertSee( 'apui-card', false )
+            ->assertSee( 'Ship to' )
+            ->assertSee( 'href="/account/addresses"', false )
+            ->assertSee( 'data-address-edit', false )
+            ->assertSee( '<span class="apui-sr-only">: Ship to</span>', false )
+            ->assertSee( '1408 Magnolia Ave' );
+
+        $this->blade( '<x-artisanpack-ec-address :address="[ \'address1\' => \'1 Main St\' ]" title="Bill to" />' )
+            ->assertSee( 'Bill to' )
+            ->assertDontSee( 'data-address-edit', false );
+    } );
 } );
 
 describe( 'empty state and skeleton', function (): void {
-    it( 'announces the empty state as a status with its actions', function (): void {
-        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later."><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' )
+    it( 'is not a live region by default, so a static empty state is not announced', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="x" />' )
+            ->assertDontSee( 'role="status"', false )
+            ->assertSee( 'x' );
+    } );
+
+    it( 'announces the empty state as a status with its actions when it is live', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later." :live="true"><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' )
             ->assertSee( 'role="status"', false )
             ->assertSee( 'Nothing here' )
             ->assertSee( 'Try again later.' )
             ->assertSee( 'href="/shop"', false );
+
+        $this->blade( '<x-artisanpack-ec-empty-state title="Your cart is empty" card live />' )
+            ->assertSeeInOrder( [ 'data-empty-state-card', 'role="status"' ], false );
     } );
 
-    it( 'draws busy placeholders with a spoken loading message', function (): void {
-        $view = $this->blade( '<x-artisanpack-ec-skeleton variant="card" :count="3" />' );
+    it( 'draws the design-system empty state with an h2 title and the inbox icon by default (#84)', function (): void {
+        $view = $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later." data-reason="none"><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' );
 
-        $view->assertSee( 'aria-busy="true"', false )
-            ->assertSee( 'Loading…' );
+        $view->assertSee( 'apui-empty-state', false )
+            ->assertSee( 'ec-empty-state', false )
+            ->assertSee( 'data-size="md"', false )
+            ->assertSee( 'data-reason="none"', false )
+            ->assertSee( '<h2 data-scope="empty-state" data-part="title">Nothing here</h2>', false )
+            ->assertSeeInOrder( [ 'data-part="description"', 'Try again later.', 'data-part="actions"', 'href="/shop"' ], false )
+            ->assertDontSee( 'data-empty-state-card', false )
+            ->assertDontSee( 'opacity-', false );
 
-        expect( substr_count( (string) $view, 'skeleton aspect-square' ) )->toBe( 3 );
+        expect( (string) $view )->toMatch( '/data-part="icon" aria-hidden="true"><svg /' );
+    } );
+
+    it( 'leaves out the description and actions parts when empty', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="" />' )
+            ->assertDontSee( 'data-part="description"', false )
+            ->assertDontSee( 'data-part="actions"', false );
+    } );
+
+    it( 'draws the compact size, a custom heading level, and falls back from an unknown size', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" size="sm" :heading-level="3" />' )
+            ->assertSee( 'data-size="sm"', false )
+            ->assertSee( '<h3 data-scope="empty-state"', false );
+
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" size="huge" />' )
+            ->assertSee( 'data-size="md"', false );
+    } );
+
+    it( 'sits in a card when it replaces a list, keeping its attributes on the empty state', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Your cart is empty" card data-cart-empty />' )
+            ->assertSeeInOrder( [ 'apui-card', 'data-empty-state-card', 'apui-empty-state', 'data-cart-empty' ], false );
+    } );
+
+    it( 'draws product-card skeletons in a busy region hidden from screen readers, with a status beside it', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton variant="card" :count="3" />' );
+
+        expect( $html )
+            ->toMatch( '/<span class="apui-sr-only" role="status">Loading…<\/span>/' )
+            ->toMatch( '/<div class="ec-skeleton__shapes" data-variant="card" aria-busy="true" aria-hidden="true">/' )
+            ->and( substr_count( $html, 'class="apui-card ec-skeleton-card"' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__media' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__line' ) )->toBe( 9 )
+            ->and( substr_count( $html, 'apui-skeleton ec-skeleton-card__button' ) )->toBe( 3 );
+    } );
+
+    it( 'draws text lines with the last one shorter', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton :count="3" label="Loading reviews…" />' );
+
+        expect( $html )
+            ->toContain( 'data-skeleton="text"' )
+            ->toContain( 'Loading reviews…' )
+            ->and( substr_count( $html, 'data-shape="text"' ) )->toBe( 3 )
+            ->and( substr_count( $html, 'data-last="data-last"' ) )->toBe( 1 );
+    } );
+
+    it( 'draws one square block for an image', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-skeleton variant="image" :count="5" />' );
+
+        expect( substr_count( $html, 'data-scope="skeleton"' ) )->toBe( 1 )
+            ->and( $html )->toContain( 'apui-skeleton ec-skeleton__image' )
+            ->toContain( 'data-shape="block"' );
     } );
 
     it( 'falls back to text lines for an unknown variant and clamps the count', function (): void {
         $view = $this->blade( '<x-artisanpack-ec-skeleton variant="bogus" :count="0" />' );
 
         $view->assertSee( 'data-skeleton="text"', false );
-        expect( substr_count( (string) $view, 'skeleton h-4' ) )->toBe( 1 );
+        expect( substr_count( (string) $view, 'data-shape="text"' ) )->toBe( 1 );
     } );
+
+    it( 'leaves no DaisyUI or Tailwind classes in the skeleton', function ( string $variant ): void {
+        expect( classTokens( (string) $this->blade( '<x-artisanpack-ec-skeleton :variant="$variant" />', [ 'variant' => $variant ] ) ) )
+            ->not->toContain( 'skeleton', 'w-full', 'h-4', 'w-2/3', 'grid-cols-2', 'aspect-square', 'sr-only' );
+    } )->with( [ 'text', 'card', 'image' ] );
 } );

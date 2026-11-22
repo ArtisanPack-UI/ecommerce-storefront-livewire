@@ -256,10 +256,14 @@ class StorefrontSeo
     }
 
     /**
-     * Describes the catalog. Its canonical URL keeps a category filter and
-     * the page number and drops every other filter and the sort.
+     * Describes the catalog. Its canonical URL keeps the page number and
+     * drops every filter and the sort. A known category filter points to
+     * that category's own page (`/shop?category=shirts` →
+     * `/shop/category/clothing/shirts`), which lists the same products;
+     * without the category route it stays a `category` parameter.
      *
      * @since 1.0.0
+     * @since 2.0.0 A category filter canonicalises to the category's page.
      *
      * @param  Request  $request  The request.
      *
@@ -267,10 +271,16 @@ class StorefrontSeo
      */
     public function catalog( Request $request ): static
     {
+        $category = $request->query( 'category' );
+        $node     = is_string( $category ) && '' !== $category ? app( CategoryPaths::class )->bySlug( $category ) : null;
+        $page     = null === $node ? null : app( CategoryPaths::class )->url( $node['id'] );
+
         return $this->describe( 'catalog', null, [
             'title'       => self::paged( __( 'Shop' ), $request ),
             'description' => __( 'Browse every product at :store.', [ 'store' => (string) config( 'app.name' ) ] ),
-            'canonical'   => self::canonical( self::route( 'artisanpack.ecommerce.storefront.catalog' ), $request, self::CANONICAL_PARAMETERS ),
+            'canonical'   => null !== $page
+                ? self::canonical( $page, $request, [ 'page' ] )
+                : self::canonical( self::route( 'artisanpack.ecommerce.storefront.catalog' ), $request, self::CANONICAL_PARAMETERS ),
         ] );
     }
 

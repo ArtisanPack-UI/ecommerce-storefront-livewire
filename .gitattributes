@@ -8,6 +8,7 @@
 /.idea              export-ignore
 /plans              export-ignore
 /audits             export-ignore
+/design             export-ignore
 /tests              export-ignore
 /phpcs.xml          export-ignore
 /phpunit.xml        export-ignore

@@ -1,10 +1,11 @@
 ---
 title: Templates and Patterns
+menu_order: 20
 ---
 
 # Templates and Patterns
 
-With templates on, the storefront's product, catalog, category, tag, cart, checkout, and search pages render through visual-editor templates, so a store owner can design them in the site editor. The storefront also offers three block patterns. Both are built from the commerce [Blocks](Visual-Editor-Blocks).
+With templates on, the storefront's product, catalog, category, tag, cart, checkout, and search pages render through visual-editor templates, so a store owner can design them in the site editor. The storefront also offers three block patterns. Both are built from the commerce [Blocks](blocks.md).
 
 ## Turning templates on
 
@@ -21,7 +22,7 @@ Templates are off by default, so installing visual-editor doesn't change an exis
 A page renders through a template only when all of these hold:
 
 - `visual_editor.templates` is `true`;
-- the blocks are available (see [Visual Editor](Visual-Editor));
+- the blocks are available (see [Visual Editor](../visual-editor.md));
 - `cms-framework`'s site editor is installed (`ArtisanPackUI\CMSFramework\Modules\SiteEditor\Resolution\TemplateResolver` exists);
 - the `ve-template` Blade component is registered.
 
@@ -41,7 +42,7 @@ With templates on, the storefront offers these templates to the site editor thro
 | `checkout` | Checkout | A "Checkout" heading and the Checkout Steps block |
 | `search-results` | Product Search Results | A "Search" heading and the Product Catalog block |
 
-Apart from `single-product`, each template wraps its blocks in a group block with the classes `flex flex-col gap-6`.
+Apart from `single-product`, each template wraps its blocks in a group block with the class `ec-template`, spaced by the editor's block spacing. Their headings are level 1 with the class `ec-template__title`, at the page header's heading-xl type.
 
 ## Which template a page uses
 
@@ -67,11 +68,15 @@ The storefront offers these patterns through `ap.visualEditor.patterns` whenever
 
 | Slug | Title | Content |
 | --- | --- | --- |
-| `artisanpack-commerce/featured-products` | Featured products | A heading and a 4-column Product Grid of 4 featured products |
-| `artisanpack-commerce/shop-by-category` | Shop by category | A heading and a 3-column Category Grid of 6 top-level categories |
-| `artisanpack-commerce/sale-banner-grid` | Sale banner + grid | A banner ("On sale now") above a 4-column Product Grid of 8 products on sale |
+| `artisanpack-commerce/featured-products` | Featured products | A heading row (the title, and a "Shop all" link to the catalog at the row's end) above a 4-column Product Grid of 4 featured products |
+| `artisanpack-commerce/shop-by-category` | Shop by category | A heading above a 3-column Category Grid of 6 top-level categories (two to a row on small screens) |
+| `artisanpack-commerce/sale-banner-grid` | Sale banner + grid | A banner on the accent fill (a "Sale" badge, "On sale now", a line of text, and a "Shop the sale" button to the on-sale catalog) beside an image you pick, above a 4-column Product Grid of 4 products on sale |
 
 A pattern you already have with the same slug is kept.
+
+The Featured products and Shop by category headings carry the `ec-pattern__title` class, which sets them at the design system's heading-xl type (it's in the storefront's stylesheet, so the page needs the storefront styles, as the commerce blocks do). The Featured products heading row is a flex group (`justifyContent: space-between`), so the editor lays it out, and the space between a pattern's blocks is the editor's block spacing. "Shop all" is a standalone design-system Link; it's left out when the storefront routes aren't registered.
+
+The sale banner is a flex group (wrapping, no block gap) with the class `ec-sale-banner`: the accent soft fill, the copy on the start half, and an image block on the end half, stacking below 640px. The image block starts empty; until you pick an image, the copy spans the banner. The badge and button are design-system markup in paragraph blocks, and "Shop the sale" is left out when the storefront routes aren't registered.
 
 ## Changing the defaults
 
@@ -100,4 +105,4 @@ addFilter( 'ap.ecommerceStorefrontLivewire.patterns', function ( array $patterns
 } );
 ```
 
-See [Hooks Reference](Extending-Hooks-Reference).
+See [Hooks](../reference/hooks.md).

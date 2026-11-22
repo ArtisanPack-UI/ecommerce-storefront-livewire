@@ -1,5 +1,6 @@
 ---
 title: Blade Components
+menu_order: 20
 ---
 
 # Blade Components
@@ -18,7 +19,7 @@ The storefront composes its screens from a few store-specific Blade components b
 | `<x-artisanpack-ec-rating-summary>` | `rating` (0 to 5), `count`, `href`, `hide-empty` | Stars and the review count, linked to `href` when given. Screen readers hear "Rated 4.5 out of 5". With no reviews it says so, or renders nothing with `hide-empty`. |
 | `<x-artisanpack-ec-address>` | `address`, `show-phone` (default `true`) | A postal address in an `<address>` element. Takes an order address array, the engine's `Address` value object, or a `CustomerAddress`. |
 | `<x-artisanpack-ec-empty-state>` | `title`, `description`, `icon` (default `o-inbox`); the slot holds actions | An empty state. It is a `status` region, so a screen reader announces it when filtering empties a list. |
-| `<x-artisanpack-ec-skeleton>` | `variant` (`text`, `card`, or `image`), `count` (1 to 24, default 3), `label` (default "Loading…") | A loading placeholder, `aria-busy` with a status for screen readers |
+| `<x-artisanpack-ec-skeleton>` | `variant` (`text`, `card`, or `image`), `count` (1 to 24, default 3), `label` (default "Loading…") | A loading placeholder made of design-system Skeleton shapes in the content's layout (text lines, product cards in the catalog grid, or a square image), in an `aria-busy` region hidden from screen readers, with a status beside it |
 
 ```blade
 <x-artisanpack-ec-price :price="app( \ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver::class )->for( $product, 'USD' )" />
@@ -44,7 +45,7 @@ The storefront composes its screens from a few store-specific Blade components b
 | --- | --- | --- |
 | `<x-artisanpack-ec-sf-product-card>` | `product`, `currency`, `price`, `stock` (pass the last three to skip their lookups), `quick-add` (default `true`), `heading-level` (default `3`), `show-price`, `show-rating` | The card every listing uses: image, name linked to the product page, price, rating, and stock. For a simple product that can be bought, an "Add to cart" button. |
 | `<x-artisanpack-ec-gallery>` | `images` (from `ProductImages::gallery( $product )`), `name`, `active` (index), `scope`, `thumbnails` (`bottom`, `start`, `end`, `none`), `zoom` (default `true`) | The product gallery: main image, thumbnails, zoom, and a lightbox (a native `<dialog>`) with previous and next |
-| `<x-artisanpack-ec-category-grid>` | `parent` (id or slug; null for the top level), `limit` (1 to 24, default 6), `columns` (1 to 6, default 3), `show-counts`, `show-images`, `heading` | Category tiles with images and product counts (sub-categories included) |
+| `<x-artisanpack-ec-category-grid>` | `parent` (id or slug; null for the top level), `limit` (1 to 24, default 6), `columns` (1 to 6, default 3: the most tiles to a row from 1024px), `show-counts`, `show-images`, `heading` | Category tiles with images and product counts (sub-categories included) |
 
 ```blade
 @php( $products = \ArtisanPackUI\Ecommerce\Models\Product::query()->storefrontVisible()->with( \ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard::relations() )->limit( 4 )->get() )
@@ -62,7 +63,7 @@ The storefront composes its screens from a few store-specific Blade components b
 <x-artisanpack-ec-category-grid parent="clothing" :limit="6" :columns="3" :heading="__( 'Shop clothing' )" />
 ```
 
-The card's "Add to cart" button calls the parent Livewire component's `quickAdd()` (the `ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart` trait). Outside such a component, set `:quick-add="false"`. Eager-load `ProductCard::relations()` when rendering many cards (see [Performance](Advanced-Performance)). The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard` filter; see [Hooks Reference](Extending-Hooks-Reference).
+The card's "Add to cart" button calls the parent Livewire component's `quickAdd()` (the `ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart` trait). Outside such a component, set `:quick-add="false"`. Eager-load `ProductCard::relations()` when rendering many cards (see [Performance](../advanced/performance.md)). The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard` filter; see [Hooks](../reference/hooks.md).
 
 The gallery switches images when it receives the browser event `ecommerce-gallery-show` with an image `url` and, when the gallery has one, its `scope`.
 
@@ -71,9 +72,10 @@ The gallery switches images when it receives the browser event `ecommerce-galler
 | Component | Attributes | Use |
 | --- | --- | --- |
 | `<x-artisanpack-ec-quantity>` | `id` (required), `label` (visually hidden "Quantity" when omitted), `min` (default 1), `max`, `error`, `item-name`, plus `wire:model` and `disabled` | A number input between "Decrease" and "Increase" buttons. The buttons fire `input`, so `wire:model` (deferred or live) picks the change up. `item-name` names the buttons ("Increase quantity of Blue mug"). An error is linked with `aria-describedby`. |
-| `<x-artisanpack-ec-swatches>` | `name`, `legend`, `options`, `multiple`, `id-prefix`, plus `wire:model` | A fieldset with one native radio (or checkbox with `multiple`) per option, drawn as swatches or pills. Each option is `value`, `label`, and optionally `swatch` (a hex colour or an http(s) image URL), `count`, `selected`, `disabled`, and `reason` (why it is disabled). |
-| `<x-artisanpack-ec-rating-input>` | `id`, `label`, `error`, `required`, plus `wire:model` | A 1 to 5 star picker made of labelled radios ("4 stars") |
-| `<x-artisanpack-ec-price-range>` | `min`, `max`, `currency`, `from-model`, `to-model`, `step` (default 100), `label`, `id-prefix` | Two labelled range inputs bound to the parent component's properties in minor units. Values are sent when a handle is released; a handle at its end sends `null`. |
+| `<x-artisanpack-ec-swatches>` | `name`, `legend`, `options`, `multiple`, `id-prefix`, plus `wire:model` | A fieldset with one native radio (or checkbox with `multiple`) per option, drawn as swatches or pills. Each option is `value`, `label`, and optionally `swatch` (a hex colour or an http(s) image URL), `count`, `meta` (a short note after the name, such as a price difference; 2.0), `selected`, `disabled`, and `reason` (why it is disabled). |
+| `<x-artisanpack-ec-choice-cards>` | `name`, `legend`, `options`, `id-prefix`, `required`, `hint`, `error`, plus `wire:model` | A fieldset of native radios drawn as cards (2.0). Each option is `value`, `label`, and optionally `hint`, `meta` (a price difference), `image` (`url`, `srcset`, `alt`), `selected`, `disabled` and `reason`. The checked card shows a check, so the choice isn't conveyed by color alone. |
+| `<x-artisanpack-ec-rating-input>` | `id`, `label`, `error`, `required`, plus `wire:model` | A 1 to 5 star picker on the design-system Rating (28px stars): a radiogroup of labelled radios ("4 stars") that arrow keys move through. Hover previews the value, and the choice shows as "3 of 5". |
+| `<x-artisanpack-ec-price-range>` | `min`, `max`, `currency`, `from-model`, `to-model`, `step` (default 100), `label`, `id-prefix`, `from` and `to` (the current bounds, for the first render) | The design-system Range with two thumbs ("Lowest price" and "Highest price") and an input for each bound with the currency symbol as its prefix, kept in sync, bound to the parent component's properties in minor units. Values are sent when a thumb is released or an input changes; a bound at its end sends `null`. |
 | `<x-artisanpack-ec-address-form>` | `model`, `legend`, `live`, `with-name` (default `true`), `country`, `section`, `require-name` | Address fields bound to `{model}.{field}`, with `autocomplete` tokens (prefixed with `section` when two forms share a page). Countries with a region list get a region select bound to `region_code`; the postcode is labelled and hinted for the country. Errors show under each field. |
 | `<x-artisanpack-ec-field>` | `id` (required), `control` (`input`, `select`, `textarea`, `password`, or `checkbox`; default `input`), `label`, `hint`, `error-field` (defaults to the `wire:model` property), and for a select `options`, `placeholder`, `placeholder-value`, `option-value` (default `id`), `option-label` (default `name`); every other attribute (`wire:model`, `type`, `required`, `autocomplete`, `data-*`) goes to the control | A library input, select, textarea, password, or checkbox with its error and hint linked to it. When the field has an error, the control gets `aria-invalid="true"` and `aria-describedby` points at the error and the hint. A select or textarea also gets its label as `aria-label`. |
 | `<x-artisanpack-ec-search-box>` | `input-id` (default `ecommerce-header-search`) | The header search box with live suggestions. Give each box on a page its own `input-id`. |
@@ -108,7 +110,7 @@ The library prints errors and hints without ids and never marks a control invali
 
 ## Account pages
 
-`<x-artisanpack-ec-account-shell :title="…">` is the frame every account page sits in: the page heading, and the account navigation beside the slot. The navigation lists the storefront's account pages that have a route, then the entries satellites register with the engine's `AccountMenuRegistry`, sorted by position. The current entry is marked `aria-current="page"`.
+`<x-artisanpack-ec-account-shell :title="…">` is the frame every account page sits in: the page heading, and the account navigation beside the slot. The navigation lists the storefront's account pages that have a route, then the entries satellites register with the engine's `AccountMenuRegistry`, sorted by position. The current entry is marked `aria-current="page"`. Leave `title` out when the slot brings its own h1 (the dashboard and order pages do).
 
 ```blade
 <x-artisanpack-ec-account-shell :title="__( 'Wishlist' )">
@@ -118,4 +120,4 @@ The library prints errors and hints without ids and never marks a control invali
 
 ## Stand-ins for the component library
 
-`quantity`, `swatches`, `rating-input`, `price-range`, `empty-state`, and `skeleton` stand in for components `livewire-ui-components` does not ship yet (or, for `rating-input`, ships broken). Each is one file, so it can be swapped when the library's version is ready.
+`quantity`, `swatches`, `choice-cards` (the design-system RadioGroup's `cards` variant can't show an image yet) and `empty-state` stand in for components `livewire-ui-components` does not ship yet. Each is one file, so it can be swapped when the library's version is ready. `rating-input`, `price-range` and `skeleton` are built on the library's Rating, Range, Input and Skeleton.

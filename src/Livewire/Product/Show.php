@@ -21,12 +21,18 @@ use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductRelation;
 use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
+use ArtisanPackUI\Ecommerce\Services\CurrencyConverter;
+use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\PurchaseForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\SafeHtml;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -186,6 +192,7 @@ class Show extends Component
      * Renders the component.
      *
      * @since 1.0.0
+     * @since 2.0.0 Passes the `category`, `breadcrumbs`, `highlights` and `soldOut` notice.
      *
      * @return View
      */
@@ -195,11 +202,13 @@ class Show extends Component
         $variant  = null === $this->variantId ? null : $this->ownVariant( $this->variantId );
         $subject  = $variant ?? DisplayData::for( $product );
         $currency = app( StorefrontCart::class )->currency();
+        $category = $this->category();
+        $stock    = StockStatus::for( $subject );
 
         return view( 'ecommerce-storefront::livewire.product.show', [
             'images'           => $this->content['images'],
             'price'            => app( PriceDisplayResolver::class )->for( $subject, $currency, null, app( StorefrontCart::class )->customer() ),
-            'stock'            => StockStatus::for( $subject ),
+            'stock'            => $stock,
             'sku'              => $variant?->sku ?? $product->sku,
             'shortDescription' => $this->content['shortDescription'],
             'description'      => $this->content['description'],
@@ -208,6 +217,10 @@ class Show extends Component
             'form'             => app( ProductFormRegistry::class )->for( $product ),
             'sections'         => $this->sections(),
             'reviewsUrl'       => '#reviews',
+            'category'         => $category,
+            'breadcrumbs'      => $this->breadcrumbs( $category ),
+            'highlights'       => $this->highlights( $currency ),
+            'soldOut'          => StockStatus::OUT_OF_STOCK === $stock->status ? $this->soldOutNotice( $variant ) : null,
         ] );
     }
 
@@ -291,6 +304,152 @@ class Show extends Component
         $content = applyFilters( 'ap.ecommerceStorefrontLivewire.product.shippingReturns', '', $this->product );
 
         return is_string( $content ) ? SafeHtml::clean( $content ) : null;
+    }
+
+    /**
+     * The product's category for the line above its name and the
+     * breadcrumbs: its first category (as on the product card), with its
+     * page's URL when it has one.
+     *
+     * @since 2.0.0
+     *
+     * @return array{id: int, name: string, url: string|null}|null
+     */
+    protected function category(): ?array
+    {
+        try {
+            $category = $this->product->categories()->orderBy( 'id' )->first();
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return null;
+        }
+
+        if ( null === $category ) {
+            return null;
+        }
+
+        return [ 'id' => (int) $category->id, 'name' => (string) $category->name, 'url' => app( CategoryPaths::class )->url( (int) $category->id ) ];
+    }
+
+    /**
+     * The breadcrumb trail: the shop, the category's ancestors and the
+     * category (linked), then the product (unlinked).
+     *
+     * @since 2.0.0
+     *
+     * @param  array{id: int, name: string, url: string|null}|null  $category  The product's category.
+     *
+     * @return array<int, array{label: string, link?: string}>
+     */
+    protected function breadcrumbs( ?array $category ): array
+    {
+        $items = Route::has( 'artisanpack.ecommerce.storefront.catalog' )
+            ? [ [ 'label' => __( 'Shop' ), 'link' => route( 'artisanpack.ecommerce.storefront.catalog' ) ] ]
+            : [];
+
+        if ( null !== $category ) {
+            $paths = app( CategoryPaths::class );
+
+            foreach ( $paths->ancestry( $category['id'] ) as $node ) {
+                $url     = $paths->url( (int) $node['id'] );
+                $items[] = null === $url ? [ 'label' => (string) $node['name'] ] : [ 'label' => (string) $node['name'], 'link' => $url ];
+            }
+        }
+
+        $items[] = [ 'label' => (string) $this->product->name ];
+
+        return $items;
+    }
+
+    /**
+     * The delivery and returns list under the purchase form, through
+     * `ap.ecommerceStorefrontLivewire.product.highlights`: a list of `icon`
+     * (a design-system icon name), `title` and optional `description`. By
+     * default, "Free shipping over $75" when `cart.free_shipping_threshold`
+     * is set for the shopper's currency. Incomplete entries are dropped.
+     *
+     * ```php
+     * addFilter( 'ap.ecommerceStorefrontLivewire.product.highlights', function ( array $highlights ): array {
+     *     $highlights[] = [ 'icon' => 'rotate-ccw', 'title' => __( '30-day returns' ), 'description' => __( 'Unused and in original packaging' ) ];
+     *
+     *     return $highlights;
+     * } );
+     * ```
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $currency  The shopper's currency.
+     *
+     * @return array<int, array{icon: string, title: string, description: string|null}>
+     */
+    protected function highlights( string $currency ): array
+    {
+        $defaults   = [];
+        $configured = config( 'artisanpack.ecommerce-storefront-livewire.cart.free_shipping_threshold' );
+
+        if ( null !== $configured ) {
+            try {
+                $threshold = app( CurrencyConverter::class )->fromConfigured( $configured, $currency );
+
+                if ( null !== $threshold && (int) $threshold->getAmount() > 0 ) {
+                    $defaults[] = [ 'icon' => 'truck', 'title' => __( 'Free shipping over :amount', [ 'amount' => MoneyFormatter::format( (int) $threshold->getAmount(), $currency ) ] ), 'description' => null ];
+                }
+            } catch ( Throwable $exception ) {
+                report( $exception );
+            }
+        }
+
+        $highlights = [];
+
+        foreach ( (array) applyFilters( 'ap.ecommerceStorefrontLivewire.product.highlights', $defaults, $this->product ) as $highlight ) {
+            if ( ! is_array( $highlight ) || ! is_string( $highlight['title'] ?? null ) || '' === trim( $highlight['title'] ) ) {
+                continue;
+            }
+
+            $icon = is_string( $highlight['icon'] ?? null ) && 1 === preg_match( '/^[a-z0-9-]+$/', $highlight['icon'] ) ? $highlight['icon'] : 'info';
+
+            $highlights[] = [
+                'icon'        => $icon,
+                'title'       => $highlight['title'],
+                'description' => is_string( $highlight['description'] ?? null ) && '' !== trim( $highlight['description'] ) ? $highlight['description'] : null,
+            ];
+        }
+
+        return $highlights;
+    }
+
+    /**
+     * What the page says under the purchase form when the product (or the
+     * chosen variant) is sold out, through
+     * `ap.ecommerceStorefrontLivewire.product.soldOut`: a view name or an
+     * Htmlable, such as a back-in-stock satellite's "Notify me" form. By
+     * default, an alert saying it is sold out. A view that doesn't exist, or
+     * anything else, shows nothing. The default is left out when the
+     * purchase form offers its own back-in-stock signup
+     * ({@see PurchaseForm::backInStockEnabled()}).
+     *
+     * @since 2.0.0
+     *
+     * @param  ProductVariant|null  $variant  The chosen variant.
+     *
+     * @return Htmlable|string|null A view name, Htmlable, or null.
+     */
+    protected function soldOutNotice( ?ProductVariant $variant ): Htmlable|string|null
+    {
+        $default = 'ecommerce-storefront::livewire.product.partials.sold-out';
+        $notice  = applyFilters( 'ap.ecommerceStorefrontLivewire.product.soldOut', $default, $this->product, $variant );
+
+        // The purchase form's "Notify me" alert already says it's sold out.
+        if ( $default === $notice && PurchaseForm::backInStockEnabled( $this->product ) ) {
+            return null;
+        }
+
+        if ( $notice instanceof Htmlable ) {
+            return $notice;
+        }
+
+        return is_string( $notice ) && '' !== $notice && view()->exists( $notice ) ? $notice : null;
     }
 
     /**

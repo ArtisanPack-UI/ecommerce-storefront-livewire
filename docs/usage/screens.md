@@ -1,12 +1,13 @@
 ---
 title: Screens
+menu_order: 10
 ---
 
 # Screens
 
 Storefront paths are relative to `storefront.route_prefix` (`/shop` by default) and route names to `artisanpack.ecommerce.storefront.`, so `product` is `artisanpack.ecommerce.storefront.product`. Account paths are relative to `account.route_prefix` (`/account`) and route names to `artisanpack.ecommerce.account.`. Account routes run `account.middleware` (`web`, `auth` by default).
 
-Every page is a controller action in `Http\Controllers\StorefrontPageController` that renders a view in `resources/views/pages/` extending `storefront.layout`, with one Livewire component in it. Component names below drop the `artisanpack-ecommerce-storefront-` prefix, so `catalog` is `<livewire:artisanpack-ecommerce-storefront-catalog />`. To route the pages yourself, set `storefront.routes_enabled` to `false` and embed the components (see [Embedding Components](Extending-Embedding-Components)).
+Every page is a controller action in `Http\Controllers\StorefrontPageController` that renders a view in `resources/views/pages/` extending `storefront.layout`, with one Livewire component in it. Component names below drop the `artisanpack-ecommerce-storefront-` prefix, so `catalog` is `<livewire:artisanpack-ecommerce-storefront-catalog />`. To route the pages yourself, set `storefront.routes_enabled` to `false` and embed the components (see [Embedding Components](../extending/embedding-components.md)).
 
 ## Storefront
 
@@ -18,8 +19,8 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 | `/products/{product}` | `product` | `product-show` | The product page. |
 | `/search` | `search` | `search` | Search results for `?q=`. |
 | `/cart` | `cart` | `cart` | The cart page. |
-| `/checkout` | `checkout` | `checkout` | The checkout. See [Checkout](Checkout). |
-| `/checkout/return` | `checkout.return` | None (redirect) | Where a payment provider sends the shopper back. See [Checkout](Checkout#placing-the-order). |
+| `/checkout` | `checkout` | `checkout` | The checkout. See [Checkout](../checkout.md). |
+| `/checkout/return` | `checkout.return` | None (redirect) | Where a payment provider sends the shopper back. See [Checkout](../checkout.md#placing-the-order). |
 | `/orders/{order}/confirmation` | `confirmation` | `order-confirmation` | The order confirmation. |
 | `/order-lookup` | `lookup` | `order-lookup` | Guest order lookup by email and order number. |
 | `/order/{token}` | `order-view` | `account-order` | A guest's order, opened with a signed order-view token. Read-only. |
@@ -30,10 +31,10 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 
 | Path | Route name | Component | What it does |
 | --- | --- | --- | --- |
-| `/` | `dashboard` | `account-dashboard` | Greeting, latest orders, default addresses, download count, and links. |
-| `/orders` | `orders.index` | `account-orders` | Order history. |
-| `/orders/{order}` | `orders.show` | `account-order` | One order. |
-| `/addresses` | `addresses` | `account-addresses` | The address book. |
+| `/` | `dashboard` | `account-dashboard` | Greeting (the page's heading), latest orders, default addresses, download count, the claim prompt, and links. |
+| `/orders` | `orders.index` | `account-orders` | Order history: "Orders" as the heading, beside the filter. |
+| `/orders/{order}` | `orders.show` | `account-order` | One order: "Order {number}" as the heading, each shipment's progress (Placed, Shipped, In transit, Delivered) with its tracking, the store's messages, the details, and refunds. |
+| `/addresses` | `addresses` | `account-addresses` | The address book: "Saved addresses" as the heading, beside "Add an address". |
 | `/downloads` | `downloads` | `account-downloads` | Downloads and licence keys. |
 | `/downloads/{download}` | `downloads.file` | None (file) | Sends the file as an attachment and spends a download. |
 | `/downloads/{download}/stream` | `downloads.stream` | None (file) | Streams a streaming-only file in the browser's player. |
@@ -42,7 +43,7 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 
 `{download}` is an entitlement id. Another customer's entitlement is a 404. One that is expired, used up, or streaming-only sends the shopper back to the downloads page with a toast saying why.
 
-Both file routes only accept temporary signed links, so a cross-site request or a link prefetcher can't spend a download. The downloads page renders them fresh on each visit: a download link works for 10 minutes and a stream link for 4 hours. An unsigned or expired link is a 403. To link to a file from your own page, sign the URL yourself:
+Both file routes only accept temporary signed links, so a cross-site request or a link prefetcher can't spend a download. The downloads page renders them fresh on each visit: a download link works for 10 minutes and a stream link for 4 hours. Clicking **Download** signs a fresh link at that moment, so a page left open longer still works. An expired or invalid download link sends the shopper back to the downloads page with a toast; an unsigned or expired stream link is a 403, since media players can't follow a redirect. To link to a file from your own page, sign the URL yourself:
 
 ```php
 use Illuminate\Support\Facades\URL;
@@ -52,7 +53,7 @@ URL::temporarySignedRoute( 'artisanpack.ecommerce.account.downloads.file', now()
 
 ### Account navigation
 
-Every account page sits in `<x-artisanpack-ec-account-shell>`, whose menu lists the storefront's own pages (dashboard, orders, addresses, downloads, profile, and "Claim an order", which only shoppers who may claim see), then the entries satellites register with the engine's `AccountMenuRegistry` that the shopper may see, all sorted by `position`. The storefront's own entries use positions 10–60. The engine's core `ecommerce.account.*` entries (profile, orders, addresses, downloads, licence keys, notifications) are left out, since the storefront's own pages already cover them. See [Hooks Reference](Extending-Hooks-Reference#registries).
+Every account page sits in `<x-artisanpack-ec-account-shell>`, whose menu lists the storefront's own pages (dashboard, orders, addresses, downloads, profile, and "Claim an order", which only shoppers who may claim see), then the entries satellites register with the engine's `AccountMenuRegistry` that the shopper may see, all sorted by `position`. The storefront's own entries use positions 10–60. The engine's core `ecommerce.account.*` entries (profile, orders, addresses, downloads, licence keys, notifications) are left out, since the storefront's own pages already cover them. See [Hooks](../reference/hooks.md#registries).
 
 ## Catalog
 
@@ -60,7 +61,7 @@ The catalog lists products from the engine's `CatalogQuery`.
 
 - **Sort**: `newest`, `price`, `-price`, `popularity`, `rating`, `name`. The default is `catalog.default_sort`. Add or remove sorts with the `ap.ecommerceStorefrontLivewire.catalog.sorts` filter.
 - **Page size**: `catalog.per_page` (24), with the choices in `catalog.per_page_values`.
-- **Filters** (a sidebar on desktop, a drawer on mobile): category tree, tag, price range, attribute values, in stock, on sale, and minimum rating. Each option shows a facet count. A group's own counts ignore its own selection, and options with no results are disabled, not hidden. `catalog.filter_attributes` limits which attributes can be filtered on. Add or remove groups with the `ap.ecommerceStorefrontLivewire.catalog.filters` filter.
+- **Filters** (a 240px sidebar from 1024px, a start-side drawer below that, opened by a "Filters (2)" button that counts the active filters): category tree, tag, price range, attribute values, in stock, on sale, and minimum rating. Each option shows a facet count; sub-categories are indented under their parent. Active filters show as removable chips above the results, with "Clear all". A group's own counts ignore its own selection, and options with no results are disabled, not hidden. `catalog.filter_attributes` limits which attributes can be filtered on. Add or remove groups with the `ap.ecommerceStorefrontLivewire.catalog.filters` filter.
 
 Everything lives in the query string:
 
@@ -76,18 +77,22 @@ Everything lives in the query string:
 | `rating` | Minimum rating |
 | `f[{key}]` | A filter group added through the filter hook |
 
+The catalog page opens with breadcrumbs, the "All products" title and the `catalog.description` line. The toolbar has the live results count (announced politely when it changes), "Sort by", and "Per page" (left out on phones). Cards sit three to a row beside the filters (two on phones, four without filters). While a filter, sort, or page loads, skeleton cards stand in for the cards. With no matches, a card says so and offers "Clear filters".
+
 Product cards show the image, name, price, rating, and stock. Prices are the signed-in customer's (passed to the engine's `PriceDisplayResolver`), so a customer-group price shows in listings as it does in the cart. Simple products get a quick "Add to cart" button. Other types need a choice made on the product page (a variant, a licence type, options), so they get none, and quick add refuses them if called directly. With `catalog.show_stock_count` on, low-stock products say "Only 3 left" (the engine's `inventory.show_quantity` must be on).
 
 Products whose type's satellite isn't installed are left out of every listing, search, and header suggestion. A malformed query string (`?per_page=abc`, `?sort[]=x`) is ignored rather than causing an error.
 
-The category page adds breadcrumbs, the category's name, description, and image, and sub-category chips. The tag page has the catalog's filters, less the tag filter.
+The category page adds breadcrumbs, then a card with a "Category" eyebrow, the category's name, description, and sub-category chips ("All {category}" for the page itself, then each sub-category), with its image on the end half. The tag page has breadcrumbs, the same card with a "Tag" eyebrow and the tag's name (no image or chips), and the catalog's filters, less the tag filter.
 
 ## Product
 
-- **Gallery**: the featured image, gallery images, and variant images, with thumbnails, zoom, and a lightbox. It switches to the chosen variant's image.
-- **Summary**: name, rating summary linking to `#reviews`, price, short description, stock status, and SKU, all following the chosen variant.
-- **Purchase form**: the product type's form from `ProductFormRegistry`, or "can't be purchased online" when the type has none.
-- **Details**: description, an attributes table, and shipping and returns content from the `ap.ecommerceStorefrontLivewire.product.shippingReturns` filter, in an accordion.
+- **Breadcrumbs**: the shop, the trail to the product's first category, then the product.
+- **Gallery** (1.1fr beside the summary from 1024px, above it below that): the featured image, gallery images, and variant images, with thumbnails, zoom, and a lightbox. It switches to the chosen variant's image.
+- **Summary**: the category (a link to its page), the name, rating summary linking to `#reviews`, price, short description, stock status, and SKU, all following the chosen variant.
+- **Purchase form**: the product type's form from `ProductFormRegistry`, or "can't be purchased online" when the type has none. When the product or chosen variant is sold out, a notice follows it ("This item is sold out"); a satellite can swap it for a "Notify me" form through the `ap.ecommerceStorefrontLivewire.product.soldOut` filter (a view name or `Htmlable`). With engine 1.4 (`BackInStockService`) the purchase form's add-to-cart row offers the signup itself, and the default notice is left out: when the product or the chosen variant is out of stock (not when it's unpriced or a choice is missing), the quantity and button give way to a "Notify me" alert with an email field (the signed-in shopper's, read-only). A signup is validated, rate-limited (`ecommerce.backInStock.subscribe`), stored by the engine (signing up twice is fine), and confirmed in place: "We'll email you when it's back." Turn it off with `ap.ecommerceStorefrontLivewire.product.backInStockEnabled`.
+- **Delivery and returns**: a list under the form from the `ap.ecommerceStorefrontLivewire.product.highlights` filter (`icon`, `title`, optional `description`). By default it says "Free shipping over $75" when `cart.free_shipping_threshold` is set.
+- **Details**: "Product details" beside an accordion (from 1024px) of the description, a specifications table, and shipping and returns content from the `ap.ecommerceStorefrontLivewire.product.shippingReturns` filter.
 - **Sections** below the details, from the `ap.ecommerceStorefrontLivewire.product.sections` filter: `reviews` (position 10), `upsells` ("You may also like", 20), and `related` (30).
 
 Opening the page records a view through the engine (`ap.ecommerce.product.viewed`).
@@ -97,19 +102,19 @@ Opening the page records a view through the engine (`ap.ecommerce.product.viewed
 | Type | Form |
 | --- | --- |
 | `simple` | Quantity and "Add to cart". Out of stock or unpriced disables the button and says why. |
-| `variable` | The variation picker: one swatch or pill group per attribute. An option no available variant offers with the earlier choices is disabled, with the reason ("Out of stock" or "Not available with your other choices"). A choice that rules out a later one clears it and says so. The matched variant goes in the query string as `?variant=`. "Add to cart" stays disabled, naming the missing choice, until a variant is matched. |
-| `grouped` | Each child product with its own price, stock, and quantity. One "Add to cart" adds every product with a quantity as its own line. A refused product shows the reason next to its quantity; the others are still added. |
-| `bundled` | What the bundle includes and how many of each, then quantity and "Add to cart". The bundle is one line at its own price. |
-| `digital` | What the shopper gets: files, download limit and expiry, and a licence key when the product issues them. When the product offers licence types, the shopper picks one. |
-| Any other | A type with no registered form whose engine type implements `ProvidesStorefrontOptions` gets a generic form built from its fields. |
+| `variable` | The variation picker: one swatch or pill group per attribute. An option no available variant offers with the earlier choices is disabled, with the reason ("Out of stock" or "Not available with your other choices"). A choice that rules out a later one clears it and says so. The matched variant goes in the query string as `?variant=`. An attribute with more values than `product.variation_select_after` (8) is a select instead of swatches. "Add to cart" can be pressed before every choice is made: it then shows a field error on the first group still missing a choice ("Choose a size to add this to your cart.") and moves focus there. It is disabled only when nothing can be bought (no variants, a combination that doesn't exist, or a sold-out variant). |
+| `grouped` | A table of the child products, each with its price and a quantity; one that can't be bought shows its stock badge and a dash. A running "2 items · $56.00" line sits above "Add selected to cart", which adds every product with a quantity as its own line. A refused product shows the reason next to its quantity; the others are still added. |
+| `bundled` | "In this set": each member as a checked, disabled checkbox marked "Included" ("2 × Brush" when the bundle holds more than one). Then the total for the quantity, with a "You save $26.00" badge when the members cost more on their own, and quantity and "Add set to cart". The bundle is one line at its own price. |
+| `digital` | When the product offers licence types, the shopper picks one from radio cards. Then what the shopper gets beside a download icon: files, download limit and expiry, and a licence key when the product issues them. "Add to cart" shows the line price. |
+| Any other | A type with no registered form whose engine type implements `ProvidesStorefrontOptions` gets a generic form built from its fields. A text field with a `max:N` rule gets a `maxlength` and a "12 of 20 characters" count under it. With engine 1.4's richer schema: a `swatch` field shows color or image swatches; a radio with `meta.display = cards` shows choice cards (an image, the name, a hint); a choice's `price_delta` follows its name ("+$5.00", in the shopper's currency only); `disabled` choices stay visible but can't be picked; a choice listed in another field's `meta.disables` is disabled while that value is chosen ("Not available with Oak") and cleared if it was picked; a field with `visible_when` shows only while its conditions hold, and isn't validated or added while hidden. When the engine has `PriceQuoteService`, the price of the chosen options is quoted as they change: "$40.00 including options" (when a choice carries a price) and on the "Add to cart" button. The engine validates and prices the line again when it is added. |
 
 ### Reviews
 
 Rendered under `#reviews`:
 
-- A histogram of approved reviews by rating. Each row filters the list to that rating (`?review-rating=`).
-- Approved reviews, newest first, `reviews.per_page` (5) a page (`?reviews-page=`), with a "Verified purchase" badge.
-- **Write a review** when the engine's `ReviewService::eligibility()` allows it, otherwise the reason. Guests also give a name and email.
+- A summary card beside the list from 1024px (stacked below it): the average, the stars, the count, and a 5★ to 1★ breakdown of approved reviews. Each breakdown row filters the list to that rating (`?review-rating=`).
+- Approved reviews, newest first, `reviews.per_page` (5) a page (`?reviews-page=`): the stars and title, the text, then the name, a "Verified purchase" badge, and the date. With no reviews, or none with the chosen rating, an empty state says so.
+- **Write a review** (beside the heading) when the engine's `ReviewService::eligibility()` allows it, otherwise the reason under the heading. The form opens above the list. Guests also give a name and email.
 - A signed-in shopper the engine can't link to a customer record (an unverified account whose email belongs to a guest customer, or a user with a non-numeric id) can't review. The reason is `Reviews::CUSTOMER_UNAVAILABLE`, shown as "Verify your email address to review this product." or "You can't review this product.", instead of the review being posted anonymously.
 
 The title and text are stored as plain text, with control characters removed, and printed escaped, so "Love it <3" is kept whole.
@@ -118,18 +123,22 @@ Who may review and moderation are engine settings.
 
 ### Related products
 
-Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. On small screens the cards scroll sideways with "Previous" and "Next" buttons.
+Related products, upsells, and cart cross-sells come from the engine's `RelatedProducts`, up to `related.limit` (4). They load after the page with skeleton cards and render nothing when there is nothing to suggest. Below 768px the cards scroll sideways, two to a screen, with "Previous" and "Next" buttons; from 768px they are a grid of `columns` (4) from 1024px, two columns below that.
 
-Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit`.
+Recently viewed (`recently-viewed`) shows the products the recently-viewed satellite reports through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. Of the first 50 ids, it drops hidden products and products of uninstalled types, then shows up to its `limit` as compact rows (a 64px thumbnail, the name and the price) in a grid of rows at least 240px wide, at most `columns` (4) to a line. It renders nothing when there is nothing to show.
 
 ## Cart
 
 **Cart page:**
 
-- Lines with image, name, options, unit price, a quantity stepper, line total, and "Remove" with "Undo".
-- A coupon field, with the engine's message under it.
+- "Your cart" with the number of items (the page passes `show-title`; the Cart Contents block, under its template's heading, doesn't).
+- Lines in a card with image, name, options, unit price, a quantity stepper, line total, and an icon "Remove" with "Undo" in a bar above them, then "Continue shopping".
+- The order summary, a 380px sticky card beside the lines from 1024px (below them on smaller screens).
+- A coupon field with its "Apply" button attached, the engine's message under it, and the applied coupon as a chip with a remove button.
 - Totals: subtotal, each promotion's discount, shipping (the chosen estimate, "Free", or "Calculated at checkout"), tax (marked estimated until the engine knows a destination), and total.
-- A shipping estimate by country, region, and postcode. The rate chosen here carries into checkout.
+- A shipping estimate by country, region, and postcode, in an "Estimate shipping" disclosure; the rates are radio cards with their prices. The rate chosen here carries into checkout.
+- "Checkout", the cart's one solid primary button.
+- Each line's options read as a short summary ("Size: 16 × 20 in · Frame: Black oak"). With engine 1.4 the rows come from the engine's `LineOptionDescriber`, so a product type that implements `DescribesLineOptions` (such as configurable products) supplies its own labels; otherwise the variant name and the headlined options. The cart drawer and the checkout summary show the same summary, and the confirmation and account order pages show the rows recorded when the order was placed, so later product edits don't change them.
 - Lines that can't be bought are flagged with the reason and a "Remove" button. A line whose quantity is more than the stock left says so ("Only 2 are left in stock.") and keeps its quantity stepper. "Checkout" is disabled, saying why, until the lines are removed or lowered.
 - Sections below the cart from the `ap.ecommerceStorefrontLivewire.cart.sections` filter: cross-sells by default.
 
@@ -142,20 +151,20 @@ Recently viewed (`recently-viewed`) shows the products the recently-viewed satel
 | Value | Result |
 | --- | --- |
 | `drawer` (default) | Opens the cart drawer |
-| `toast` | Shows an "Added to your cart" toast |
+| `toast` | Shows an "Added to your cart" toast naming the product (and its variant), with a "View cart" button |
 | `none` | Only the cart count updates |
 
-**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](Checkout-Guest-Checkout).
+**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](../checkout/guest-checkout.md).
 
 ## Currency switcher
 
-`currency-switcher` renders only when the store sells in more than one currency. Each option names the currency, its code, and symbol ("Euro (EUR, €)"). A choice is stored through the engine's `CurrencyResolver` and its currency cookie, an existing cart is re-priced through `StorefrontCartService::changeCurrency()`, and the page reloads with a toast. If the cart can't be re-priced, the choice is undone and the shopper told why.
+`currency-switcher` renders only when the store sells in more than one currency. Each option names the currency, its code, and symbol ("Euro (EUR, €)"). The package layout shows it in the header from 768px and in the footer. A page with more than one gives each its own `placement` (`<livewire:artisanpack-ecommerce-storefront-currency-switcher placement="footer" />`), which keeps their ids apart. A choice is stored through the engine's `CurrencyResolver` and its currency cookie, an existing cart is re-priced through `StorefrontCartService::changeCurrency()`, and the page reloads with a toast. If the cart can't be re-priced, the choice is undone and the shopper told why.
 
 Prices are shown in the open cart's currency when there is one, so a shopper whose account cart is in euros (opened on another device, or after a merge) sees euro prices even if they last chose dollars. Without a cart, it is the currency the engine's `CurrencyResolver` returns. The switcher is the only way to change a cart's currency, since that re-prices it. From PHP, `StorefrontCart::currency()` gives the display currency, `rememberCurrency( $code )` stores a choice (without re-pricing the cart), and `customer()` gives the signed-in shopper's engine customer.
 
 ## Search
 
-**Search page:** the term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". Each search counts against the engine's `ecommerce.catalog.read` limiter; over it, the page shows "Slow down" until the shopper can search again. The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
+**Search page:** breadcrumbs and the title ("Results for “linen”" when there are results, else "Search"; the page passes `show-title`), then the term in a large search field with a "Search" button. With no results, a card lists tips and links to "Browse all products". The term goes to the engine's active `SearchProvider`. Results fill the catalog grid, with a filter panel built from the provider's facets. Relevance is the default sort. Provider suggestions show as "Did you mean …?" links. An empty term invites a search; a term over 200 characters is an error; a failing provider shows "search is unavailable". Each search counts against the engine's `ecommerce.catalog.read` limiter; over it, the page shows "Slow down" until the shopper can search again. The term (`q`), filters, sort, and page live in the query string. Filter groups added with an `apply` callback are left out here.
 
 **Header search** (`search-box`): as the shopper types, up to five products (image, name, price) and five categories open in a popover. It is an ARIA combobox: arrow keys move through results, Enter opens the highlighted one or the search page, Escape closes. Without JavaScript it is a plain form to the search page. Embed it with `<x-artisanpack-ec-search-box />`.
 
@@ -164,19 +173,19 @@ Prices are shown in the open cart's currency when there is one, so a shopper who
 | Screen | Details |
 | --- | --- |
 | Dashboard | Latest orders, default shipping and billing addresses, download count, and links to the account pages and to the host's profile and password screens (`auth.profile_route`, `auth.password_route`). Prompts the shopper to claim unclaimed guest orders placed with their verified email. |
-| Orders | Newest first, with number, date, status, total, and item count. Filter by open, completed, or cancelled (`?status=`). |
+| Orders | Newest first, with number, date, status, total, and item count: a table from 768px, a list below it. Filter by open, completed, or cancelled (`?status=`). If the orders can't load, "Try again" reloads them. |
 | Order | Number, date, status, lines, totals, addresses, payment method, shipments with tracking links, refunds, notes the store shared, and downloads. **Buy again** adds the lines that can still be bought, at today's prices, and says which couldn't be. |
-| Addresses | Add and edit in a modal, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](Advanced#rate-limits)). |
-| Downloads | Each entitlement's product, file, version, downloads left, and expiry, with a download button (or a play button for streaming-only files). Licence keys in full with a copy button, activation count, and expired or revoked state. |
+| Addresses | One card per address with its default badges. Add and edit in a dialog, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](../advanced.md#rate-limits)). |
+| Downloads | Each entitlement's file, version, downloads left, expiry, and order, with a download button (or a play button for streaming-only files), or an "Expired" or "No downloads left" badge. Licence keys with their product and tier, a state badge (valid until, expired, revoked), the key in a copy field, and the activation count. |
 | Profile | First and last name, phone, marketing consent, and notification preferences per channel. Order and account emails are always on. Marketing switches are locked off without consent, and withdrawing consent switches marketing off everywhere. Email and password link to the host's screens. |
-| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](Installation-Configuration#customer-account-routes)). |
+| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account, and a success alert names the order (or says how many) with a link to the order history. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](../installation/configuration.md#customer-account-routes)). |
 
-A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save.
+A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save. When the user model implements `MustVerifyEmail`, the record is only created once their email is verified. Claiming guest orders also requires the record's email to match the user's current, verified email.
 
 ## Orders after checkout
 
-**Confirmation** (`order-confirmation`): the order number, status, lines, totals, addresses, payment method, and downloads the order unlocked. The signed-in owner can always open it; anyone else needs the signed `token` checkout put in the link, otherwise it's a 404. It only reads the order, so refreshing changes nothing. Owners get a link to the order in their account; guests get "create an account" and "look up this order later" hints.
+**Confirmation** (`order-confirmation`): the order number, status, lines, totals, addresses, payment method, and downloads the order unlocked. The signed-in owner can always open it; anyone else needs the signed `token` checkout put in the link, otherwise it's a 404. It only reads the order, so refreshing changes nothing. Owners get a link to the order in their account; guests get "create an account" and "look up this order later" hints. The page passes `show-title`, so "Thank you for your order" is its heading, above a strip with the order number, date, and status.
 
-**Order lookup** (`order-lookup`): a guest enters the order's email and number. A match opens the signed order page, which stops working after `order_lookup.link_ttl_minutes` (60). Every failure gets the same message, and the engine locks out an order number or address after repeated failures.
+**Order lookup** (`order-lookup`): a guest enters the order's email and number. A match opens the signed order page, which stops working after `order_lookup.link_ttl_minutes` (60). Every failure gets the same message (with "Check the order number and use the same email as at checkout." and the order number marked invalid when nothing matched), and the engine locks out an order number or address after repeated failures. The page passes `show-title` for its "Find your order" heading.
 
-**Signed order view** (`order-view`): the order read-only, opened from a lookup or from a guest confirmation email. A malformed, tampered, or expired token is a 404. The storefront points the engine's `checkout.order_view_url` at this route (unless you set your own), so guest emails link here. Email links last the engine's `checkout.order_view_ttl_days`.
+**Signed order view** (`order-view`): the order read-only, under an "Order lookup" breadcrumb, opened from a lookup or from a guest confirmation email. A malformed, tampered, or expired token is a 404. The storefront points the engine's `checkout.order_view_url` at this route (unless you set your own), so guest emails link here. Email links last the engine's `checkout.order_view_ttl_days`.

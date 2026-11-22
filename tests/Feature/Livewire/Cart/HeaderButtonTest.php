@@ -64,3 +64,19 @@ it( 'renders nothing when the cart page route is off', function (): void {
         ->assertOk()
         ->assertDontSeeHtml( 'data-header-action="cart"' );
 } );
+
+it( 'is a ghost Button with the bag icon and a solid primary count badge hidden from assistive technology', function (): void {
+    $cart = app( StorefrontCart::class )->current( true );
+    app( StorefrontCartService::class )->addItem( $cart, makeProduct( 1000 )->id, null, 2 );
+
+    $html = Livewire::test( HeaderButton::class )->html();
+
+    preg_match( '/<span[^>]*data-cart-count[^>]*>/', $html, $badge );
+
+    expect( $html )->toContain( 'class="apui-button" data-variant="ghost" data-color="neutral" data-size="sm"' )
+        ->toContain( 'aria-controls="ecommerce-cart-drawer-content"' )
+        ->toContain( 'data-scope="icon"' )
+        ->not->toContain( 'h-5 w-5' )
+        ->not->toContain( 'sm:inline' )
+        ->and( $badge[0] )->toContain( 'data-variant="solid"' )->toContain( 'data-color="primary"' )->toContain( 'aria-hidden="true"' );
+} );

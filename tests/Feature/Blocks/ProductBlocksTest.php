@@ -16,6 +16,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Reviews;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Show;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontContext;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 
 /**
@@ -59,6 +60,44 @@ it( 'renders the full product component for the page\'s product', function (): v
         ->toContain( 'Desk lamp' );
 } );
 
+it( 'wraps the product page in the commerce block frame without a sample notice or spacing of its own', function (): void {
+    app( StorefrontContext::class )->setProduct( $this->lamp );
+
+    $html = renderProductBlock( new SingleProductBlock() );
+
+    // The frame holds the product page and nothing else: the page itself is
+    // rebuilt with the Product page (#134).
+    expect( $html )->toStartWith( '<div class="ec-commerce-block" data-commerce-block="single-product">' )
+        ->not->toContain( 'data-commerce-sample' )
+        ->not->toContain( 'data-ecommerce-storefront-styles' )
+        ->and( substr_count( $html, 'data-product-page=' ) )->toBe( 1 );
+} );
+
+it( 'previews the newest product as a sample, framed, without counting a view', function (): void {
+    Route::post( '_test/single-product-preview', static function (): string {
+        $block = new SingleProductBlock();
+
+        return $block->render( $block->validateAttrs( [] ) );
+    } )->name( StorefrontBlock::PREVIEW_ROUTE );
+    app( 'router' )->getRoutes()->refreshNameLookups();
+
+    $views = 0;
+    addAction( 'ap.ecommerce.product.viewed', function () use ( &$views ): void {
+        $views++;
+    } );
+
+    $html = (string) $this->actingAs( makeUser() )->postJson( '_test/single-product-preview' )->assertOk()->getContent();
+
+    expect( $html )->toContain( 'data-commerce-block="single-product"' )
+        ->toContain( 'class="ec-block-notice ec-block-notice--sample" data-commerce-sample' )
+        ->toContain( 'Sample product' )
+        ->toContain( 'data-product-page="' . $this->mug->id . '"' )
+        ->and( strpos( $html, 'data-commerce-sample' ) )->toBeLessThan( strpos( $html, 'data-product-page=' ) )
+        ->and( $views )->toBe( 0 );
+
+    removeAllActions( 'ap.ecommerce.product.viewed' );
+} );
+
 it( 'renders a chosen product standalone, on any page', function ( string $class, string $marker ): void {
     $html = renderProductBlock( app( $class ), [ 'productId' => $this->mug->id ] );
 
@@ -93,7 +132,7 @@ it( 'shows the gallery with thumbnails below, beside, or hidden, and zoom on or 
     $none   = renderProductBlock( new ProductGalleryBlock(), [ 'thumbnails' => 'none' ] );
 
     expect( $below )->toContain( 'data-gallery-thumbnails="bottom"' )->toContain( 'data-gallery-thumbnail="1"' )->toContain( 'data-gallery-zoom' )->toContain( 'Lamp side' )
-        ->and( $beside )->toContain( 'data-gallery-thumbnails="start"' )->toContain( 'sm:flex-row-reverse' )->not->toContain( 'data-gallery-zoom' )->toContain( 'data-gallery-stage' )
+        ->and( $beside )->toContain( 'data-gallery-thumbnails="start"' )->not->toContain( 'apuiLightbox' )->not->toContain( 'data-gallery-zoom' )->toContain( 'data-gallery-stage' )
         ->and( $none )->not->toContain( 'data-gallery-thumbnail="1"' )
         ->and( renderProductBlock( new ProductGalleryBlock(), [ 'thumbnails' => 'diagonal' ] ) )->toContain( 'data-gallery-thumbnails="bottom"' );
 } );
@@ -101,8 +140,31 @@ it( 'shows the gallery with thumbnails below, beside, or hidden, and zoom on or 
 it( 'shows the display price with the sale', function (): void {
     app( StorefrontContext::class )->setProduct( $this->lamp );
 
-    expect( renderProductBlock( new ProductPriceBlock() ) )->toContain( '$25.00' )->toContain( '$30.00' );
+    $sale    = renderProductBlock( new ProductPriceBlock() );
+    $regular = renderProductBlock( new ProductPriceBlock(), [ 'productId' => $this->mug->id ] );
+
+    expect( $sale )->toContain( '$25.00' )->toContain( '$30.00' )
+        ->toContain( 'data-size="lg"' )
+        ->toContain( 'data-on-sale' )
+        ->toContain( 'class="ec-price__was"' )
+        ->toContain( 'data-product-price' )
+        ->and( $regular )->toContain( '$9.00' )->toContain( 'data-size="lg"' )->not->toContain( 'data-on-sale' )
+        ->and( classTokens( $sale . $regular ) )->not->toContain( 'text-xl', 'text-error', 'line-through', 'badge', 'badge-error' );
 } );
+
+it( 'renders the gallery, price and reviews blocks in the frame with no DaisyUI or Tailwind classes', function ( string $class, string $marker ): void {
+    blockReview( $this->lamp, 4, 'Bright' );
+    app( StorefrontContext::class )->setProduct( $this->lamp );
+
+    $html = renderProductBlock( app( $class ) );
+
+    expect( $html )->toContain( $marker )
+        ->and( classTokens( $html ) )->not->toContain( 'flex', 'flex-col', 'grid', 'gap-4', 'gap-6', 'text-xl', 'text-2xl', 'font-bold', 'mb-4', 'mt-6', 'rounded-box', 'btn', 'badge', 'card', 'rating', 'progress', 'bg-base-200', 'text-base-content/70' );
+} )->with( [
+    'gallery' => [ ProductGalleryBlock::class, 'data-commerce-block="product-gallery"' ],
+    'price'   => [ ProductPriceBlock::class, 'data-commerce-block="product-price"' ],
+    'reviews' => [ ProductReviewsBlock::class, 'data-commerce-block="product-reviews"' ],
+] );
 
 it( 'renders the product\'s purchase form with its options', function (): void {
     app( StorefrontContext::class )->setProduct( $this->lamp );
@@ -138,7 +200,14 @@ it( 'still validates the quantity of a form without the stepper', function (): v
 it( 'says when a product can\'t be bought online', function (): void {
     $this->app->instance( ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry::class, new ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry() );
 
-    expect( renderProductBlock( new AddToCartBlock(), [ 'productId' => $this->mug->id ] ) )->toContain( 'data-product-unavailable' );
+    $html = renderProductBlock( new AddToCartBlock(), [ 'productId' => $this->mug->id ] );
+
+    preg_match( '#<div[^>]*data-product-unavailable[^>]*>#s', $html, $alert );
+
+    expect( $alert[0] ?? '' )->toContain( 'apui-alert' )
+        ->toContain( 'data-color="neutral"' )
+        ->and( $html )->toContain( 'This product can&#039;t be purchased online' )
+        ->and( classTokens( $html ) )->not->toContain( 'alert', 'o-information-circle' );
 } );
 
 it( 'pages reviews by the block\'s setting and can hide the form', function (): void {

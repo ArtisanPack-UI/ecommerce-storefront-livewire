@@ -163,9 +163,12 @@ class MergePrompt extends Component
     }
 
     /**
-     * Renders the component.
+     * Renders the component. The choices run in reading order, as the
+     * design system's footers do: the least committal first, the primary
+     * action last.
      *
      * @since 1.0.0
+     * @since 2.0.0 Each choice is a `label` and a Button `variant`.
      *
      * @return View
      */
@@ -173,9 +176,9 @@ class MergePrompt extends Component
     {
         return view( 'ecommerce-storefront::livewire.cart.merge-prompt', [
             'choices' => [
-                CartMergeResolution::KeepGuestCurrency->value       => __( 'Keep :currency', [ 'currency' => $this->guestCurrency ] ),
-                CartMergeResolution::SwitchToAccountCurrency->value => __( 'Switch to :currency', [ 'currency' => $this->accountCurrency ] ),
-                CartMergeResolution::CancelMerge->value             => __( "Don't merge" ),
+                CartMergeResolution::CancelMerge->value             => [ 'label' => __( "Don't merge" ), 'variant' => 'ghost' ],
+                CartMergeResolution::SwitchToAccountCurrency->value => [ 'label' => __( 'Switch to :currency', [ 'currency' => $this->accountCurrency ] ), 'variant' => 'outline' ],
+                CartMergeResolution::KeepGuestCurrency->value       => [ 'label' => __( 'Keep :currency', [ 'currency' => $this->guestCurrency ] ), 'variant' => 'solid' ],
             ],
         ] );
     }

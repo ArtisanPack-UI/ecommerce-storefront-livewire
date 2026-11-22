@@ -16,16 +16,17 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload;
 
 /**
- * Shows `<x-artisanpack-toast>` notices from a storefront component.
+ * Shows `<x-artisanpack-toaster>` notices from a storefront component.
  *
  * livewire-ui-components ships a `Toast` trait, but its methods are public,
  * which makes each of them a Livewire action any client could call. These
  * helpers are protected, so they stay server-side.
  *
- * The toast container renders the title and description with Alpine's
- * `x-html`, so both are HTML-escaped ({@see ToastPayload}): they often
- * carry product names and engine messages, which must never run as markup
- * in a shopper's browser.
+ * The toaster renders the title and description as text ({@see ToastPayload}):
+ * they often carry product names and engine messages, which must never run
+ * as markup in a shopper's browser. Since 2.0.0 each helper takes the
+ * design's options (#97): the inverse variant, an icon, and one action,
+ * such as Undo calling a method on this component.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -38,45 +39,51 @@ trait SendsToasts
      * Shows a success toast.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$options`.
      *
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    protected function toastSuccess( string $title, ?string $description = null ): void
+    protected function toastSuccess( string $title, ?string $description = null, array $options = [] ): void
     {
-        $this->sendToast( 'success', $title, $description, 'alert-success' );
+        $this->sendToast( 'success', $title, $description, $options );
     }
 
     /**
      * Shows a warning toast.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$options`.
      *
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    protected function toastWarning( string $title, ?string $description = null ): void
+    protected function toastWarning( string $title, ?string $description = null, array $options = [] ): void
     {
-        $this->sendToast( 'warning', $title, $description, 'alert-warning' );
+        $this->sendToast( 'warning', $title, $description, $options );
     }
 
     /**
      * Shows an error toast.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$options`.
      *
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    protected function toastError( string $title, ?string $description = null ): void
+    protected function toastError( string $title, ?string $description = null, array $options = [] ): void
     {
-        $this->sendToast( 'error', $title, $description, 'alert-error' );
+        $this->sendToast( 'error', $title, $description, $options );
     }
 
     /**
@@ -85,15 +92,17 @@ trait SendsToasts
      * session until `ecommerce-storefront::partials.global` shows it.
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$options`.
      *
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    protected function flashToastSuccess( string $title, ?string $description = null ): void
+    protected function flashToastSuccess( string $title, ?string $description = null, array $options = [] ): void
     {
-        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', $title, $description, 'alert-success' ) );
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', $title, $description, $options ) );
     }
 
     /**
@@ -101,15 +110,17 @@ trait SendsToasts
      * that redirect (the checkout sending an empty cart back to the cart).
      *
      * @since 1.0.0
+     * @since 2.0.0 Added `$options`.
      *
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    protected function flashToastWarning( string $title, ?string $description = null ): void
+    protected function flashToastWarning( string $title, ?string $description = null, array $options = [] ): void
     {
-        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, 'alert-warning' ) );
+        session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'warning', $title, $description, $options ) );
     }
 
     /**
@@ -117,15 +128,15 @@ trait SendsToasts
      *
      * @since 1.0.0
      *
-     * @param  string       $type         The toast type.
-     * @param  string       $title        The title.
-     * @param  string|null  $description  The description.
-     * @param  string       $css          The alert class.
+     * @param  string                $type         The toast type.
+     * @param  string                $title        The title.
+     * @param  string|null           $description  The description.
+     * @param  array<string, mixed>  $options      The variant, icon and action ({@see ToastPayload::make()}).
      *
      * @return void
      */
-    private function sendToast( string $type, string $title, ?string $description, string $css ): void
+    private function sendToast( string $type, string $title, ?string $description, array $options = [] ): void
     {
-        $this->js( 'if ( typeof toast === "function" ) { toast( ' . ToastPayload::encode( ToastPayload::make( $type, $title, $description, $css ) ) . ' ); }' );
+        $this->js( ToastPayload::script( ToastPayload::make( $type, $title, $description, $options ), true ) );
     }
 }

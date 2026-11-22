@@ -165,6 +165,9 @@ it( 'normalises malformed query-string values instead of failing (Livewire 3)', 
 } );
 
 it( 'reads numeric query-string values given as strings', function (): void {
+    makeProduct( 400 );
+    makeProduct( 900 );
+
     Livewire::withQueryParams( [ 'per_page' => '12', 'price_min' => '500', 'rating' => '3', 'in_stock' => '1' ] )
         ->test( Index::class )
         ->assertSet( 'perPage', 12 )
@@ -338,7 +341,10 @@ it( 'follows cart.after_add after a quick add', function ( string $mode, bool $d
 
     $drawer ? $component->assertDispatched( 'ecommerce-cart-open' ) : $component->assertNotDispatched( 'ecommerce-cart-open' );
 
-    expect( str_contains( json_encode( $component->effects['xjs'] ?? [] ), 'Mug is in your cart.' ) )->toBe( $toast );
+    $script = collect( $component->effects['xjs'] ?? [] )->pluck( 'expression' )->implode( ' ' );
+
+    expect( str_contains( $script, '"title":"Added to your cart","description":"Mug"' ) )->toBe( $toast )
+        ->and( str_contains( $script, 'label: ["View cart"][0], onClick: () => window.location.assign( ["\\/shop\\/cart"][0] )' ) )->toBe( $toast );
 } )->with( [
     'drawer' => [ 'drawer', true, false ],
     'toast'  => [ 'toast', false, true ],
@@ -464,15 +470,15 @@ it( 'eager-loads what the cards need, so listing more products adds no image que
         ->and( $many )->toBe( $few );
 } );
 
-it( 'escapes product names in toasts, which the toast container renders as HTML', function (): void {
+it( 'keeps product names in toasts out of the markup: the toaster renders text, and the script JSON hides the tags', function (): void {
     config()->set( 'artisanpack.ecommerce-storefront-livewire.cart.after_add', 'toast' );
 
     $product = makeProduct( 1200, [ 'name' => '<img src=x onerror=alert(1)>' ] );
 
     $toasts = json_encode( Livewire::test( Index::class )->call( 'quickAdd', $product->id )->effects['xjs'] ?? [] );
 
-    expect( $toasts )->toContain( 'u0026lt;img src=x onerror=alert(1)' )
-        ->not->toContain( 'u003Cimg' );
+    expect( $toasts )->toContain( 'u003Cimg src=x onerror=alert(1)' )
+        ->not->toContain( '<img' );
 } );
 
 it( 'adds to the cart in hosts that prevent lazy loading', function (): void {

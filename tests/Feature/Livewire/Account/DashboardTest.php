@@ -55,7 +55,7 @@ it( 'works for a signed-in user the store has no customer record for', function 
         ->assertSee( 'Welcome back, Grace.' )
         ->assertSeeHtml( 'data-account-no-orders' )
         ->assertSee( 'None saved yet.' )
-        ->assertSee( '0 downloads available' )
+        ->assertSee( 'Files from your orders will appear here.' )
         ->assertDontSeeHtml( 'data-account-dashboard-failed' );
 } );
 
@@ -200,4 +200,43 @@ it( 'doesn\'t prompt an account whose email isn\'t verified', function (): void 
     $this->actingAs( $unverified );
 
     Livewire::test( Dashboard::class )->assertDontSeeHtml( 'data-account-claim-prompt' );
+} );
+
+it( 'doesn\'t prompt when the customer record is under an older email than the user\'s verified one', function (): void {
+    [ $user ] = verifiedShopper( [ 'email' => 'old@example.com' ] );
+    $user->forceFill( [ 'email' => 'new@example.com' ] )->save();
+
+    placedOrder( [ 'email' => 'old@example.com', 'is_claimed' => false ] );
+    placedOrder( [ 'email' => 'new@example.com', 'is_claimed' => false ] );
+
+    Livewire::test( Dashboard::class )
+        ->assertViewHas( 'claimable', 0 )
+        ->assertDontSeeHtml( 'data-account-claim-prompt' );
+} );
+
+it( 'prompts a verified user with no customer record yet about orders under their own email', function (): void {
+    $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email' => 'fresh@example.com', 'email_verified_at' => now() ] )->id );
+    $this->actingAs( $user );
+
+    placedOrder( [ 'email' => 'fresh@example.com', 'is_claimed' => false ] );
+
+    Livewire::test( Dashboard::class )
+        ->assertViewHas( 'claimable', 1 )
+        ->assertSeeHtml( 'data-account-claim-prompt' );
+} );
+
+it( 'counts only downloads the shopper can still use', function (): void {
+    [ , $customer ] = shopper();
+
+    $order = placedOrder( [], $customer );
+    $file  = DigitalFile::factory()->create( [ 'product_id' => $order->items->first()->product_id ] );
+    $base  = [ 'order_item_id' => $order->items->first()->id, 'digital_file_id' => $file->id ];
+
+    DigitalDownload::factory()->create( $base + [ 'expires_at' => now()->addDay(), 'downloads_remaining' => 3 ] );
+    DigitalDownload::factory()->create( $base + [ 'expires_at' => now()->subDay(), 'downloads_remaining' => 3 ] );
+    DigitalDownload::factory()->create( $base + [ 'expires_at' => null, 'downloads_remaining' => 0 ] );
+
+    Livewire::test( Dashboard::class )
+        ->assertSee( '1 download available' )
+        ->assertDontSee( '3 downloads available' );
 } );

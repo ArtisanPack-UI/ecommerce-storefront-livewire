@@ -1,10 +1,27 @@
 ---
 title: Payment Drivers
+menu_order: 40
 ---
 
 # Payment Drivers
 
 Payment gateways live in the engine. The storefront doesn't know any gateway: it asks the gateway how its payment step should be rendered, and hands that to a **payment driver**, a Livewire component that draws the payment UI and reports the outcome back to the checkout.
+
+## The gateway cards
+
+The payment step lists the available gateways as radio cards under "Payment method". The chosen card opens to hold its driver, so the shopper pays inside the card they picked, and "Your order is placed as soon as your payment is confirmed." follows the cards. With a single gateway it is chosen for the shopper, and its card ("Pay with {gateway}") has no radio.
+
+A card shows the gateway's name. Give it a line under the name and an icon with the `ap.ecommerceStorefrontLivewire.checkout.paymentMethod` filter:
+
+```php
+addFilter( 'ap.ecommerceStorefrontLivewire.checkout.paymentMethod', function ( array $details, string $key, string $label ): array {
+    return match ( $key ) {
+        'paypal' => [ 'description' => __( 'You\'ll continue to PayPal to pay, then come back here.' ), 'icon' => 'external-link' ],
+        'stripe' => [ 'description' => null, 'icon' => 'credit-card' ],
+        default  => $details,
+    };
+} );
+```
 
 ## How a gateway describes its payment step
 
@@ -51,9 +68,9 @@ public function all(): array
 | Driver | Component | Used for |
 | --- | --- | --- |
 | `stripe-payment-element` | `artisanpack-ecommerce-storefront-payment-stripe` (`Livewire\Payment\StripePaymentElement`) | The engine's Stripe gateway. On-site card and wallet entry with Stripe's Payment Element. |
-| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. Says "You'll go to {gateway} to pay, then come back here to finish your order.", shows "Continue to {gateway}", and redirects to the session's `redirect_url`. |
+| `redirect` | `artisanpack-ecommerce-storefront-payment-redirect` (`Livewire\Payment\RedirectDriver`) | Any gateway that sends the shopper away to pay. A Card with an external-link icon tile, "Pay with {gateway}" and "You'll finish paying on {gateway}'s site, then come back here.", then a full-width "Continue to {gateway}" button that redirects to the session's `redirect_url`. |
 
-**Stripe Payment Element** loads Stripe.js from `https://js.stripe.com/v3` once per page and mounts the Payment Element with the session's client secret, the locale, and an appearance built from your daisyUI theme (`--color-primary`, `--color-base-100`, `--color-base-content`, `--color-error`, `--radius-field`), with the gateway's `appearance` config on top. "Pay now" calls `stripe.confirmPayment()` with `redirect: 'if_required'`, so 3-D Secure runs in the page, and methods that must redirect come back through the return route. A Stripe error shows under the form in an assertive live region. With a Content Security Policy, allow `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com`, and `connect-src https://api.stripe.com`.
+**Stripe Payment Element** loads Stripe.js from `https://js.stripe.com/v3` once per page and mounts the Payment Element with the session's client secret, the locale, and an appearance built from the design-system tokens (`--apui-color-primary`, `--apui-surface-default`, `--apui-text-default`, `--apui-text-muted`, `--apui-color-error-text`, `--apui-radius-field`, plus the field border and focus ring), so its fields match the Input, with the gateway's `appearance` config on top (`variables` and `rules` are merged). It is rebuilt when the page switches between light and dark. The form sits in a Card with "Your card details go straight to Stripe…" under it; while it loads, field skeletons show under a "Loading the payment form…" overlay. "Pay now" calls `stripe.confirmPayment()` with `redirect: 'if_required'`, so 3-D Secure runs in the page, and methods that must redirect come back through the return route. A Stripe error shows under the form in an assertive live region. With a Content Security Policy, allow `script-src https://js.stripe.com`, `frame-src https://js.stripe.com https://hooks.stripe.com`, and `connect-src https://api.stripe.com`.
 
 ### Registering drivers in config
 
@@ -273,7 +290,7 @@ The package's own browser suite never talks to Stripe: `tests/BrowserTestCase.ph
    stripe listen --forward-to https://your-store.test/ecommerce/webhooks/stripe
    ```
 
-   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. The checkout doesn't wait for webhooks, but they matter when the shopper closes the tab after paying: the reconciler places the order from the cart. When the webhook places the order before the checkout does, the checkout picks up that order and still sends the shopper to the confirmation (see [Checkout](Checkout#when-the-providers-webhook-places-the-order-first)).
+   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. The checkout doesn't wait for webhooks, but they matter when the shopper closes the tab after paying: the reconciler places the order from the cart. When the webhook places the order before the checkout does, the checkout picks up that order and still sends the shopper to the confirmation (see [Checkout](../checkout.md#when-the-providers-webhook-places-the-order-first)).
 
 4. **Check out** at `/shop/checkout` and pay with a test card. Use any future expiry date and any CVC.
 

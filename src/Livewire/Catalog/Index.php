@@ -107,6 +107,24 @@ class Index extends Component
     use WithPagination;
 
     /**
+     * The most attribute keys a filter set can hold; extra keys are dropped.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public const MAX_ATTRIBUTE_FILTERS = 20;
+
+    /**
+     * The most values one attribute filter can hold; extra values are dropped.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    public const MAX_ATTRIBUTE_VALUES = 50;
+
+    /**
      * Only products in this category (id or slug) and its sub-categories.
      *
      * @since 1.0.0
@@ -233,6 +251,18 @@ class Index extends Component
     public mixed $priceMax = null;
 
     /**
+     * The currency the price bounds are in (ISO 4217), so a shared link or
+     * a currency switch doesn't silently read them in another currency.
+     * Empty when no bound is set.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    #[Url( as: 'price_currency', history: true )]
+    public mixed $priceCurrency = '';
+
+    /**
      * The chosen attribute values, attribute key => values.
      *
      * @since 1.0.0
@@ -284,6 +314,18 @@ class Index extends Component
     public mixed $extraFilters = [];
 
     /**
+     * How many times a chip or "Clear all" removed filters; keys the view's
+     * focus sentinel, so focus moves on once per removal instead of
+     * falling to the page when the clicked control disappears.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $filterChanges = 0;
+
+    /**
      * The filter group definitions after the hook, for this request.
      *
      * @since 1.0.0
@@ -300,6 +342,26 @@ class Index extends Component
      * @var array<string, array<string, mixed>>
      */
     protected array $facetCache = [];
+
+    /**
+     * The scoped base queries for this request, keyed by currency and the
+     * resolved category and tag ids, so slugs are looked up once.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, CatalogQuery>
+     */
+    protected array $baseQueries = [];
+
+    /**
+     * Tag ids by slug (or by id for an id scope), for this request; 0 for
+     * an unknown tag.
+     *
+     * @since 2.0.0
+     *
+     * @var array<string, int>
+     */
+    protected array $tagIds = [];
 
     /**
      * Falls back to the configured sort and page size when the query string
@@ -331,7 +393,7 @@ class Index extends Component
     {
         $root = explode( '.', $property, 2 )[0];
 
-        if ( in_array( $root, [ 'categoryFilter', 'tagFilter', 'priceMin', 'priceMax', 'attributeFilters', 'inStock', 'onSale', 'minRating', 'extraFilters' ], true ) ) {
+        if ( in_array( $root, [ 'categoryFilter', 'tagFilter', 'priceMin', 'priceMax', 'priceCurrency', 'attributeFilters', 'inStock', 'onSale', 'minRating', 'extraFilters' ], true ) ) {
             $this->sanitizeFilters();
             $this->resetPage();
         }
@@ -357,18 +419,20 @@ class Index extends Component
                 : array_values( array_diff( (array) ( $this->attributeFilters[ $key ] ?? [] ), [ $value ] ) );
         } else {
             match ( $group ) {
-                'category' => $this->categoryFilter                = '',
-                'tag'      => $this->tagFilter                     = '',
-                'price'    => [ $this->priceMin, $this->priceMax ] = [ null, null ],
-                'in_stock' => $this->inStock                       = false,
-                'on_sale'  => $this->onSale                        = false,
-                'rating'   => $this->minRating                     = 0,
+                'category' => $this->categoryFilter                                      = '',
+                'tag'      => $this->tagFilter                                           = '',
+                'price'    => [ $this->priceMin, $this->priceMax, $this->priceCurrency ] = [ null, null, '' ],
+                'in_stock' => $this->inStock                                             = false,
+                'on_sale'  => $this->onSale                                              = false,
+                'rating'   => $this->minRating                                           = 0,
                 default    => $this->removeExtraFilter( $group, $value ),
             };
         }
 
         $this->sanitizeFilters();
         $this->resetPage();
+
+        $this->filterChanges++;
     }
 
     /**
@@ -384,6 +448,7 @@ class Index extends Component
         $this->tagFilter        = '';
         $this->priceMin         = null;
         $this->priceMax         = null;
+        $this->priceCurrency    = '';
         $this->attributeFilters = [];
         $this->inStock          = false;
         $this->onSale           = false;
@@ -391,6 +456,8 @@ class Index extends Component
         $this->extraFilters     = [];
 
         $this->resetPage();
+
+        $this->filterChanges++;
     }
 
     /**
@@ -605,39 +672,18 @@ class Index extends Component
      */
     protected function catalogQuery( array $except = [] ): CatalogQuery
     {
-        $query = app( CatalogQuery::class )->currency( $this->currency() );
-
-        if ( null !== $this->category && '' !== (string) $this->category ) {
-            $query->inCategory( $this->category );
-        }
-
-        if ( null !== $this->tag && '' !== (string) $this->tag ) {
-            $query->withTag( $this->tag );
-        }
-
-        if ( $this->featured ) {
-            $query->featured();
-        }
-
-        if ( [] !== $this->ids ) {
-            $query->ids( $this->ids );
-        }
-
-        if ( ! $this->filterable || in_array( '*', $except, true ) ) {
-            return $query;
-        }
-
-        $definitions = $this->filterDefinitions();
+        $filtered    = $this->filterable && ! in_array( '*', $except, true );
+        $definitions = $filtered ? $this->filterDefinitions() : [];
         $on          = static fn ( string $key ): bool => isset( $definitions[ $key ] ) && ! in_array( $key, $except, true );
 
         // The chosen category is always inside the scope (sanitizeFilters()),
         // so it narrows the scope rather than widening it.
-        if ( $on( 'category' ) && '' !== $this->categoryFilter ) {
-            $query->inCategory( $this->categoryFilter );
-        }
+        $categoryId = $on( 'category' ) && '' !== $this->categoryFilter ? $this->categoryFilterId() : null;
+        $tagId      = $on( 'tag' ) && '' !== $this->tagFilter ? $this->tagId( $this->tagFilter, false ) : null;
+        $query      = clone $this->baseQuery( $categoryId, $tagId );
 
-        if ( $on( 'tag' ) && '' !== $this->tagFilter ) {
-            $query->withTag( $this->tagFilter );
+        if ( ! $filtered ) {
+            return $query;
         }
 
         if ( $on( 'price' ) && ( null !== $this->priceMin || null !== $this->priceMax ) ) {
@@ -673,6 +719,100 @@ class Index extends Component
         }
 
         return $query;
+    }
+
+    /**
+     * The listing's scope (category, tag, featured, ids) plus the chosen
+     * category and tag, memoised per request: the engine looks a category
+     * or tag up each time it is applied, so each combination is built once
+     * and cloned. Categories and tags go to the engine as ids, so an
+     * all-digit slug (`2024`) isn't mistaken for an id.
+     *
+     * @since 2.0.0
+     *
+     * @param  int|null  $categoryId  The chosen category's id, or null for none.
+     * @param  int|null  $tagId       The chosen tag's id, or null for none.
+     *
+     * @return CatalogQuery
+     */
+    protected function baseQuery( ?int $categoryId, ?int $tagId ): CatalogQuery
+    {
+        $currency = $this->currency();
+        $key      = $currency . '|' . $categoryId . '|' . $tagId;
+
+        if ( isset( $this->baseQueries[ $key ] ) ) {
+            return $this->baseQueries[ $key ];
+        }
+
+        $query = app( CatalogQuery::class )->currency( $currency );
+        $scope = $this->scopeCategoryId();
+
+        // The chosen category narrows the scope (it is one of its descendants).
+        if ( null !== $categoryId || null !== $scope ) {
+            $query->inCategory( max( 0, $categoryId ?? $scope ) );
+        }
+
+        if ( null !== $this->tag && '' !== (string) $this->tag ) {
+            $query->withTag( $this->tagId( $this->tag, true ) );
+        }
+
+        // A tag page never offers the tag filter, so the two don't clash.
+        if ( null !== $tagId ) {
+            $query->withTag( $tagId );
+        }
+
+        if ( $this->featured ) {
+            $query->featured();
+        }
+
+        if ( [] !== $this->ids ) {
+            $query->ids( $this->ids );
+        }
+
+        return $this->baseQueries[ $key ] = $query;
+    }
+
+    /**
+     * The chosen category's id (0 when the slug is unknown).
+     *
+     * @since 2.0.0
+     *
+     * @return int
+     */
+    protected function categoryFilterId(): int
+    {
+        return (int) ( app( CategoryPaths::class )->bySlug( $this->categoryFilter )['id'] ?? 0 );
+    }
+
+    /**
+     * A tag's id, memoised per request; 0 when there is no such tag.
+     *
+     * Looked up by slug first. Only a scope (`$allowId`, the component's
+     * own `tag` prop) falls back to reading an all-digit value as an id;
+     * the shopper's tag filter is always a slug.
+     *
+     * @since 2.0.0
+     *
+     * @param  int|string  $tag      Tag slug (or id, with `$allowId`).
+     * @param  bool        $allowId  Read an unmatched all-digit value as an id.
+     *
+     * @return int
+     */
+    protected function tagId( int|string $tag, bool $allowId ): int
+    {
+        $memo = ( $allowId ? 'scope:' : 'slug:' ) . $tag;
+
+        if ( isset( $this->tagIds[ $memo ] ) ) {
+            return $this->tagIds[ $memo ];
+        }
+
+        $id = is_int( $tag ) ? null : ProductTag::query()->where( 'slug', $tag )->value( 'id' );
+
+        if ( null === $id && $allowId && ( is_int( $tag ) || ctype_digit( $tag ) ) ) {
+            $id = ProductTag::query()->whereKey( (int) $tag )->value( 'id' );
+        }
+
+        return $this->tagIds[ $memo ] = (int) ( $id ?? 0 );
     }
 
     /**
@@ -808,7 +948,7 @@ class Index extends Component
             }
         }
 
-        if ( '' !== $this->tagFilter && ( ! isset( $definitions['tag'] ) || ! ProductTag::query()->where( 'slug', $this->tagFilter )->exists() ) ) {
+        if ( '' !== $this->tagFilter && ( ! isset( $definitions['tag'] ) || 0 === $this->tagId( $this->tagFilter, false ) ) ) {
             $this->tagFilter = '';
         }
 
@@ -819,6 +959,16 @@ class Index extends Component
             [ $this->priceMin, $this->priceMax ] = [ $this->priceMax, $this->priceMin ];
         }
 
+        // Bounds read in another currency than the one they were set in
+        // would mean a different range (5000 = USD 50.00 = JPY 5,000).
+        if ( null === $this->priceMin && null === $this->priceMax ) {
+            $this->priceCurrency = '';
+        } elseif ( '' === $this->priceCurrency ) {
+            $this->priceCurrency = $this->currency();
+        } elseif ( $this->priceCurrency !== $this->currency() || ! isset( $definitions['price'] ) ) {
+            [ $this->priceMin, $this->priceMax, $this->priceCurrency ] = [ null, null, '' ];
+        }
+
         $only       = $definitions['attributes']['only'] ?? null;
         $attributes = [];
 
@@ -827,18 +977,25 @@ class Index extends Component
                 continue;
             }
 
+            // Bounds the work a crafted link or update payload can ask for.
+            if ( count( $attributes ) >= self::MAX_ATTRIBUTE_FILTERS ) {
+                break;
+            }
+
             $values = array_values( array_unique( array_filter(
                 array_map( static fn ( mixed $value ): string => is_scalar( $value ) ? trim( (string) $value ) : '', (array) $values ),
                 static fn ( string $value ): bool => '' !== $value && mb_strlen( $value ) <= 255,
             ) ) );
 
             if ( [] !== $values ) {
-                $attributes[ $key ] = array_slice( $values, 0, 50 );
+                $attributes[ $key ] = array_slice( $values, 0, self::MAX_ATTRIBUTE_VALUES );
             }
         }
 
-        $this->attributeFilters = $this->knownAttributeValues( $attributes );
+        $this->attributeFilters = $attributes;
         $this->minRating        = $this->minRating >= 1 && $this->minRating <= 4 ? $this->minRating : 0;
+
+        $this->constrainToScope();
 
         $extra = [];
 
@@ -865,6 +1022,82 @@ class Index extends Component
         }
 
         $this->extraFilters = $extra;
+    }
+
+    /**
+     * Narrows the filters to what the scope's own facets allow: attribute
+     * values the scope's products have, and price bounds inside the scope's
+     * price range, snapped to the slider's step. Made-up values then
+     * neither filter nor create cache entries, which bounds the facet work
+     * and cache keys a crafted link can cause.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    protected function constrainToScope(): void
+    {
+        $this->attributeFilters = $this->knownAttributeValues( $this->attributeFilters );
+
+        $this->snapPriceBounds();
+    }
+
+    /**
+     * Snaps the price bounds to the slider's step (the lower bound down,
+     * the upper bound up) and drops a bound at or past its own end of the
+     * scope's price range, or past the other end (it would match nothing,
+     * or everything), as well as every bound when the scope has no prices.
+     * Leaves them alone when the scope's prices can't be read or aren't
+     * faceted.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    protected function snapPriceBounds(): void
+    {
+        if ( null === $this->priceMin && null === $this->priceMax ) {
+            return;
+        }
+
+        try {
+            $facets = $this->facets( [ '*' ] );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            return;
+        }
+
+        // A provider that doesn't facet prices can't tell what's in range.
+        if ( ! isset( $facets['price'] ) || ! is_array( $facets['price'] ) ) {
+            return;
+        }
+
+        $price = $facets['price'];
+
+        if ( ! is_numeric( $price['min'] ?? null ) || ! is_numeric( $price['max'] ?? null ) ) {
+            [ $this->priceMin, $this->priceMax, $this->priceCurrency ] = [ null, null, '' ];
+
+            return;
+        }
+
+        $step = self::priceStep( (string) ( $price['currency'] ?? $this->currency() ) );
+        $low  = intdiv( (int) $price['min'], $step ) * $step;
+        $high = (int) ( ceil( (int) $price['max'] / $step ) * $step );
+
+        if ( null !== $this->priceMin ) {
+            $min            = intdiv( $this->priceMin, $step ) * $step;
+            $this->priceMin = $min <= $low || $min > $high ? null : $min;
+        }
+
+        if ( null !== $this->priceMax ) {
+            $max            = (int) ( ceil( $this->priceMax / $step ) * $step );
+            $this->priceMax = $max >= $high || $max < $low ? null : $max;
+        }
+
+        if ( null === $this->priceMin && null === $this->priceMax ) {
+            $this->priceCurrency = '';
+        }
     }
 
     /**
@@ -934,15 +1167,31 @@ class Index extends Component
      */
     protected function normalizeFilterTypes(): void
     {
-        $this->categoryFilter   = is_string( $this->categoryFilter ) ? $this->categoryFilter : '';
-        $this->tagFilter        = is_string( $this->tagFilter ) ? $this->tagFilter : '';
+        $this->categoryFilter   = self::querySlug( $this->categoryFilter );
+        $this->tagFilter        = self::querySlug( $this->tagFilter );
         $this->priceMin         = self::queryInt( $this->priceMin );
         $this->priceMax         = self::queryInt( $this->priceMax );
+        $this->priceCurrency    = is_string( $this->priceCurrency ) && 1 === preg_match( '/^[A-Za-z]{3}$/', $this->priceCurrency ) ? strtoupper( $this->priceCurrency ) : '';
         $this->attributeFilters = is_array( $this->attributeFilters ) ? $this->attributeFilters : [];
         $this->inStock          = self::queryBool( $this->inStock );
         $this->onSale           = self::queryBool( $this->onSale );
         $this->minRating        = self::queryInt( $this->minRating ) ?? 0;
         $this->extraFilters     = is_array( $this->extraFilters ) ? $this->extraFilters : [];
+    }
+
+    /**
+     * A query-string value as a slug: Livewire JSON-decodes query values,
+     * so an all-digit slug (`?category=2024`) arrives as an int.
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $value  The raw value.
+     *
+     * @return string
+     */
+    protected static function querySlug( mixed $value ): string
+    {
+        return is_string( $value ) ? $value : ( is_int( $value ) ? (string) $value : '' );
     }
 
     /**
@@ -1078,10 +1327,12 @@ class Index extends Component
             return null;
         }
 
+        // An int is an id; a string is a slug first (`2024` can be one),
+        // then an id.
         $paths = app( CategoryPaths::class );
-        $node  = is_int( $this->category ) || ctype_digit( (string) $this->category )
-            ? $paths->node( (int) $this->category )
-            : $paths->bySlug( (string) $this->category );
+        $node  = is_int( $this->category )
+            ? $paths->node( $this->category )
+            : ( $paths->bySlug( $this->category ) ?? ( ctype_digit( $this->category ) ? $paths->node( (int) $this->category ) : null ) );
 
         // An unknown scope lists nothing, so it offers no sub-categories.
         return $node['id'] ?? -1;
@@ -1404,10 +1655,16 @@ class Index extends Component
             return $this->customGroup( $key, $definition );
         }
 
-        $query = $this->catalogQuery( [ $key ] );
-        'in_stock' === $key ? $query->inStock() : $query->onSale();
+        $count = (int) StorefrontCache::remember(
+            StorefrontCache::key( 'catalog-counts', [ $this->facetScope(), $key ] ),
+            function () use ( $key ): int {
+                $query = $this->catalogQuery( [ $key ] );
+                'in_stock' === $key ? $query->inStock() : $query->onSale();
 
-        $count    = $query->builder( false )->count();
+                return $query->builder( false )->count();
+            },
+        );
+
         $selected = 'in_stock' === $key ? $this->inStock : $this->onSale;
 
         return [
@@ -1432,16 +1689,23 @@ class Index extends Component
      */
     protected function ratingGroup( array $definition ): array
     {
-        $query  = $this->catalogQuery( [ 'rating' ] )->builder( false )->toBase();
-        $column = $query->getGrammar()->wrap( ( new Product() )->qualifyColumn( 'avg_rating' ) );
-        $row    = $query
-            ->selectRaw( "SUM(CASE WHEN {$column} >= 4 THEN 1 ELSE 0 END) as r4, SUM(CASE WHEN {$column} >= 3 THEN 1 ELSE 0 END) as r3, SUM(CASE WHEN {$column} >= 2 THEN 1 ELSE 0 END) as r2, SUM(CASE WHEN {$column} >= 1 THEN 1 ELSE 0 END) as r1" )
-            ->first();
+        $counts = (array) StorefrontCache::remember(
+            StorefrontCache::key( 'catalog-counts', [ $this->facetScope(), 'rating' ] ),
+            function (): array {
+                $query  = $this->catalogQuery( [ 'rating' ] )->builder( false )->toBase();
+                $column = $query->getGrammar()->wrap( ( new Product() )->qualifyColumn( 'avg_rating' ) );
+                $row    = $query
+                    ->selectRaw( "SUM(CASE WHEN {$column} >= 4 THEN 1 ELSE 0 END) as r4, SUM(CASE WHEN {$column} >= 3 THEN 1 ELSE 0 END) as r3, SUM(CASE WHEN {$column} >= 2 THEN 1 ELSE 0 END) as r2, SUM(CASE WHEN {$column} >= 1 THEN 1 ELSE 0 END) as r1" )
+                    ->first();
+
+                return [ 4 => (int) ( $row->r4 ?? 0 ), 3 => (int) ( $row->r3 ?? 0 ), 2 => (int) ( $row->r2 ?? 0 ), 1 => (int) ( $row->r1 ?? 0 ) ];
+            },
+        );
 
         $options = [];
 
         foreach ( [ 4, 3, 2, 1 ] as $stars ) {
-            $count     = (int) ( $row->{'r' . $stars} ?? 0 );
+            $count     = (int) ( $counts[ $stars ] ?? 0 );
             $selected  = $stars === $this->minRating;
             $options[] = [
                 'value'    => (string) $stars,

@@ -1,5 +1,6 @@
 ---
 title: Configuration
+menu_order: 20
 ---
 
 # Configuration
@@ -19,8 +20,10 @@ Every key has a default, so you only need the keys you change. Some choices are 
 | `storefront.routes_enabled` | `true` | Register the storefront and account routes. Set to `false` to register your own routes and embed the Livewire components. This turns off both route groups, and the storefront then no longer points the engine's guest order links (`artisanpack.ecommerce.checkout.order_view_url`) at its order page. |
 | `storefront.route_prefix` | `'shop'` | URL prefix for the catalog, product, search, cart, checkout, confirmation, and order lookup pages. Leading and trailing slashes are trimmed. |
 | `storefront.middleware` | `[ 'web' ]` | Middleware on every storefront route. |
-| `storefront.layout` | `'ecommerce-storefront::layouts.app'` | The view every storefront and account page extends. Point it at your own layout to adopt its header and footer. An empty value falls back to the package layout. See [Layouts](Installation-Layouts). |
-| `storefront.rtl_locales` | `[ 'ar', 'he', 'fa', 'ur' ]` | Languages written right to left. The standalone layout sets `<html dir="rtl">` when the app locale's language is in this list (`ar_EG` and `ar-EG` follow `ar`). A host layout can do the same with `Support\TextDirection::for()`; see [Layouts](Installation-Layouts). |
+| `storefront.layout` | `'ecommerce-storefront::layouts.app'` | The view every storefront and account page extends. Point it at your own layout to adopt its header and footer. An empty value falls back to the package layout. See [Layouts](layouts.md). |
+| `storefront.rtl_locales` | `[ 'ar', 'he', 'fa', 'ur' ]` | Languages written right to left. The standalone layout sets `<html dir="rtl">` when the app locale's language is in this list (`ar_EG` and `ar-EG` follow `ar`). A host layout can do the same with `Support\TextDirection::for()`; see [Layouts](layouts.md). |
+| `storefront.tagline` | `null` | The line under the store name in the standalone layout's footer. `null` leaves it out. **Since:** 2.0.0 |
+| `storefront.nav_categories` | `3` | How many top-level categories the standalone layout's header and footer list after "Shop all". `0` lists none. See [Layouts](layouts.md#store-navigation). **Since:** 2.0.0 |
 
 Route names are always `artisanpack.ecommerce.storefront.*` (for example `artisanpack.ecommerce.storefront.product`).
 
@@ -40,15 +43,16 @@ Route names are always `artisanpack.ecommerce.account.*` (for example `artisanpa
 
 ## Customer authentication
 
-The host owns sign-in, registration, and the profile and password screens. A route name that doesn't exist hides its link.
+The host owns sign-in, registration, sign-out, and the profile and password screens. A route name that doesn't exist hides its link.
 
 | Key | Default | What it controls |
 | --- | --- | --- |
 | `auth.login_route` | `'login'` | Sign-in link in the header, at checkout, on the order lookup page, and on product reviews |
 | `auth.register_route` | `'register'` | "Create an account" links at checkout and on the order confirmation page |
+| `auth.logout_route` | `'logout'` | The account navigation's "Sign out" button, which posts to this route. **Since:** 2.0.0 |
 | `auth.profile_route` | `'settings.profile'` | The host's profile screen, linked from the account dashboard and profile page |
 | `auth.password_route` | `'settings.password'` | The host's password screen, linked from the same places |
-| `auth.create_account_action` | `ArtisanPackUI\EcommerceStorefrontLivewire\Actions\CreateCustomerAccount` | The class that creates an account at checkout. It must implement `Contracts\CreatesCustomerAccounts`; any other value turns account creation at checkout off. See [Account Creation](Checkout-Account-Creation). |
+| `auth.create_account_action` | `ArtisanPackUI\EcommerceStorefrontLivewire\Actions\CreateCustomerAccount` | The class that creates an account at checkout. It must implement `Contracts\CreatesCustomerAccounts`; any other value turns account creation at checkout off. See [Account Creation](../checkout/account-creation.md). |
 
 ## Catalog
 
@@ -59,6 +63,13 @@ The host owns sign-in, registration, and the profile and password screens. A rou
 | `catalog.default_sort` | `'newest'` | The default sort: `newest`, `price`, `-price`, `popularity`, `rating`, or `name`. A key the `ap.ecommerceStorefrontLivewire.catalog.sorts` filter removed falls back to the first sort offered. |
 | `catalog.show_stock_count` | `false` | Low-stock products say "Only 3 left" instead of "Low stock". The engine's `artisanpack.ecommerce.inventory.show_quantity` must be on for the count to be known. |
 | `catalog.filter_attributes` | `null` | The attribute keys shoppers can filter by, for example `[ 'colour', 'size' ]`. `null` offers every attribute. |
+| `catalog.description` | `null` | The line under the catalog page's "All products" title. `null` leaves it out. **Since:** 2.0.0 |
+
+## Search
+
+| Key | Default | What it controls |
+| --- | --- | --- |
+| `search.keyboard_shortcut` | `true` | Pressing "/" moves focus to the header search box, unless focus is in a text field, a select, an editable region, or another widget (a combobox, listbox, grid, menu, slider, or spin button) or a modal is open. Set it to `false` to remove the shortcut, its `aria-keyshortcuts` attribute, and the "/" hint. WCAG 2.1.4 (Character Key Shortcuts) needs a single-key shortcut to be something a site can turn off; this is that switch. **Since:** 2.0.0 |
 
 ## Reviews
 
@@ -79,12 +90,19 @@ Who may review, and moderation, are engine settings (`artisanpack.ecommerce.revi
 | Key | Default | What it controls |
 | --- | --- | --- |
 | `cart.after_add` | `'drawer'` | What happens after "Add to cart" on the product page or a product card's quick add: `drawer` opens the cart drawer, `toast` shows a toast, `none` only updates the cart count. |
+| `cart.free_shipping_threshold` | `null` | The order amount, after discounts, from which shipping is free, for the cart drawer's progress meter and the product page's "Free shipping over …" line: minor units in the store's base currency (`15000`) or a map of per-currency amounts (`[ 'USD' => 15000, 'EUR' => 14000 ]`), as the engine's free-shipping method takes it. `null` shows the meter only when a promotion has made shipping free. **Since:** 2.0.0 |
+
+## Product page
+
+| Key | Default | What it controls |
+| --- | --- | --- |
+| `product.variation_select_after` | `8` | How many values a variation attribute can have and still be drawn as swatches on the variable product form; longer lists use a select. `0` always uses swatches. **Since:** 2.0.0 |
 
 ## Checkout
 
 | Key | Default | What it controls |
 | --- | --- | --- |
-| `checkout.layout` | `'multi_step'` | `multi_step` (one step at a time) or `single_page` (every section on one page). Any other value means `multi_step`. Overridden by the `storefront.checkout_layout` [store setting](#store-settings). See [Checkout Layouts](Checkout-Layouts). |
+| `checkout.layout` | `'multi_step'` | `multi_step` (one step at a time) or `single_page` (every section on one page). Any other value means `multi_step`. Overridden by the `storefront.checkout_layout` [store setting](#store-settings). See [Checkout Layouts](../checkout/layouts.md). |
 | `checkout.terms_url` | `null` | The terms and conditions page shoppers must accept before placing an order: an `http(s)` URL or a path on this site (such as `/terms`). `null`, or any other value, shows no checkbox. Overridden by the `storefront.terms_url` [store setting](#store-settings). |
 
 ## Guest order lookup
@@ -107,7 +125,7 @@ Who may review, and moderation, are engine settings (`artisanpack.ecommerce.revi
 ],
 ```
 
-See [Payment Drivers](Checkout-Payment-Drivers).
+See [Payment Drivers](../checkout/payment-drivers.md).
 
 ## Performance
 
@@ -115,7 +133,7 @@ See [Payment Drivers](Checkout-Payment-Drivers).
 | --- | --- | --- |
 | `performance.cache_ttl` | `600` | Seconds the category tree and catalog filter counts stay cached. They are also cleared whenever a product, category, tag, or stock level changes. `0` turns the cache off; do this when the `ap.ecommerce.product.listQuery` filter shows different shoppers different products. |
 
-See [Performance](Advanced-Performance).
+See [Performance](../advanced/performance.md).
 
 ## Visual editor
 
@@ -126,7 +144,7 @@ Used only when `artisanpack-ui/visual-editor` is installed.
 | `visual_editor.blocks` | `true` | Register the commerce blocks and patterns with the editor. |
 | `visual_editor.templates` | `false` | Render storefront pages through saved visual-editor templates. Off by default so installing the editor doesn't change an existing store. Also needs the blocks and `artisanpack-ui/cms-framework`. |
 
-See [Visual Editor](Visual-Editor).
+See [Visual Editor](../visual-editor.md).
 
 ## Store settings
 
@@ -143,8 +161,8 @@ The storefront also follows these engine settings. Engine settings fall back to 
 
 | Setting | Falls back to | Effect in the storefront |
 | --- | --- | --- |
-| `checkout.guest_checkout` | `artisanpack.ecommerce.checkout.guest_checkout` (`allowed`) | `allowed`: guests check out freely. `required_account`: guests must create an account during checkout. `disabled`: shoppers must sign in. See [Guest Checkout](Checkout-Guest-Checkout). |
-| `checkout.account_creation` | `artisanpack.ecommerce.checkout.account_creation` | Offer guests an optional "create an account" box at checkout. See [Account Creation](Checkout-Account-Creation). |
+| `checkout.guest_checkout` | `artisanpack.ecommerce.checkout.guest_checkout` (`allowed`) | `allowed`: guests check out freely. `required_account`: guests must create an account during checkout. `disabled`: shoppers must sign in. See [Guest Checkout](../checkout/guest-checkout.md). |
+| `checkout.account_creation` | `artisanpack.ecommerce.checkout.account_creation` | Offer guests an optional "create an account" box at checkout. See [Account Creation](../checkout/account-creation.md). |
 | `base_currency` | `artisanpack.ecommerce.base_currency` | The currency `<x-artisanpack-ec-money>` uses when an amount has none of its own |
 | `digital.download_limit` | `artisanpack.ecommerce.digital.download_limit` | Downloads per link, shown on digital products that don't set their own |
 | `licenses.activations_limit` | `artisanpack.ecommerce.licenses.activations_limit` | Activations per licence key, shown on digital products that don't set their own |
@@ -160,4 +178,4 @@ The engine applies stored settings to the config repository, so a `config()` rea
 | `artisanpack.ecommerce.checkout.order_view_ttl_days` | How long order links in guest confirmation emails work |
 | `artisanpack.ecommerce.currency.cookie` | The cookie the currency switcher stores the shopper's currency in |
 | `artisanpack.ecommerce.store.country` | The default country in address forms |
-| `artisanpack.ecommerce.gateways.stripe.*` | Stripe keys; see [Payment Drivers](Checkout-Payment-Drivers) |
+| `artisanpack.ecommerce.gateways.stripe.*` | Stripe keys; see [Payment Drivers](../checkout/payment-drivers.md) |

@@ -1,9 +1,13 @@
 {{--
     Related products, upsells, or cross-sells. See Product\RelatedProducts.
 
-    Below `md` the list scrolls sideways (with scroll snapping) and the
-    "Previous" / "Next" buttons scroll it by a screenful; from `md` up it is
-    a grid and the buttons are hidden.
+    On the product page (#106): the heading (per type, or the block's
+    own), then the product cards. Below 768px the list scrolls sideways
+    with scroll snapping, two cards to a screen, and the outline icon-only
+    "Previous" / "Next" buttons at the end of the heading row scroll it by
+    a screenful (mirrored in right-to-left layouts). From 768px it is a grid
+    (`columns` from 1024px, at most 2 between 768px and 1024px) and the
+    buttons are hidden.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -13,7 +17,7 @@
 <div data-related-products="{{ $type }}">
     @if ( $products->isNotEmpty() )
         <section
-            class="flex flex-col gap-4"
+            class="ec-related"
             aria-labelledby="{{ $headingId }}"
             x-data="{
                 scrollBy( direction ) {
@@ -24,22 +28,30 @@
                 },
             }"
         >
-            <div class="flex items-center justify-between gap-4">
-                <h2 id="{{ $headingId }}" class="text-2xl font-bold">{{ $title }}</h2>
+            <div class="ec-related__header">
+                <h2 id="{{ $headingId }}" class="ec-related__title">{{ $title }}</h2>
 
                 @if ( $products->count() > 1 )
-                    <div class="flex gap-2 md:hidden">
+                    <div class="ec-related__controls">
                         <x-artisanpack-button
-                            icon="o-chevron-left"
-                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
+                            variant="outline"
+                            color="neutral"
+                            size="sm"
+                            icon-only
+                            leading-icon="chevron-left"
+                            class="ec-related__control"
                             :aria-label="__( 'Previous products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( -1 )"
                             data-related-previous
                         />
                         <x-artisanpack-button
-                            icon="o-chevron-right"
-                            class="btn-circle btn-sm rtl:[&_svg]:rotate-180"
+                            variant="outline"
+                            color="neutral"
+                            size="sm"
+                            icon-only
+                            leading-icon="chevron-right"
+                            class="ec-related__control"
                             :aria-label="__( 'Next products' )"
                             aria-controls="{{ $headingId }}-list"
                             x-on:click="scrollBy( 1 )"
@@ -52,12 +64,14 @@
             <ul
                 id="{{ $headingId }}-list"
                 x-ref="list"
-                class="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 md:mx-0 md:grid md:overflow-visible md:px-0 md:pb-0 {{ $gridClass }}"
+                role="list"
+                class="ec-related__list"
+                data-columns="{{ $gridColumns }}"
                 aria-labelledby="{{ $headingId }}"
                 data-related-list
             >
                 @foreach ( $products as $related )
-                    <li class="w-3/4 shrink-0 snap-start sm:w-5/12 md:w-auto" wire:key="related-{{ $type }}-{{ $related->id }}">
+                    <li class="ec-related__item" wire:key="related-{{ $type }}-{{ $related->id }}">
                         <x-artisanpack-ec-sf-product-card :product="$related" :currency="$currency" />
                     </li>
                 @endforeach

@@ -78,6 +78,17 @@ class Confirmation extends Component
     public bool $owner = false;
 
     /**
+     * Show "Thank you for your order" as the page's h1 (the confirmation
+     * page does); otherwise it's an h2 under the host's own heading.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Loads and authorizes the order.
      *
      * @since 1.0.0
@@ -114,6 +125,7 @@ class Confirmation extends Component
             'order'         => $order,
             'status'        => $this->orderStatusLabel( $order ),
             'statusColor'   => $this->orderStatusColor( $order ),
+            'statusIcon'    => $this->orderStatusIcon( $order ),
             'date'          => $this->orderDate( $order ),
             'lines'         => $this->orderLines( $order ),
             'totals'        => $this->orderTotals( $order ),

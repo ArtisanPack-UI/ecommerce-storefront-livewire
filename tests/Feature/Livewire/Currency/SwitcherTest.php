@@ -60,14 +60,15 @@ function twoCurrencyProduct( string $name = 'Mug', int $usd = 1000, int $eur = 9
     return $product;
 }
 
-it( 'lists the enabled currencies by name, code, and symbol', function (): void {
+it( 'lists the enabled currencies by name, with the code', function (): void {
     Livewire::test( Switcher::class )
         ->assertOk()
         ->assertSet( 'currency', 'USD' )
         ->assertSee( 'Currency' )
-        ->assertSee( 'US Dollar (USD, $)' )
-        ->assertSee( 'Euro (EUR, €)' )
-        ->assertSeeHtml( 'wire:model.live="currency"' );
+        ->assertSee( CurrencyNames::name( 'USD' ) )
+        ->assertSee( CurrencyNames::name( 'EUR' ) )
+        ->assertSeeHtml( 'data-currency-code>USD<' )
+        ->assertSeeHtml( "\$wire.set( 'currency', \$event.detail.value )" );
 } );
 
 it( 'is hidden when the store sells in one currency', function (): void {
@@ -196,7 +197,7 @@ it( 'names currencies in the shopper\'s language', function (): void {
 } );
 
 it( 'shows a flashed toast after the reload', function (): void {
-    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', '<b>Prices</b> changed', null, 'alert-success' ) );
+    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', '<b>Prices</b> changed' ) );
 
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->assertOk()
@@ -209,7 +210,7 @@ it( 'shows a flashed toast after the reload', function (): void {
 
 it( 'gives the flashed toast script the CSP nonce', function (): void {
     Illuminate\Support\Facades\Vite::useCspNonce( 'abc123' );
-    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', 'Prices changed', null, 'alert-success' ) );
+    session()->put( ToastPayload::SESSION_KEY, ToastPayload::make( 'success', 'Prices changed' ) );
 
     $html = $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )->assertOk()->getContent();
 
@@ -219,5 +220,27 @@ it( 'gives the flashed toast script the CSP nonce', function (): void {
 it( 'is in the package header', function (): void {
     $this->get( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->assertSeeLivewire( Switcher::class )
-        ->assertSee( 'Euro (EUR, €)' );
+        ->assertSee( CurrencyNames::name( 'EUR' ) );
+} );
+
+it( 'is a design-system DropdownMenu of radio items, the current one checked, codes as shortcuts', function (): void {
+    $html = Livewire::test( Switcher::class )->html();
+
+    preg_match( '/<div[^>]*data-value="USD"[^>]*>/', $html, $usd );
+    preg_match( '/<div[^>]*data-value="EUR"[^>]*>/', $html, $eur );
+
+    expect( $html )->toContain( 'class="apui-dropdown-menu"' )
+        ->toContain( 'aria-haspopup="menu"' )
+        ->toContain( '<span class="apui-sr-only">Currency</span>' )
+        ->toContain( 'data-part="shortcut"' )
+        ->not->toContain( '<select' )
+        ->and( $usd[0] )->toContain( 'role="menuitemradio"' )->toContain( 'aria-checked="true"' )
+        ->and( $eur[0] )->toContain( 'role="menuitemradio"' )->toContain( 'aria-checked="false"' );
+} );
+
+it( 'shows why a currency was refused', function (): void {
+    Livewire::test( Switcher::class )
+        ->set( 'currency', 'JPY' )
+        ->assertSeeHtml( 'data-currency-error' )
+        ->assertSee( 'Choose one of the listed currencies.' );
 } );

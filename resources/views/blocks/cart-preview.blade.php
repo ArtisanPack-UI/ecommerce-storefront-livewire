@@ -1,58 +1,73 @@
 {{--
-    The Cart Contents block's editor preview: a sample cart that is never
-    saved. See Blocks\CartContentsBlock.
+    The Cart Contents block's editor preview (#114): a sample cart that is
+    never saved. See Blocks\CartContentsBlock.
+
+    The commerce block frame's dashed sample notice (#91: a soft info
+    "Sample cart" badge and one line of help) over the cart page's layout:
+    the lines in a Card (a 96px image, the name, "Quantity: 1" and the
+    price, divided by rules), beside an "Order summary" Card with the
+    subtotal, shipping "Calculated at checkout", a disabled coupon field
+    and a disabled full-width "Checkout". The summary drops below the lines
+    when the block is narrow. A dashed note stands in for the cross-sells.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="flex flex-col gap-6" data-cart-preview>
-    <div class="flex flex-col items-start gap-1 rounded-box border border-dashed border-base-content/30 p-3 text-sm" data-commerce-sample>
-        <span class="badge badge-neutral badge-sm">{{ __( 'Sample cart' ) }}</span>
-        <span>{{ __( 'Shoppers see their own cart here. This preview uses your newest products and isn\'t saved.' ) }}</span>
+<div class="ec-cart-preview" data-cart-preview>
+    <div class="ec-block-notice ec-block-notice--sample" data-commerce-sample>
+        <x-artisanpack-badge color="info" leading-icon="info">{{ __( 'Sample cart' ) }}</x-artisanpack-badge>
+        <p class="ec-block-notice__message">{{ __( 'Shoppers see their own cart here. This preview uses your newest products and isn\'t saved.' ) }}</p>
     </div>
 
-    <div class="grid gap-8 lg:grid-cols-3">
-        <ul class="flex flex-col divide-y divide-base-content/10 lg:col-span-2" aria-label="{{ __( 'Items in your cart' ) }}">
-            @foreach ( $lines as $line )
-                <li class="flex gap-4 py-4 first:pt-0" data-cart-preview-line>
-                    <div class="h-24 w-24 shrink-0 overflow-hidden rounded-box bg-base-200">
-                        @if ( null !== $line['image'] )
-                            <img src="{{ $line['image']['url'] }}" @if ( null !== ( $line['image']['srcset'] ?? null ) ) srcset="{{ $line['image']['srcset'] }}" sizes="96px" @endif width="96" height="96" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">
-                        @endif
-                    </div>
-
-                    <div class="flex grow flex-wrap items-start justify-between gap-2">
-                        <div>
-                            <p class="font-semibold">{{ $line['name'] }}</p>
-                            <p class="text-sm">{{ __( 'Quantity: :count', [ 'count' => 1 ] ) }}</p>
+    <div class="ec-cart-preview__layout">
+        <x-artisanpack-card class="ec-cart-preview__lines">
+            <ul role="list" class="ec-cart-preview__list" aria-label="{{ __( 'Items in your cart' ) }}">
+                @foreach ( $lines as $line )
+                    <li class="ec-cart-preview__line" data-cart-preview-line>
+                        <div class="ec-cart-preview__media" aria-hidden="true">
+                            @if ( null !== $line['image'] )
+                                <img src="{{ $line['image']['url'] }}" @if ( null !== ( $line['image']['srcset'] ?? null ) ) srcset="{{ $line['image']['srcset'] }}" sizes="96px" @endif width="96" height="96" alt="" loading="lazy" decoding="async">
+                            @else
+                                <x-artisanpack-icon name="image" />
+                            @endif
                         </div>
 
-                        <p class="font-semibold"><x-artisanpack-ec-money :amount="$line['amount']" :currency="$currency" /></p>
-                    </div>
-                </li>
-            @endforeach
-        </ul>
+                        <div class="ec-cart-preview__details">
+                            <p class="ec-cart-preview__name">{{ $line['name'] }}</p>
+                            <p class="ec-cart-preview__quantity">{{ __( 'Quantity: :count', [ 'count' => 1 ] ) }}</p>
+                        </div>
 
-        <section class="flex flex-col gap-4" aria-label="{{ __( 'Order summary' ) }}">
-            <p class="text-xl font-bold">{{ __( 'Order summary' ) }}</p>
+                        <p class="ec-cart-preview__amount"><x-artisanpack-ec-money :amount="$line['amount']" :currency="$currency" /></p>
+                    </li>
+                @endforeach
+            </ul>
+        </x-artisanpack-card>
 
+        <x-artisanpack-card class="ec-cart-preview__summary" :title="__( 'Order summary' )">
             @if ( $showCoupon )
                 <x-artisanpack-input id="ec-cart-preview-coupon" :label="__( 'Coupon code' )" disabled data-cart-preview-coupon />
             @endif
 
-            <dl class="flex justify-between font-semibold">
-                <dt>{{ __( 'Subtotal' ) }}</dt>
-                <dd><x-artisanpack-ec-money :amount="$subtotal" :currency="$currency" /></dd>
+            <dl class="ec-cart-preview__totals">
+                <div class="ec-cart-preview__total">
+                    <dt>{{ __( 'Subtotal' ) }}</dt>
+                    <dd><x-artisanpack-ec-money :amount="$subtotal" :currency="$currency" /></dd>
+                </div>
+
+                <div class="ec-cart-preview__total">
+                    <dt>{{ __( 'Shipping' ) }}</dt>
+                    <dd>{{ __( 'Calculated at checkout' ) }}</dd>
+                </div>
             </dl>
 
-            <x-artisanpack-button :label="__( 'Checkout' )" color="primary" class="w-full" disabled />
-        </section>
+            <x-artisanpack-button color="primary" class="ec-cart-preview__checkout" disabled>{{ __( 'Checkout' ) }}</x-artisanpack-button>
+        </x-artisanpack-card>
     </div>
 
     @if ( $showCrossSells )
-        <p class="rounded-box border border-dashed border-base-content/30 p-4 text-sm text-base-content/70" data-cart-preview-cross-sells>
+        <p class="ec-block-notice ec-block-notice__message ec-cart-preview__cross-sells" data-cart-preview-cross-sells>
             {{ __( 'Cross-sells for the shopper\'s cart appear here.' ) }}
         </p>
     @endif

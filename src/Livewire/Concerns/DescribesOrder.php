@@ -21,6 +21,8 @@ use ArtisanPackUI\Ecommerce\Models\Refund;
 use ArtisanPackUI\Ecommerce\Models\Shipment;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\LineSummaries;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Throwable;
@@ -68,9 +70,12 @@ trait DescribesOrder
     }
 
     /**
-     * The badge colour for an order's status.
+     * The design-system color of an order status's soft badge. The status
+     * word is always shown, so the color only reinforces it.
      *
      * @since 1.0.0
+     * @since 2.0.0 A design-system Badge color (`info`, `success`, …)
+     *              instead of a DaisyUI `badge-*` class.
      *
      * @param  Order  $order  The order.
      *
@@ -79,11 +84,32 @@ trait DescribesOrder
     protected function orderStatusColor( Order $order ): string
     {
         return match ( (string) $order->system_status ) {
-            'complete'             => 'badge-success',
-            'processing'           => 'badge-info',
-            'pending'              => 'badge-warning',
-            'cancelled', 'failed'  => 'badge-error',
-            default                => 'badge-ghost',
+            'processing'          => 'info',
+            'complete'            => 'success',
+            'pending', 'refunded' => 'warning',
+            'failed'              => 'error',
+            default               => 'neutral',
+        };
+    }
+
+    /**
+     * The icon at the start of an order status's badge, so the status
+     * doesn't rest on its color.
+     *
+     * @since 2.0.0
+     *
+     * @param  Order  $order  The order.
+     *
+     * @return string
+     */
+    protected function orderStatusIcon( Order $order ): string
+    {
+        return match ( (string) $order->system_status ) {
+            'complete'  => 'circle-check',
+            'cancelled' => 'circle-x',
+            'refunded'  => 'rotate-ccw',
+            'failed'    => 'circle-alert',
+            default     => 'clock',
         };
     }
 
@@ -114,18 +140,26 @@ trait DescribesOrder
     }
 
     /**
-     * The order's lines: `id`, `name`, `variant`, `sku`, `quantity`,
-     * `unit`, `total` (before discounts), `currency`, `free`, and whether
-     * the product still exists (`product_id`).
+     * The order's lines: `id`, `name`, `variant`, `options` (the configuration
+     * summary recorded at placement, {@see LineSummaries}), `sku`, `quantity`,
+     * `unit`, `total` (before discounts), `currency`, `free`, whether the
+     * product still exists (`product_id`), and `image` (the variant's, else
+     * the product's card image; null once the product is gone).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `image` and `options`.
      *
      * @param  Order  $order  The order, with its items.
      *
-     * @return array<int, array{id: int, name: string, variant: string|null, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null}>
+     * @return array<int, array{id: int, name: string, variant: string|null, options: array<int, string>, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null, image: array{url: string, srcset: string|null, alt: string}|null}>
      */
     protected function orderLines( Order $order ): array
     {
+        $order->loadMissing( [ 'items.product.images', 'items.variant' ] );
+
+        ProductImages::preload( $order->items->pluck( 'variant.image_media_id' ) );
+        ProductImages::preloadCards( $order->items->pluck( 'product' )->filter() );
+
         return $order->items->map( static function ( OrderItem $item ): array {
             $snapshot = (array) ( $item->product_snapshot ?? [] );
             $name     = is_string( $snapshot['name'] ?? null ) && '' !== trim( $snapshot['name'] ) ? trim( $snapshot['name'] ) : __( 'Item' );
@@ -136,6 +170,7 @@ trait DescribesOrder
                 'id'         => (int) $item->id,
                 'name'       => $name,
                 'variant'    => $variant,
+                'options'    => LineSummaries::forOrderItem( $item ),
                 'sku'        => $sku,
                 'quantity'   => (int) $item->quantity,
                 'unit'       => (int) $item->unit_price_amount,
@@ -143,8 +178,36 @@ trait DescribesOrder
                 'currency'   => (string) $item->unit_price_currency,
                 'free'       => true === ( $snapshot['free_item'] ?? false ),
                 'product_id' => null === $item->product_id ? null : (int) $item->product_id,
+                'image'      => self::orderLineImage( $item, $name ),
             ];
         } )->values()->all();
+    }
+
+    /**
+     * An order line's thumbnail: the variant's image, else the product's
+     * card image, named after the line. Null when the product is gone or
+     * has no image.
+     *
+     * @since 2.0.0
+     *
+     * @param  OrderItem  $item  The line, with its product and variant.
+     * @param  string     $name  The line's name, for the alt text.
+     *
+     * @return array{url: string, srcset: string|null, alt: string}|null
+     */
+    protected static function orderLineImage( OrderItem $item, string $name ): ?array
+    {
+        if ( null !== $item->variant?->image_media_id ) {
+            $image = ProductImages::media( (int) $item->variant->image_media_id, $name );
+
+            if ( null !== $image ) {
+                return [ 'url' => (string) $image['url'], 'srcset' => is_string( $image['srcset'] ?? null ) ? $image['srcset'] : null, 'alt' => $name ];
+            }
+        }
+
+        $image = null === $item->product ? null : ProductImages::card( $item->product );
+
+        return null === $image ? null : [ 'url' => (string) $image['url'], 'srcset' => is_string( $image['srcset'] ?? null ) ? $image['srcset'] : null, 'alt' => $name ];
     }
 
     /**
@@ -269,18 +332,20 @@ trait DescribesOrder
     }
 
     /**
-     * The order's shipments: `id`, `carrier`, `status`, `tracking`
-     * (number), `url` (only an http(s) link), and `shipped` (a date).
+     * The order's shipments: `id`, `carrier`, `status` (as the shopper
+     * reads it), `tracking`, `url` (an http(s) tracking link, else null),
+     * `shipped` (the date), and `steps` for the design-system Steps.
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `steps`.
      *
      * @param  Order  $order  The order.
      *
-     * @return array<int, array{id: int, carrier: string|null, status: string, tracking: string|null, url: string|null, shipped: string|null}>
+     * @return array<int, array{id: int, carrier: string|null, status: string, tracking: string|null, url: string|null, shipped: string|null, steps: array<int, array{label: string, date: string|null, state: string}>}>
      */
     protected function orderShipments( Order $order ): array
     {
-        return $order->shipments()->orderBy( 'id' )->get()->map( function ( Shipment $shipment ): array {
+        return $order->shipments()->orderBy( 'id' )->get()->map( function ( Shipment $shipment ) use ( $order ): array {
             $url = trim( (string) $shipment->tracking_url );
 
             return [
@@ -290,8 +355,48 @@ trait DescribesOrder
                 'tracking' => '' !== trim( (string) $shipment->tracking_number ) ? trim( (string) $shipment->tracking_number ) : null,
                 'url'      => 1 === preg_match( '#^https?://#i', $url ) && false !== filter_var( $url, FILTER_VALIDATE_URL ) ? $url : null,
                 'shipped'  => null === $shipment->shipped_at ? null : LocalizedDate::format( $shipment->shipped_at ),
+                'steps'    => $this->shipmentSteps( $order, $shipment ),
             ];
         } )->all();
+    }
+
+    /**
+     * A shipment's progress as four steps: Placed, Shipped, In transit
+     * and Delivered, each with its date when there is one and a state
+     * (`complete`, `current`, `upcoming`, or `error` for the step a
+     * delivery problem stopped at).
+     *
+     * @since 2.0.0
+     *
+     * @param  Order     $order     The order.
+     * @param  Shipment  $shipment  The shipment.
+     *
+     * @return array<int, array{label: string, date: string|null, state: string}>
+     */
+    protected function shipmentSteps( Order $order, Shipment $shipment ): array
+    {
+        $status  = (string) $shipment->status;
+        $shipped = null !== $shipment->shipped_at || in_array( $status, [ Shipment::STATUS_IN_TRANSIT, Shipment::STATUS_EXCEPTION ], true );
+        $done    = Shipment::STATUS_DELIVERED === $status ? 4 : ( $shipped ? 2 : 1 );
+
+        $steps = [
+            [ 'label' => __( 'Placed' ), 'date' => $this->orderDate( $order ) ],
+            [ 'label' => __( 'Shipped' ), 'date' => null === $shipment->shipped_at ? null : LocalizedDate::format( $shipment->shipped_at ) ],
+            [ 'label' => Shipment::STATUS_EXCEPTION === $status ? __( 'Delivery problem' ) : __( 'In transit' ), 'date' => null ],
+            [ 'label' => __( 'Delivered' ), 'date' => null === $shipment->delivered_at ? null : LocalizedDate::format( $shipment->delivered_at ) ],
+        ];
+
+        foreach ( $steps as $index => $step ) {
+            $number = $index + 1;
+
+            $steps[ $index ]['state'] = match ( true ) {
+                $number <= $done      => 'complete',
+                $number === $done + 1 => Shipment::STATUS_EXCEPTION === $status ? 'error' : 'current',
+                default               => 'upcoming',
+            };
+        }
+
+        return $steps;
     }
 
     /**
@@ -336,20 +441,23 @@ trait DescribesOrder
     }
 
     /**
-     * The notes the store shared with the shopper: `id`, `body`, `date`.
+     * The notes the store shared with the shopper: `id`, `body`, `date`,
+     * and `datetime` (ISO 8601, for the time element).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `datetime`.
      *
      * @param  Order  $order  The order.
      *
-     * @return array<int, array{id: int, body: string, date: string}>
+     * @return array<int, array{id: int, body: string, date: string, datetime: string|null}>
      */
     protected function orderNotes( Order $order ): array
     {
         return $order->customerNotes()->orderBy( 'id' )->get()->map( static fn ( OrderNote $note ): array => [
-            'id'   => (int) $note->id,
-            'body' => (string) $note->body,
-            'date' => LocalizedDate::format( $note->created_at ),
+            'id'       => (int) $note->id,
+            'body'     => (string) $note->body,
+            'date'     => LocalizedDate::format( $note->created_at ),
+            'datetime' => $note->created_at?->toIso8601String(),
         ] )->all();
     }
 }

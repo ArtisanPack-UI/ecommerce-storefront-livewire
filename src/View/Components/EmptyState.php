@@ -17,16 +17,21 @@ use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
 /**
- * `<x-artisanpack-ec-empty-state icon="o-shopping-bag" :title="…" :description="…">actions</x-artisanpack-ec-empty-state>`
+ * `<x-artisanpack-ec-empty-state icon="shopping-bag" :title="…" :description="…" card>actions</x-artisanpack-ec-empty-state>`
  *
- * livewire-ui-components has no empty-state component yet (spec §8.1,
- * livewire-ui-components#111), so this composes one from an icon and text.
- * When the library ships one, this is the one file to swap. The admin ships
- * the same component with the same props, so either copy can win the alias
- * when both packages are installed.
+ * The design-system EmptyState (#84): an icon tile, a title, one line of
+ * help, and the actions passed in the slot (at most two: one solid primary
+ * when there is a clear next step, else outline neutral). With `live` it is
+ * a `status` region, for the few places where it appears after a shopper's
+ * action and no other live region reports the change (the cart after the
+ * last line is removed, a filtered order list that comes back empty). It is
+ * off by default: a static empty state, or one beside a results count that
+ * is already a live region, would only add a long, doubled announcement.
  *
- * The block is a `status` region so a screen reader announces it when
- * filtering empties a listing.
+ * `card` puts it in a Card, for when it replaces a list; `size="sm"` is
+ * the compact form for inside other cards. The admin ships the same
+ * component with the same props, so either copy can win the alias when
+ * both packages are installed.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -36,17 +41,36 @@ use Illuminate\View\Component;
 class EmptyState extends Component
 {
     /**
-     * @since 1.0.0
+     * The sizes the design system draws.
      *
-     * @param  string       $title        The headline.
-     * @param  string|null  $description  The supporting text.
-     * @param  string       $icon         The icon name.
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const SIZES = [ 'md', 'sm' ];
+
+    /**
+     * @since 1.0.0
+     * @since 2.0.0 Added `size`, `headingLevel`, `card` and `live`; the default icon is `inbox`.
+     *
+     * @param  string       $title         The headline.
+     * @param  string|null  $description   The supporting text.
+     * @param  string       $icon          The icon name (a design-system icon, or a blade-icons name such as `o-inbox`).
+     * @param  string       $size          `md`, or `sm` inside another card.
+     * @param  int          $headingLevel  The title's heading level (2 to 6).
+     * @param  bool         $card          Draw it in a Card, for when it replaces a list.
+     * @param  bool         $live          Make it a polite `status` live region.
      */
     public function __construct(
         public string $title,
         public ?string $description = null,
-        public string $icon = 'o-inbox',
+        public string $icon = 'inbox',
+        public string $size = 'md',
+        public int $headingLevel = 2,
+        public bool $card = false,
+        public bool $live = false,
     ) {
+        $this->size = in_array( $this->size, self::SIZES, true ) ? $this->size : 'md';
     }
 
     /**
