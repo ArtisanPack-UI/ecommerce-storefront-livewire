@@ -240,4 +240,4 @@ it( 'keeps the old step views\' strings in every catalogue, for hosts that publi
         'Read the terms and conditions',
         'You\'ll pay :total.',
     ] );
-} )->with( [ 'en', 'de', 'es', 'fr' ] );
+} )->with( [ 'en', 'de', 'es', 'fr', 'pt_BR', 'ja', 'zh_CN', 'it', 'ar' ] );

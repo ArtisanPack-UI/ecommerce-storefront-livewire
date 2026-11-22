@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Translations:** Brazilian Portuguese (`pt_BR`), Japanese (`ja`), Simplified Chinese (`zh_CN`), Italian (`it`), and Arabic (`ar`) catalogues, machine-translated and awaiting native-speaker review. Arabic uses all six plural forms, and Japanese and Chinese a single form.
+
 ## [1.0.0] - 2026-10-13
 
 The first stable release of the Livewire storefront for the ArtisanPack UI
