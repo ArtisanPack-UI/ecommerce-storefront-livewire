@@ -752,6 +752,11 @@
         background: var(--apui-surface-default);
     }
 
+    /* A sold-out value the shopper can still pick, to sign up for it. */
+    .ec-swatch[data-sold-out] .ec-swatch__label {
+        text-decoration: line-through;
+    }
+
     .ec-swatch__dot {
         flex: none;
         box-sizing: border-box;
@@ -2302,6 +2307,38 @@
         list-style: none;
     }
 
+    /*
+     * "Notify me" (2.0, Product-oos): the out-of-stock row's back-in-stock
+     * signup inside an outline Alert; the email field fills the row beside
+     * the button, and they stack below 400px.
+     */
+    .ec-notify-me__help {
+        margin: 0;
+    }
+
+    .ec-notify-me__form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+        margin-block-start: 12px;
+    }
+
+    .ec-notify-me__email {
+        flex: 1 1 220px;
+        min-inline-size: 0;
+    }
+
+    .ec-notify-me__button {
+        flex: none;
+    }
+
+    @media (max-width: 399px) {
+        .ec-notify-me__button {
+            flex: 1 1 100%;
+        }
+    }
+
     /* Options form (#104): an info note and the character count. */
     .ec-option-field {
         display: grid;
@@ -2343,6 +2380,215 @@
     .ec-option-info__help {
         margin: 0;
         color: var(--apui-text-muted);
+    }
+
+    .ec-option-field__help {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /* The quoted price of the chosen options (2.0): "$40.00 including options". */
+    .ec-option-price {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 12px;
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-option-price__amount {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-option-price__loading {
+        font-size: var(--apui-type-body-sm-font-size);
+    }
+
+    /*
+     * Choice cards (2.0): a radio field with `meta.display = cards`. Each
+     * card holds an optional 48px image, the name and hint, the price
+     * difference, and a check when chosen; two to a row from 480px.
+     */
+    .ec-choice-cards {
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-choice-cards__legend {
+        margin-block-end: 8px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-choice-cards__required {
+        margin-inline-start: 4px;
+        color: var(--apui-color-error-text);
+    }
+
+    .ec-choice-cards__hint {
+        margin: -4px 0 8px;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-choice-cards__options {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    @media (min-width: 480px) {
+        .ec-choice-cards__options {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-choice-card {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-sizing: border-box;
+        min-block-size: 56px;
+        padding: 12px 14px;
+        border: var(--apui-border-width) solid var(--apui-border-strong);
+        border-radius: var(--apui-radius-lg);
+        background: var(--apui-surface-default);
+        color: var(--apui-text-default);
+        cursor: pointer;
+        transition:
+            background-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard),
+            border-color var(--apui-motion-duration-fast) var(--apui-motion-ease-standard);
+    }
+
+    .ec-choice-card:hover {
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-choice-card__input {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        opacity: 0;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:checked) {
+        border-color: var(--apui-selected-border);
+        background: var(--apui-selected-bg);
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:focus-visible) {
+        outline: var(--apui-focus-ring-width) solid transparent;
+        box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:disabled) {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:disabled):hover {
+        background: var(--apui-surface-default);
+    }
+
+    .ec-choice-card__image {
+        flex: none;
+        inline-size: 48px;
+        block-size: 48px;
+        border-radius: var(--apui-radius-md);
+        object-fit: cover;
+    }
+
+    .ec-choice-card__text {
+        display: grid;
+        flex: 1;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-choice-card__label {
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        font-weight: var(--apui-font-weight-medium);
+        unicode-bidi: plaintext;
+    }
+
+    .ec-choice-card__hint {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-caption-font-size);
+        line-height: var(--apui-type-caption-line-height);
+    }
+
+    .ec-choice-card__meta {
+        flex: none;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-choice-card__check {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        color: var(--apui-selected-border);
+        visibility: hidden;
+    }
+
+    .ec-choice-card:has(.ec-choice-card__input:checked) .ec-choice-card__check {
+        visibility: visible;
+    }
+
+    .ec-choice-cards[data-invalid] .ec-choice-card {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-choice-cards:focus-visible {
+        border-radius: var(--apui-radius-md);
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+    }
+
+    .ec-choice-cards__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 8px 0 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-choice-cards__error svg {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        margin-block-start: 2px;
+    }
+
+    @media (forced-colors: active) {
+        .ec-choice-card:has(.ec-choice-card__input:checked) {
+            outline: 2px solid Highlight;
+            outline-offset: 1px;
+        }
     }
 
     /*

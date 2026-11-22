@@ -60,6 +60,8 @@ it( 'disables a combination that does not exist after choosing blue, with a reas
 } );
 
 it( 'says a sold-out combination is out of stock', function (): void {
+    withoutBackInStock();
+
     $html = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
         ->html();
@@ -186,6 +188,8 @@ it( 'clears the missing-choice error once the shopper chooses', function (): voi
 } );
 
 it( 'keeps disabling add for a sold-out variant', function (): void {
+    withoutBackInStock();
+
     Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
         ->set( "selected.{$this->colour}", (string) $this->values['red']->id )
         ->set( "selected.{$this->size}", (string) $this->values['xl']->id )

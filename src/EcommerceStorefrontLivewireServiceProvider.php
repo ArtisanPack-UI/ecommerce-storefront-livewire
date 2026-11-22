@@ -113,6 +113,7 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         'address'         => Components\Address::class,
         'address-form'    => Components\AddressForm::class,
         'category-grid'   => Components\CategoryGrid::class,
+        'choice-cards'    => Components\ChoiceCards::class,
         'empty-state'     => Components\EmptyState::class,
         'field'           => Components\Field::class,
         'gallery'         => Components\Gallery::class,
@@ -246,6 +247,8 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
         $this->app->scoped( StorefrontSeo::class );
         $this->app->singleton( ProductFormRegistry::class );
         $this->app->singleton( PaymentDriverRegistry::class );
+
+        $this->registerTranslations();
     }
 
     /**
@@ -263,7 +266,6 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
 
         $this->registerPublishing();
         $this->registerViews();
-        $this->registerTranslations();
         $this->registerCommands();
         $this->registerBladeComponents();
         $this->registerIcons();
@@ -456,6 +458,11 @@ class EcommerceStorefrontLivewireServiceProvider extends ServiceProvider
      *
      * Published catalogues in `lang/vendor/ecommerce-storefront` are loaded too so a
      * host can override individual strings.
+     *
+     * Runs from register(), not boot(): the translator loads a locale's JSON
+     * lines once and caches them, so a provider that calls `__()` while it
+     * boots ahead of this one would otherwise cache the locale without the
+     * storefront's catalogue, and every storefront string would stay in English.
      *
      * @since 1.0.0
      *

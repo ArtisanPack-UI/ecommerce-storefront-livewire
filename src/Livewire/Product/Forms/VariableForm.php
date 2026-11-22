@@ -16,6 +16,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms;
 use ArtisanPackUI\Ecommerce\Catalog\VariantResolver;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
+use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -150,7 +151,8 @@ class VariableForm extends PurchaseForm
      */
     public function updatedVariant(): void
     {
-        $this->selectionNotice = '';
+        $this->notifySubscribed = false;
+        $this->selectionNotice  = '';
         $this->clearChoiceErrors();
         $this->variant = self::normalizedVariant( $this->variant );
         $this->selectVariant( $this->variant );
@@ -199,6 +201,8 @@ class VariableForm extends PurchaseForm
      */
     public function updatedSelected( mixed $value, int|string|null $key = null ): void
     {
+        $this->notifySubscribed = false;
+
         $this->selectionNotice = '';
         $this->clearChoiceErrors();
 
@@ -240,7 +244,7 @@ class VariableForm extends PurchaseForm
                 continue;
             }
 
-            if ( $after && ! $this->offered( [ ...$kept, $otherId => $this->selected[ $otherId ] ], true ) ) {
+            if ( $after && ! $this->offered( [ ...$kept, $otherId => $this->selected[ $otherId ] ], ! $this->soldOutSelectable() ) ) {
                 $cleared[] = (string) $other->label;
                 unset( $this->selected[ $otherId ] );
 
@@ -310,6 +314,23 @@ class VariableForm extends PurchaseForm
         $row = $this->rowFor( $variantId );
 
         return null === $row || ! $row['available'] ? __( 'This option is out of stock.' ) : null;
+    }
+
+    /**
+     * Whether the matched variant is sold out: it exists and has a price in
+     * the shopper's currency, but can't be bought. False while a choice is
+     * missing or the combination doesn't exist.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function outOfStock(): bool
+    {
+        $variantId = self::normalizedVariant( $this->variant );
+        $row       = null === $variantId || null !== $this->missingGroup() ? null : $this->rowFor( $variantId );
+
+        return null !== $row && ! $row['available'] && null !== $row['price'];
     }
 
     /**
@@ -444,6 +465,33 @@ class VariableForm extends PurchaseForm
     protected function lineVariantId(): ?int
     {
         return self::normalizedVariant( $this->variant );
+    }
+
+    /**
+     * Whether sold-out choices stay selectable, so the shopper can reach a
+     * sold-out variant's "Notify me" signup (back-in-stock signups are on).
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    protected function soldOutSelectable(): bool
+    {
+        return self::backInStockEnabled( $this->product );
+    }
+
+    /**
+     * The sold-out variant a back-in-stock signup is for.
+     *
+     * @since 2.0.0
+     *
+     * @return ProductVariant|null
+     */
+    protected function notifyVariant(): ?ProductVariant
+    {
+        $variantId = self::normalizedVariant( $this->variant );
+
+        return null === $variantId ? null : $this->product->variants()->whereKey( $variantId )->first();
     }
 
     /**
@@ -619,13 +667,16 @@ class VariableForm extends PurchaseForm
 
         $options = [];
 
+        $soldOutSelectable = $this->soldOutSelectable();
+
         foreach ( $group->values as $value ) {
             $choice    = [ ...$before, (int) $group->id => (int) $value->id ];
             $available = $this->offered( $choice, true );
+            $soldOut   = ! $available && $this->offered( $choice, false );
             $reason    = null;
 
             if ( ! $available ) {
-                $reason = $this->offered( $choice, false ) ? __( 'Out of stock' ) : __( 'Not available with your other choices' );
+                $reason = $soldOut ? __( 'Out of stock' ) : __( 'Not available with your other choices' );
             }
 
             $options[] = [
@@ -633,7 +684,10 @@ class VariableForm extends PurchaseForm
                 'label'    => $this->valueLabel( $value ),
                 'swatch'   => $value->swatch,
                 'selected' => ( $this->selected[ (int) $group->id ] ?? null ) === (int) $value->id,
-                'disabled' => ! $available,
+                // A sold-out choice stays selectable (struck through) while the
+                // shopper can sign up to hear when it's back.
+                'disabled' => ! $available && ! ( $soldOut && $soldOutSelectable ),
+                'soldOut'  => $soldOut,
                 'reason'   => $reason,
             ];
         }

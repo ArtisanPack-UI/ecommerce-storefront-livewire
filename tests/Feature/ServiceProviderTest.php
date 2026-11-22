@@ -161,3 +161,16 @@ it( 'registers the icons the storefront draws that the component library lacks',
         expect( ArtisanPack\LivewireUiComponents\Support\IconRegistry::has( $icon ) )->toBeTrue( $icon );
     }
 } );
+
+it( 'registers its catalogues before any provider boots, so an early __() cannot cache a locale without them', function (): void {
+    $translator = new Illuminate\Translation\Translator(
+        new Illuminate\Translation\FileLoader( new Illuminate\Filesystem\Filesystem(), $this->app->langPath() ),
+        'es',
+    );
+    $this->app->instance( 'translator', $translator );
+
+    ( new EcommerceStorefrontLivewireServiceProvider( $this->app ) )->register();
+
+    expect( $translator->get( 'Add to cart' ) )->toBe( json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/lang/es.json' ), true )['Add to cart'] )
+        ->not->toBe( 'Add to cart' );
+} );

@@ -17,7 +17,9 @@ use ArtisanPackUI\Ecommerce\Exceptions\CartOperationException;
 use ArtisanPackUI\Ecommerce\Inventory\StockStatus;
 use ArtisanPackUI\Ecommerce\Models\CartItem;
 use ArtisanPackUI\Ecommerce\Models\Product;
+use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
+use ArtisanPackUI\Ecommerce\Services\BackInStockService;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\InteractsWithStorefrontCart;
@@ -31,6 +33,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Money\Money;
+use Throwable;
 
 /**
  * The base for every purchase form on the product page (spec §7.2, §8.2).
@@ -54,6 +57,13 @@ use Money\Money;
  * takes extra buttons, such as a wishlist heart, from the
  * `ap.ecommerceStorefrontLivewire.product.addToCartActions` filter
  * ({@see self::addToCartActions()}).
+ *
+ * Since 2.0.0, when the product (or the chosen variant) can't be bought
+ * because it is out of stock ({@see self::outOfStock()}), the row offers a
+ * "Notify me" back-in-stock signup instead ({@see self::notifyMe()}),
+ * through the engine's `BackInStockService` (engine 1.4). The
+ * `ap.ecommerceStorefrontLivewire.product.backInStockEnabled` filter turns
+ * it off.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -118,6 +128,24 @@ abstract class PurchaseForm extends Component
     public string $announcement = '';
 
     /**
+     * The email for a back-in-stock signup.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public string $notifyEmail = '';
+
+    /**
+     * Whether the shopper has signed up to hear when it's back.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    public bool $notifySubscribed = false;
+
+    /**
      * The unit price, memoized for the current request (protected, so
      * Livewire never stores it).
      *
@@ -145,8 +173,9 @@ abstract class PurchaseForm extends Component
      */
     public function mount(): void
     {
-        $this->quantity   = 1;
-        $this->buttonText = null === $this->buttonText || '' === trim( $this->buttonText ) ? null : mb_substr( trim( $this->buttonText ), 0, 60 );
+        $this->quantity    = 1;
+        $this->buttonText  = null === $this->buttonText || '' === trim( $this->buttonText ) ? null : mb_substr( trim( $this->buttonText ), 0, 60 );
+        $this->notifyEmail = $this->signedInEmail() ?? '';
     }
 
     /**
@@ -204,6 +233,140 @@ abstract class PurchaseForm extends Component
         }
 
         return null;
+    }
+
+    /**
+     * Whether the product (or the chosen variant) can't be bought only
+     * because it is out of stock: it has a price in the shopper's currency,
+     * and no choice is still missing. Forms with their own stock rules
+     * override it.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function outOfStock(): bool
+    {
+        $product = DisplayData::for( $this->product );
+
+        return ! StockStatus::for( $product )->purchasable()
+            && null !== app( PriceDisplayResolver::class )->for( $product, app( StorefrontCart::class )->currency() );
+    }
+
+    /**
+     * Whether the row offers the "Notify me" signup: the engine takes
+     * back-in-stock signups, the
+     * `ap.ecommerceStorefrontLivewire.product.backInStockEnabled` filter
+     * (true by default; gets the product) allows it, and the product is
+     * out of stock.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function offersBackInStock(): bool
+    {
+        return self::backInStockEnabled( $this->product )
+            && null !== $this->blockedReason()
+            && $this->outOfStock();
+    }
+
+    /**
+     * Whether back-in-stock signups are on for a product: the engine takes
+     * them and the `ap.ecommerceStorefrontLivewire.product.backInStockEnabled`
+     * filter allows it.
+     *
+     * @since 2.0.0
+     *
+     * @param  Product  $product  The product.
+     *
+     * @return bool
+     */
+    public static function backInStockEnabled( Product $product ): bool
+    {
+        return class_exists( BackInStockService::class )
+            && true === applyFilters( 'ap.ecommerceStorefrontLivewire.product.backInStockEnabled', true, $product );
+    }
+
+    /**
+     * The "Notify me" title: what's sold out.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    public function soldOutTitle(): string
+    {
+        return null === $this->notifyVariant() ? __( 'This product is sold out' ) : __( 'This option is sold out' );
+    }
+
+    /**
+     * Whether the signup email is the signed-in shopper's (shown read-only).
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function notifyEmailLocked(): bool
+    {
+        return null !== $this->signedInEmail();
+    }
+
+    /**
+     * Signs the shopper up to hear when the product (or the chosen variant)
+     * is back: validates the email, counts against the
+     * `ecommerce.backInStock.subscribe` limit, and stores the signup through
+     * the engine. The limit counts per shopper (cart, account or IP) and per
+     * email address. Signing up twice is a success too.
+     *
+     * @since 2.0.0
+     *
+     * @return void
+     */
+    public function notifyMe(): void
+    {
+        $this->announcement = '';
+        $this->newErrorSummary();
+
+        if ( ! $this->offersBackInStock() ) {
+            return;
+        }
+
+        $this->notifyEmail = $this->notifyEmailLocked() ? (string) $this->signedInEmail() : trim( $this->notifyEmail );
+
+        $this->validate(
+            [ 'notifyEmail' => [ 'required', 'string', 'email:rfc', 'max:254' ] ],
+            [
+                'notifyEmail.required' => __( 'Enter your email address.' ),
+                'notifyEmail.email'    => __( 'Enter an email address like name@example.com.' ),
+                'notifyEmail.max'      => __( 'Enter an email address like name@example.com.' ),
+            ],
+        );
+
+        $subscribed = $this->rateLimited( 'ecommerce.backInStock.subscribe', function (): bool {
+            try {
+                app( BackInStockService::class )->subscribe(
+                    $this->product,
+                    $this->notifyVariant(),
+                    $this->notifyEmail,
+                    app( StorefrontCart::class )->customer(),
+                    app()->getLocale(),
+                );
+            } catch ( Throwable $exception ) {
+                report( $exception );
+
+                $this->addError( 'notifyEmail', __( 'We couldn\'t sign you up just now. Try again in a moment.' ) );
+
+                return false;
+            }
+
+            return true;
+        }, app( StorefrontCart::class )->subject()->with( [ 'email' => $this->notifyEmail ] ) );
+
+        if ( true === $subscribed ) {
+            $this->notifySubscribed = true;
+            $this->announcement     = __( 'We\'ll email you when it\'s back.' );
+        }
     }
 
     /**
@@ -370,6 +533,34 @@ abstract class PurchaseForm extends Component
     protected function lineVariantId(): ?int
     {
         return null;
+    }
+
+    /**
+     * The variant a back-in-stock signup is for (the chosen one), or null
+     * for the product.
+     *
+     * @since 2.0.0
+     *
+     * @return ProductVariant|null
+     */
+    protected function notifyVariant(): ?ProductVariant
+    {
+        return null;
+    }
+
+    /**
+     * The signed-in shopper's email (their customer record's, else their
+     * account's), or null for a guest.
+     *
+     * @since 2.0.0
+     *
+     * @return string|null
+     */
+    protected function signedInEmail(): ?string
+    {
+        $email = app( StorefrontCart::class )->customer()?->email ?? auth()->user()?->email ?? null;
+
+        return is_string( $email ) && '' !== trim( $email ) ? trim( $email ) : null;
     }
 
     /**

@@ -63,6 +63,8 @@ it( 'renders the gallery, summary, purchase form, and details', function (): voi
 } );
 
 it( 'shows an out-of-stock product with a disabled button', function (): void {
+    withoutBackInStock();
+
     $product = makeProduct( 2500, [ 'name' => 'Sold out mug' ] );
     setStock( $product, 0 );
 
