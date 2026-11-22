@@ -90,6 +90,43 @@ final class OrderAccess
     }
 
     /**
+     * The email whose guest orders `$user` may claim, or null when they may
+     * claim none.
+     *
+     * The engine claims by the customer record's email, which can be older
+     * than the user's (a record is never moved to a new address). So a claim
+     * is allowed only when `canClaim()` passes and the record's email is the
+     * user's current, verified email; without a record yet, the user's own
+     * email (the engine links or makes the record under it). Lowercased and
+     * trimmed, as the engine stores order emails.
+     *
+     * @since 2.0.0
+     *
+     * @param  Authenticatable|null  $user      The signed-in user.
+     * @param  Customer|null         $customer  The user's customer record, if any.
+     *
+     * @return string|null
+     */
+    public static function claimEmail( ?Authenticatable $user, ?Customer $customer ): ?string
+    {
+        if ( ! self::canClaim( $user ) ) {
+            return null;
+        }
+
+        $userEmail = self::normalizeEmail( $user instanceof MustVerifyEmail ? $user->getEmailForVerification() : ( $user->email ?? null ) );
+
+        if ( null === $userEmail ) {
+            return null;
+        }
+
+        if ( null === $customer ) {
+            return $userEmail;
+        }
+
+        return self::normalizeEmail( $customer->email ) === $userEmail ? $userEmail : null;
+    }
+
+    /**
      * Order `$reference`, when `$token` is a valid order-view token for it.
      *
      * @since 1.0.0
@@ -108,5 +145,23 @@ final class OrderAccess
         $order = OrderViewToken::verify( $token );
 
         return null !== $order && (int) $order->id === (int) $reference ? $order->load( 'items' ) : null;
+    }
+
+    /**
+     * `$email` lowercased and trimmed, or null when it isn't a non-empty string.
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $email  The email.
+     *
+     * @return string|null
+     */
+    private static function normalizeEmail( mixed $email ): ?string
+    {
+        if ( ! is_string( $email ) || '' === trim( $email ) ) {
+            return null;
+        }
+
+        return mb_strtolower( trim( $email ) );
     }
 }

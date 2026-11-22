@@ -43,7 +43,7 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 
 `{download}` is an entitlement id. Another customer's entitlement is a 404. One that is expired, used up, or streaming-only sends the shopper back to the downloads page with a toast saying why.
 
-Both file routes only accept temporary signed links, so a cross-site request or a link prefetcher can't spend a download. The downloads page renders them fresh on each visit: a download link works for 10 minutes and a stream link for 4 hours. An unsigned or expired link is a 403. To link to a file from your own page, sign the URL yourself:
+Both file routes only accept temporary signed links, so a cross-site request or a link prefetcher can't spend a download. The downloads page renders them fresh on each visit: a download link works for 10 minutes and a stream link for 4 hours. Clicking **Download** signs a fresh link at that moment, so a page left open longer still works. An expired or invalid download link sends the shopper back to the downloads page with a toast; an unsigned or expired stream link is a 403, since media players can't follow a redirect. To link to a file from your own page, sign the URL yourself:
 
 ```php
 use Illuminate\Support\Facades\URL;
@@ -180,7 +180,7 @@ Prices are shown in the open cart's currency when there is one, so a shopper who
 | Profile | First and last name, phone, marketing consent, and notification preferences per channel. Order and account emails are always on. Marketing switches are locked off without consent, and withdrawing consent switches marketing off everywhere. Email and password link to the host's screens. |
 | Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account, and a success alert names the order (or says how many) with a link to the order history. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](../installation/configuration.md#customer-account-routes)). |
 
-A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save.
+A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save. When the user model implements `MustVerifyEmail`, the record is only created once their email is verified. Claiming guest orders also requires the record's email to match the user's current, verified email.
 
 ## Orders after checkout
 

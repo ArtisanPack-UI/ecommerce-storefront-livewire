@@ -71,15 +71,18 @@ it( 'opens a short-lived signed page for the order when the email and number mat
 } );
 
 it( 'requires a valid email and the order number', function (): void {
-    Livewire::test( Lookup::class )
-        ->call( 'find' )
+    $component = Livewire::test( Lookup::class )->call( 'find' );
+    $base      = 'ec-order-lookup-' . $component->id() . '-';
+
+    $component
         ->assertHasErrors( [ 'email' => 'Enter the email address you used for the order.', 'orderNumber' => 'Enter the order number.' ] )
-        ->assertSeeHtml( 'aria-describedby="email-error"' )
-        ->assertSeeHtml( 'aria-describedby="orderNumber-error"' )
+        ->assertSeeHtml( 'aria-describedby="' . $base . 'email-error"' )
+        ->assertSeeHtml( 'aria-describedby="' . $base . 'number-error"' )
         ->assertSeeHtml( 'aria-invalid="true"' )
         ->assertSeeHtml( 'data-error-summary' )
         ->assertSeeHtml( 'wire:key="ec-order-lookup-errors-1"' )
-        ->assertSeeHtml( 'href="#email"' )
+        ->assertSeeHtml( 'href="#' . $base . 'email"' )
+        ->assertDontSeeHtml( 'href="#email"' )
         ->assertSee( 'Fix 2 things to continue' );
 
     Livewire::test( Lookup::class )
@@ -209,4 +212,16 @@ it( 'announces a failed lookup assertively, as an error alert', function (): voi
         ->call( 'find' )
         ->assertSeeHtml( 'role="alert"' )
         ->assertSeeHtml( 'data-color="error"' );
+} );
+
+it( 'keeps its field ids apart from the host page\'s and from a second lookup', function (): void {
+    $html = (string) $this->blade( '<input id="email" name="newsletter"><livewire:artisanpack-ecommerce-storefront-order-lookup /><livewire:artisanpack-ecommerce-storefront-order-lookup />' );
+
+    preg_match_all( '/id="(ec-order-lookup-[^"]+-email)"/', $html, $emails );
+
+    expect( substr_count( $html, 'id="email"' ) )->toBe( 1 )
+        ->and( substr_count( $html, 'id="orderNumber"' ) )->toBe( 0 )
+        ->and( $emails[1] )->toHaveCount( 2 )
+        ->and( $emails[1][0] )->not->toBe( $emails[1][1] )
+        ->and( $emails[1][0] )->not->toContain( '.' );
 } );

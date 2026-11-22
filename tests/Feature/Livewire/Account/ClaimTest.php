@@ -78,12 +78,17 @@ it( 'names the one claimed order in the success alert, and clears it on the next
 it( 'requires the order number and postcode', function (): void {
     shopper();
 
-    Livewire::test( Claim::class )
-        ->call( 'claim' )
+    $component = Livewire::test( Claim::class )->call( 'claim' );
+    $base      = 'ec-account-claim-' . $component->id() . '-';
+
+    $component
         ->assertHasErrors( [ 'orderNumber' => 'Enter the order number.', 'postalCode' => 'Enter the postcode the order was shipped to.' ] )
         ->assertSeeHtml( 'aria-invalid="true"' )
-        ->assertSeeHtml( 'aria-describedby="orderNumber-error"' )
-        ->assertSeeHtml( 'aria-describedby="postalCode-error"' );
+        ->assertSeeHtml( 'id="' . $base . 'number"' )
+        ->assertSeeHtml( 'aria-describedby="' . $base . 'number-error"' )
+        ->assertSeeHtml( 'aria-describedby="' . $base . 'postcode-error"' )
+        ->assertSeeHtml( 'href="#' . $base . 'number"' )
+        ->assertDontSeeHtml( 'id="orderNumber"' );
 
     Livewire::test( Claim::class )
         ->set( 'orderNumber', str_repeat( '1', 51 ) )
@@ -225,6 +230,45 @@ it( 'claims for a user model that can\'t verify email when the host opts out', f
 
     [ , $customer ] = shopper();
     $order          = guestOrderFor( $customer->email );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertSet( 'failure', null )
+        ->assertSet( 'claimed', [ 'count' => 1, 'number' => 'ORD-1001' ] );
+
+    expect( $order->refresh()->customer_id )->toBe( $customer->id );
+} );
+
+it( 'won\'t claim when the customer record is under an older email than the user\'s verified one', function (): void {
+    [ $user, $customer ] = verifiedShopper( [ 'email' => 'old@example.com' ] );
+    $user->forceFill( [ 'email' => 'new@example.com' ] )->save();
+
+    $order = guestOrderFor( 'old@example.com' );
+
+    app()->instance( CustomerClaimService::class, Mockery::mock( CustomerClaimService::class, function ( $mock ): void {
+        $mock->shouldNotReceive( 'claim' );
+    } ) );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertNoRedirect()
+        ->assertSet( 'claimed', null )
+        ->assertSet( 'failure', 'Your account can\'t claim orders yet. Verify your email address and try again.' );
+
+    expect( $order->refresh()->customer_id )->toBeNull()
+        ->and( $order->is_claimed )->toBeFalse()
+        ->and( $customer->refresh()->email )->toBe( 'old@example.com' );
+} );
+
+it( 'still claims when the customer record\'s email differs from the user\'s only in case and spacing', function (): void {
+    [ $user, $customer ] = verifiedShopper( [ 'email' => 'ada@example.com' ] );
+    $user->forceFill( [ 'email' => ' Ada@Example.com ' ] )->save();
+
+    $order = guestOrderFor( 'ada@example.com' );
 
     Livewire::test( Claim::class )
         ->set( 'orderNumber', 'ORD-1001' )

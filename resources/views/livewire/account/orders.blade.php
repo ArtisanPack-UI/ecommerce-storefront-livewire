@@ -47,7 +47,7 @@
         {{-- The Alert above says what happened. --}}
     @elseif ( null === $orders || 0 === $orders->total() )
         @if ( '' !== $status )
-            <x-artisanpack-ec-empty-state card icon="funnel" :title="__( 'No orders match this filter' )" data-account-orders-empty="filtered">
+            <x-artisanpack-ec-empty-state card icon="funnel" :title="__( 'No orders match this filter' )" live data-account-orders-empty="filtered">
                 <x-artisanpack-button variant="outline" color="neutral" wire:click="$set( 'status', '' )">{{ __( 'Show all orders' ) }}</x-artisanpack-button>
             </x-artisanpack-ec-empty-state>
         @else

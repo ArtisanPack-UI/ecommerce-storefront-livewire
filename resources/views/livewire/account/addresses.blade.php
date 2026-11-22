@@ -97,9 +97,9 @@
 
     <x-artisanpack-dialog wire:model="editing" size="lg" :title="null === $editingId ? __( 'Add an address' ) : __( 'Edit address' )" data-account-address-modal>
         <form id="ec-account-address-form" wire:submit="save" class="ec-addresses__form" novalidate>
-            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-address' ] )
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-address', 'summaryFieldIds' => $fieldIds ] )
 
-            <x-artisanpack-ec-field id="form.label" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
+            <x-artisanpack-ec-field :id="$fieldIds['form.label']" :label="__( 'Label' )" :hint="__( 'For example, Home or Work.' )" wire:model="form.label" />
 
             <x-artisanpack-ec-address-form model="form" :country="$form['country_code'] ?? null" />
 

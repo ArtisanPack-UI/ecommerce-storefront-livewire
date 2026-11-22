@@ -102,3 +102,40 @@ it( 'draws the entries\' icons from the design-system registry', function (): vo
 
     expect( $entry[0] ?? '' )->toContain( 'data-part="icon"' )->toContain( '<svg' );
 } );
+
+it( 'keeps "Sign out" and the shopper reachable below 1024px, outside the sidebar', function (): void {
+    shopper();
+    auth()->user()->forceFill( [ 'name' => 'Dana Reyes' ] )->save();
+
+    Route::post( 'logout', static fn (): string => 'bye' )->name( 'logout' );
+    app( 'router' )->getRoutes()->refreshNameLookups();
+
+    $html = renderAccountShell();
+
+    preg_match( '/<div class="ec-account__bar" data-account-bar>.*?(?=<nav aria-label="Account" class="ec-account__tabs")/s', $html, $bar );
+    preg_match( '/<div class="ec-account__sidebar" data-account-sidebar>.*?(?=<div class="ec-account__bar")/s', $html, $sidebar );
+
+    expect( $bar[0] ?? '' )->toContain( 'data-account-bar-sign-out' )
+        ->toContain( 'method="POST"' )
+        ->toContain( 'action="' . route( 'logout' ) . '"' )
+        ->toContain( 'name="_token"' )
+        ->toContain( 'Sign out' )
+        ->toContain( 'Signed in as Dana Reyes' )
+        ->and( $sidebar[0] ?? '' )->toContain( 'data-account-sign-out' )
+        ->not->toContain( 'data-account-bar' );
+} );
+
+it( 'leaves the narrow-layout "Sign out" out without a logout route', function (): void {
+    shopper();
+
+    $html = renderAccountShell();
+
+    expect( $html )->toContain( 'data-account-bar-identity' )
+        ->not->toContain( 'data-account-bar-sign-out' );
+} );
+
+it( 'hides the narrow-layout bar from 1024px, where the sidebar shows', function (): void {
+    $css = (string) file_get_contents( dirname( __DIR__, 3 ) . '/resources/css/storefront.css' );
+
+    expect( $css )->toMatch( '/@media \(min-width: 64rem\) \{[^@]*\.ec-account__tabs,\s*\.ec-account__bar \{\s*display: none;/s' );
+} );

@@ -300,3 +300,26 @@ it( 'rate limits deleting addresses and changing defaults', function ( string $a
             ->and( (bool) $second->refresh()->is_default_billing )->toBeFalse();
     }
 } )->with( [ 'delete', 'makeDefault' ] );
+
+it( 'won\'t make a customer record for a user who hasn\'t verified their email', function (): void {
+    $user = Tests\Fixtures\VerifiedUser::query()->findOrFail( makeUser( [ 'email' => 'squat@example.com' ] )->id );
+    $this->actingAs( $user );
+
+    $component = Livewire::test( Addresses::class )
+        ->call( 'add' )
+        ->set( 'form', checkoutAddress() + [ 'label' => '' ] )
+        ->call( 'save' )
+        ->assertSet( 'editing', true );
+
+    expect( Customer::query()->count() )->toBe( 0 )
+        ->and( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'Verify your email address' );
+} );
+
+it( 'gives the label field an id unique to the component and without dots', function (): void {
+    shopper();
+
+    $component = Livewire::test( Addresses::class )->call( 'add' );
+    $id        = 'ec-account-address-' . $component->id() . '-label';
+
+    $component->assertSeeHtml( 'id="' . $id . '"' )->assertDontSeeHtml( 'id="form.label"' );
+} );

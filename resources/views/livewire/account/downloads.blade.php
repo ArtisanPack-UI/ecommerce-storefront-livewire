@@ -12,6 +12,10 @@
     "Copy" button, and the activations; a revoked or expired key says so
     instead. No files and no keys is the EmptyState in a Card.
 
+    "Download" asks the component for a freshly signed link when clicked
+    (`download()`), so a page left open past the link's lifetime still
+    works; its href is the no-JavaScript fallback.
+
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
@@ -81,7 +85,7 @@
                                 @if ( $row['streaming'] )
                                     <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="external-link" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $ecommerceDownloadName ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
                                 @else
-                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="download" :href="$row['url']" :aria-label="__( 'Download :file', [ 'file' => $ecommerceDownloadName ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
+                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="download" :href="$row['url']" wire:click.prevent="download( {{ $row['id'] }} )" :aria-label="__( 'Download :file', [ 'file' => $ecommerceDownloadName ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
                                 @endif
                             @elseif ( 'expired' === $row['state'] )
                                 <x-artisanpack-badge color="neutral" size="sm" data-account-download-badge="expired">{{ __( 'Expired' ) }}</x-artisanpack-badge>
