@@ -226,3 +226,52 @@ it( 'shows the box from 768px and an icon link below that in the header partial'
         ->not->toContain( 'md:hidden' )
         ->not->toContain( 'md:block' );
 } );
+
+/**
+ * The polite status region's text.
+ */
+function headerSearchStatus( string $html ): string
+{
+    preg_match( '#<p[^>]*data-header-search-status[^>]*>(.*?)</p>#s', $html, $match );
+
+    return trim( (string) preg_replace( '/<!--.*?-->|\s+/s', ' ', $match[1] ?? '' ) );
+}
+
+it( 'announces throttling in the status region', function (): void {
+    config( [ 'artisanpack.ecommerce.rate_limits.catalog.read.per_ip' => 1 ] );
+
+    $component = Livewire::test( HeaderSearch::class );
+    $component->set( 'q', 'mug' );
+
+    expect( headerSearchStatus( $component->set( 'q', 'mugs' )->html() ) )->toContain( 'Too many searches' );
+} );
+
+it( 'announces an unavailable provider in the status region', function (): void {
+    $provider = new FakeSearchProvider( fails: true );
+    app( SearchProviderRegistry::class )->register( $provider->key(), $provider );
+    config( [ 'artisanpack.ecommerce.search.provider' => $provider->key() ] );
+
+    expect( headerSearchStatus( Livewire::test( HeaderSearch::class )->set( 'q', 'mug' )->html() ) )->toContain( 'Suggestions aren' );
+} );
+
+it( 'announces the suggestion count', function (): void {
+    expect( headerSearchStatus( Livewire::test( HeaderSearch::class )->set( 'q', 'mug' )->html() ) )->toMatch( '/^\d+ suggestions?$/' );
+} );
+
+it( 'turns the "/" shortcut off with search.keyboard_shortcut (WCAG 2.1.4)', function (): void {
+    config( [ 'artisanpack.ecommerce-storefront-livewire.search.keyboard_shortcut' => false ] );
+
+    $html = Livewire::test( HeaderSearch::class )->html();
+
+    expect( $html )->not->toContain( 'aria-keyshortcuts' )
+        ->not->toContain( 'keydown.window' )
+        ->not->toContain( 'ec-search__hint' )
+        ->toContain( 'role="combobox"' );
+} );
+
+it( 'keeps the "/" shortcut out of editable fields and widgets', function (): void {
+    expect( Livewire::test( HeaderSearch::class )->html() )
+        ->toContain( 'x-on:keydown.window="shortcut( $event )"' )
+        ->toContain( '[contenteditable]:not([contenteditable=false]), [role=textbox]' )
+        ->toContain( '[role=listbox]' );
+} );

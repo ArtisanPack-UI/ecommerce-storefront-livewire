@@ -227,3 +227,71 @@ it( 'throws a failure of the value itself once, without reporting it as a cache 
 
     app( Illuminate\Contracts\Debug\ExceptionHandler::class )->shouldNotHaveReceived( 'report' );
 } );
+
+it( 'snaps price bounds so made-up values share one set of facet cache entries', function (): void {
+    makeProduct( 1000, [ 'name' => 'Cheap kettle' ] );
+    makeProduct( 5000, [ 'name' => 'Dear kettle' ] );
+
+    $render = static fn ( int $min ) => static fn () => Livewire::withQueryParams( [ 'price_min' => $min ] )->test( Catalog::class )->assertSet( 'priceMin', 2100 )->html();
+
+    expect( facetQueries( $render( 2101 ) ) )->toBeGreaterThan( 0 )
+        ->and( facetQueries( $render( 2102 ) ) )->toBe( 0 )
+        ->and( facetQueries( $render( 2199 ) ) )->toBe( 0 );
+} );
+
+it( 'caches the in-stock, on-sale and rating counts', function (): void {
+    makeProduct( 1000, [ 'name' => 'Kettle' ] );
+
+    $render = static fn () => Livewire::withQueryParams( [ 'on_sale' => '1' ] )->test( Catalog::class )->html();
+
+    facetQueries( $render );
+
+    expect( facetQueries( $render ) )->toBe( 0 );
+} );
+
+it( 'looks the scope and filter category and tag up once per render', function (): void {
+    $kitchen = ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+    $summer  = ProductTag::factory()->create( [ 'name' => 'Summer', 'slug' => 'summer' ] );
+    $kettle  = makeProduct( 1000, [ 'name' => 'Kettle' ] );
+    $kettle->categories()->attach( $kitchen->id );
+    $kettle->tags()->attach( $summer->id );
+    CategoryTree::flush();
+
+    $render = static fn () => Livewire::withQueryParams( [ 'category' => 'kitchen', 'tag' => 'summer', 'in_stock' => '1' ] )->test( Catalog::class )->assertSee( 'Kettle' )->html();
+
+    $render();
+    app()->forgetScopedInstances();
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $render();
+
+    $sql = array_column( DB::getQueryLog(), 'query' );
+    DB::disableQueryLog();
+
+    // Lookups only, not the listing's `exists` subqueries.
+    $lookups = static fn ( string $table ): int => count( array_filter( $sql, static fn ( string $query ): bool => 1 === preg_match( '/^select [^()]* from "' . $table . '" where/', $query ) ) );
+
+    // Tags: the filter slug, the engine applying it, and the tag group's options.
+    expect( $lookups( 'ecommerce_product_tags' ) )->toBeLessThanOrEqual( 3 )
+        ->and( $lookups( 'ecommerce_product_categories' ) )->toBeLessThanOrEqual( 1 );
+} );
+
+it( 'adds to the cart from the catalog without querying and rendering the listing again', function (): void {
+    $kettle = makeProduct( 1000, [ 'name' => 'Kettle' ] );
+    setStock( $kettle, 5 );
+
+    $component = Livewire::test( Catalog::class );
+
+    app()->forgetScopedInstances();
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $component->call( 'quickAdd', $kettle->id );
+
+    $productSelects = array_filter( array_column( DB::getQueryLog(), 'query' ), static fn ( string $query ): bool => str_starts_with( $query, 'select' ) && str_contains( $query, 'from "ecommerce_products"' ) );
+    DB::disableQueryLog();
+
+    // The add itself reads the product a few times; the listing would add a page query and counts.
+    expect( array_filter( $productSelects, static fn ( string $query ): bool => str_contains( $query, 'limit 24' ) || str_contains( $query, 'count(*)' ) ) )->toBe( [] );
+} );

@@ -113,7 +113,7 @@
         :aria-labelledby="null !== $label ? $idPrefix . '-legend' : null"
         :id="$idPrefix . '-range'"
         class="ec-price-range__slider"
-        x-bind:aria-valuetext="money( 'start' === $el.dataset.thumb ? from : to )"
+        x-bind:aria-valuetext="money( 'start' === $el.dataset.thumb ? low() : high() )"
         x-on:change="send()"
         data-price-slider
     />

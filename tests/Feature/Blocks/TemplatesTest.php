@@ -365,3 +365,35 @@ it( 'lists the page\'s products in the Product Catalog block', function (): void
     $context->setPage( 'search' )->setTag( null );
     expect( $block->render( [] ) )->toContain( 'data-search-page' );
 } );
+
+it( 'steps the category or tag title down to h2 when the page falls back to the shop template', function (): void {
+    $kitchen = ProductCategory::factory()->create( [ 'name' => 'Kitchen', 'slug' => 'kitchen' ] );
+    $gift    = ProductTag::factory()->create( [ 'name' => 'Gift', 'slug' => 'gift' ] );
+    CategoryTree::flush();
+    installTemplates( [ 'product-archive' ] );
+
+    $block   = app( ProductCatalogBlock::class );
+    $context = app( StorefrontContext::class );
+    $archive = (string) StorefrontTemplates::templates()['product-archive']['content'];
+
+    expect( StorefrontTemplates::for( 'category', $kitchen ) )->toBe( 'product-archive' );
+    $context->setPage( 'category' )->setCategory( $kitchen );
+    $html = $block->render( [] );
+
+    // The archive template's own heading is the page's only h1.
+    expect( substr_count( $archive, '<h1' ) )->toBe( 1 )
+        ->and( substr_count( $html, '<h1' ) )->toBe( 0 )
+        ->and( $html )->toContain( '<h2 class="ec-category-hero__title">Kitchen</h2>' );
+
+    expect( StorefrontTemplates::for( 'tag', $gift ) )->toBe( 'product-archive' );
+    $context->setPage( 'tag' )->setCategory( null )->setTag( $gift );
+
+    expect( $block->render( [] ) )->not->toContain( '<h1' )->toContain( '<h2 class="ec-category-hero__title">Gift</h2>' );
+
+    // With the category's own template, the hero keeps its h1.
+    installTemplates( [ 'product-category', 'product-archive' ] );
+    expect( StorefrontTemplates::for( 'category', $kitchen ) )->toBe( 'product-category' );
+    $context->setPage( 'category' )->setTag( null )->setCategory( $kitchen );
+
+    expect( $block->render( [] ) )->toContain( '<h1 class="ec-category-hero__title">Kitchen</h1>' );
+} );

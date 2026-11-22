@@ -107,6 +107,32 @@ it( 'keeps hand-picked products in the order picked', function (): void {
     expect( namesInOrder( $html, [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Teapot', 'Kettle' ] );
 } );
 
+it( 'limits hand-picked products to the first picks, in the order picked', function (): void {
+    // Picked oldest first, so a "newest" sort applied before the limit would keep the wrong two.
+    $html = renderBlock( new ProductGridBlock(), [ 'source' => 'hand_picked', 'ids' => "{$this->kettle->id},{$this->teapot->id},{$this->mug->id}", 'limit' => 2 ] );
+
+    expect( namesInOrder( $html, [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Kettle', 'Teapot' ] );
+} );
+
+it( 'reads an all-digit category, tag, or parent as a slug before an id', function (): void {
+    $year = ProductCategory::factory()->create( [ 'name' => 'Year', 'slug' => (string) $this->kitchen->id ] );
+    $sub  = ProductCategory::factory()->create( [ 'name' => 'Year sub', 'slug' => 'year-sub', 'parent_id' => $year->id ] );
+    $tag  = ProductTag::factory()->create( [ 'name' => 'Year tag', 'slug' => (string) $this->gift->id ] );
+    $this->mug->categories()->attach( $year->id );
+    $this->kettle->tags()->attach( $tag->id );
+    CategoryTree::flush();
+
+    expect( namesInOrder( renderBlock( new ProductGridBlock(), [ 'source' => 'category', 'category' => (string) $this->kitchen->id, 'sort' => 'name' ] ), [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Mug' ] )
+        ->and( namesInOrder( renderBlock( new ProductGridBlock(), [ 'source' => 'tag', 'tag' => (string) $this->gift->id ] ), [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Kettle' ] )
+        ->and( renderBlock( new CategoryGridBlock(), [ 'parent' => (string) $this->kitchen->id ] ) )
+        ->toContain( 'data-category-tile="' . $sub->id . '"' )
+        ->not->toContain( 'data-category-tile="' . $this->tea->id . '"' );
+
+    // An id still works when no slug matches.
+    expect( namesInOrder( renderBlock( new ProductGridBlock(), [ 'source' => 'category', 'category' => (string) $this->garden->id ] ), [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [] )
+        ->and( namesInOrder( renderBlock( new ProductGridBlock(), [ 'source' => 'category', 'category' => (string) $this->tea->id ] ), [ 'Kettle', 'Teapot', 'Mug' ] ) )->toBe( [ 'Teapot' ] );
+} );
+
 it( 'sorts, limits, and lays out the grid', function (): void {
     $html = renderBlock( new ProductGridBlock(), [ 'source' => 'featured', 'sort' => '-price', 'limit' => 1, 'columns' => 3 ] );
 

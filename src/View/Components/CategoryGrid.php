@@ -126,7 +126,8 @@ class CategoryGrid extends Component
 
         if ( null !== $this->parent && '' !== trim( (string) $this->parent ) ) {
             $key    = trim( (string) $this->parent );
-            $parent = ( ctype_digit( $key ) ? $paths->node( (int) $key ) : $paths->bySlug( $key ) )['id'] ?? null;
+            // A slug first (`2024` can be one), then an id.
+            $parent = ( $paths->bySlug( $key ) ?? ( ctype_digit( $key ) ? $paths->node( (int) $key ) : null ) )['id'] ?? null;
 
             if ( null === $parent ) {
                 return [];

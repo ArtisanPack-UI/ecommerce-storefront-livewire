@@ -180,6 +180,7 @@ class HeaderSearch extends Component
             'allUrl'     => null === $searchUrl || 'results' !== $state || [] === [ ...$products, ...$categories ] ? null : $searchUrl . '?' . http_build_query( [ 'q' => $this->q ] ),
             'total'      => max( $total, count( $products ) ),
             'listboxId'  => $this->inputId . '-results',
+            'shortcut'   => (bool) config( 'artisanpack.ecommerce-storefront-livewire.search.keyboard_shortcut', true ),
         ] );
     }
 

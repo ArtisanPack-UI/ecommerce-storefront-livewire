@@ -207,6 +207,17 @@ final class StorefrontTemplates
     ];
 
     /**
+     * The template {@see self::for()} picked last: the page, its subject's
+     * key, and the slug. Reset on every lookup, so a long-lived worker
+     * can't carry it into the next request's page.
+     *
+     * @since 2.0.0
+     *
+     * @var array{page: string, subject: string|null, slug: string}|null
+     */
+    protected static ?array $resolved = null;
+
+    /**
      * Wires the patterns (and, with `visual_editor.templates` on, the
      * templates) into visual-editor's site editor. visual-editor reads the
      * filters once everything has booted.
@@ -269,6 +280,8 @@ final class StorefrontTemplates
      */
     public static function for( string $page, ?Model $subject = null ): ?string
     {
+        self::$resolved = null;
+
         if ( ! self::enabled() ) {
             return null;
         }
@@ -280,6 +293,8 @@ final class StorefrontTemplates
                 $entity = $resolver->resolve( $slug );
 
                 if ( null !== $entity && is_array( $entity->blocks ?? null ) ) {
+                    self::$resolved = [ 'page' => $page, 'subject' => null === $subject ? null : (string) $subject->getKey(), 'slug' => $slug ];
+
                     return $slug;
                 }
             }
@@ -288,6 +303,29 @@ final class StorefrontTemplates
         }
 
         return null;
+    }
+
+    /**
+     * The template {@see self::for()} last picked for this page and
+     * subject, or null when it picked none (or was asked about another
+     * page). Blocks use it to fit the template they render in, e.g. the
+     * Product Catalog block on a category page that fell back to the
+     * `product-archive` template, which has its own `<h1>`.
+     *
+     * @since 2.0.0
+     *
+     * @param  string      $page     A key of {@see self::PAGES}.
+     * @param  Model|null  $subject  The product, category, or tag.
+     *
+     * @return string|null
+     */
+    public static function resolved( string $page, ?Model $subject = null ): ?string
+    {
+        $subjectKey = null === $subject ? null : (string) $subject->getKey();
+
+        return null !== self::$resolved && $page === self::$resolved['page'] && $subjectKey === self::$resolved['subject']
+            ? self::$resolved['slug']
+            : null;
     }
 
     /**

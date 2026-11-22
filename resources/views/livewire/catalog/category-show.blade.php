@@ -24,7 +24,8 @@
         <div class="ec-category-hero__body">
             <p class="ec-category-hero__eyebrow">{{ __( 'Category' ) }}</p>
 
-            <h1 class="ec-category-hero__title">{{ $category->name }}</h1>
+            @php( $heading = 'h2' === ( $heading ?? null ) ? 'h2' : 'h1' )
+            <{{ $heading }} class="ec-category-hero__title">{{ $category->name }}</{{ $heading }}>
 
             @if ( null !== $description )
                 <div class="ec-category-hero__description" data-category-description>{!! $description !!}</div>

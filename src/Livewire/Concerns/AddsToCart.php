@@ -29,6 +29,9 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\ProductCard;
  * is refused, since it has a choice to make on its page. The cart is created on the first add and the call counts against the
  * `ecommerce.cart.mutate` limit.
  *
+ * A successful add skips the component's re-render (since 2.0.0): the
+ * feedback goes out as events and a toast.
+ *
  * Uses {@see InteractsWithStorefrontCart}, {@see RateLimitsStorefront}, and
  * {@see SendsToasts}.
  *
@@ -80,5 +83,10 @@ trait AddsToCart
         $this->cartChanged( $item->cart );
 
         $this->afterAddToCart( null === $item->product ? null : (string) $item->product->name );
+
+        // Nothing in a listing changes when a card adds to the cart (the
+        // header count and drawer update through their own events), so the
+        // grid isn't queried and rendered again just to show the feedback.
+        $this->skipRender();
     }
 }

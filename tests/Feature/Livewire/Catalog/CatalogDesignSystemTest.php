@@ -111,7 +111,8 @@ it( 'lays the cards out in three columns beside the filters, and four without th
 
 it( 'shows the no-match state in a card with "Clear filters"', function (): void {
     Livewire::test( Index::class )
-        ->set( 'priceMin', 50000 )
+        ->set( 'priceMin', 7000 )
+        ->set( 'priceMax', 8000 )
         ->assertSeeHtml( 'data-empty-reason="no-match"' )
         ->assertSeeHtml( 'data-empty-state-card' )
         ->assertSee( 'No products match your filters' )

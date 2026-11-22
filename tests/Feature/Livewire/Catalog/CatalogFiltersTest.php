@@ -201,10 +201,93 @@ it( 'drops filter values that can\'t apply', function ( string $property, mixed 
 ] );
 
 it( 'swaps a reversed price range', function (): void {
-    Livewire::withQueryParams( [ 'price_min' => 9000, 'price_max' => 1000 ] )
+    Livewire::withQueryParams( [ 'price_min' => 7000, 'price_max' => 4000 ] )
         ->test( Index::class )
-        ->assertSet( 'priceMin', 1000 )
-        ->assertSet( 'priceMax', 9000 );
+        ->assertSet( 'priceMin', 4000 )
+        ->assertSet( 'priceMax', 7000 );
+} );
+
+it( 'snaps price bounds to the slider step and clamps them to the scope\'s range', function (): void {
+    // The scope's prices run from 30.00 to 90.00.
+    Livewire::withQueryParams( [ 'price_min' => 4050, 'price_max' => 6020 ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMin', 4000 )
+        ->assertSet( 'priceMax', 6100 )
+        ->assertSet( 'priceCurrency', 'USD' );
+
+    Livewire::withQueryParams( [ 'price_min' => 999999999 ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMin', null )
+        ->assertSet( 'priceCurrency', '' )
+        ->assertSee( [ 'Red runner', 'Blue hiker', 'Red sandal', 'Panama hat' ] )
+        ->assertDontSeeHtml( 'data-active-filter' );
+
+    Livewire::withQueryParams( [ 'price_min' => 100, 'price_max' => 999999999 ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMin', null )
+        ->assertSet( 'priceMax', null );
+
+    Livewire::withQueryParams( [ 'price_max' => 100 ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMax', null );
+} );
+
+it( 'drops price bounds that were set in another currency', function (): void {
+    Livewire::withQueryParams( [ 'price_min' => 5000, 'price_currency' => 'EUR' ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMin', null )
+        ->assertSet( 'priceCurrency', '' )
+        ->assertDontSeeHtml( 'data-active-filter' );
+
+    Livewire::withQueryParams( [ 'price_min' => 5000, 'price_currency' => 'usd' ] )
+        ->test( Index::class )
+        ->assertSet( 'priceMin', 5000 )
+        ->assertSet( 'priceCurrency', 'USD' );
+} );
+
+it( 'stamps the currency on a price bound and clears it with the bound', function (): void {
+    Livewire::test( Index::class )
+        ->set( 'priceMin', 5000 )
+        ->assertSet( 'priceCurrency', 'USD' )
+        ->call( 'removeFilter', 'price' )
+        ->assertSet( 'priceCurrency', '' )
+        ->set( 'priceMax', 6000 )
+        ->call( 'clearFilters' )
+        ->assertSet( 'priceCurrency', '' );
+} );
+
+it( 'caps the number of attribute filter keys', function (): void {
+    $attributes = [];
+
+    foreach ( range( 1, 60 ) as $i ) {
+        $attributes[ 'k' . $i ] = [ 'x' ];
+    }
+
+    $component = Livewire::withQueryParams( [ 'attr' => [ 'colour' => [ 'red' ] ] + $attributes ] )->test( Index::class );
+
+    expect( $component->get( 'attributeFilters' ) )->toBe( [ 'colour' => [ 'red' ] ] );
+    expect( count( (array) $component->set( 'attributeFilters', $attributes )->get( 'attributeFilters' ) ) )->toBeLessThanOrEqual( Index::MAX_ATTRIBUTE_FILTERS );
+} );
+
+it( 'filters by an all-digit category or tag slug, not by an id', function (): void {
+    $year  = ProductCategory::factory()->create( [ 'name' => '2024', 'slug' => (string) ( $this->hats->id ) ] );
+    $tag   = ProductTag::factory()->create( [ 'name' => 'Year', 'slug' => (string) $this->summer->id . '0' ] );
+    $promo = makeProduct( 7000, [ 'name' => 'Year shoe' ] );
+    $promo->categories()->attach( $year->id );
+    $promo->tags()->attach( $tag->id );
+    CategoryTree::flush();
+
+    // The slug equals the Hats category's id: it must list the "2024" category, not Hats.
+    Livewire::withQueryParams( [ 'category' => (string) $this->hats->id ] )
+        ->test( Index::class )
+        ->assertSet( 'categoryFilter', (string) $this->hats->id )
+        ->assertSee( 'Year shoe' )
+        ->assertDontSee( 'Panama hat' );
+
+    Livewire::withQueryParams( [ 'tag' => $tag->slug ] )
+        ->test( Index::class )
+        ->assertSee( 'Year shoe' )
+        ->assertDontSee( 'Panama hat' );
 } );
 
 it( 'starts again from page one when a filter changes', function (): void {
@@ -451,4 +534,34 @@ it( 'counts each category option with its sub-categories', function (): void {
     $group = collect( Livewire::test( Index::class )->viewData( 'groups' ) )->firstWhere( 'key', 'category' );
 
     expect( collect( $group['options'] )->pluck( 'count', 'value' )->all() )->toEqual( [ 'shoes' => 3, 'boots' => 1, 'hats' => 1 ] );
+} );
+
+it( 'moves focus on after a chip or "Clear all" removes filters', function (): void {
+    $component = Livewire::withQueryParams( [ 'in_stock' => '1', 'on_sale' => '1' ] )->test( Index::class );
+
+    $component->assertDontSeeHtml( 'data-catalog-focus-after-change' )
+        ->assertSeeHtml( 'x-on:click="focusAfter = 0"' )
+        ->assertSeeHtml( 'x-on:click="focusAfter = 1"' )
+        ->assertSeeHtml( 'tabindex="-1" data-results-count' );
+
+    $component->call( 'removeFilter', 'in_stock' )
+        ->assertSet( 'filterChanges', 1 )
+        ->assertSeeHtml( 'wire:key="catalog-focus-1"' )
+        ->assertSeeHtml( 'data-catalog-focus-after-change' );
+
+    $component->call( 'clearFilters' )
+        ->assertSet( 'filterChanges', 2 )
+        ->assertSeeHtml( 'wire:key="catalog-focus-2"' );
+} );
+
+it( 'tells each "Clear all" where focus goes next', function (): void {
+    Livewire::withQueryParams( [ 'in_stock' => '1' ] )
+        ->test( Index::class )
+        ->assertSeeHtml( 'x-on:click="focusAfter = \'apply\'" data-drawer-clear-filters' )
+        ->assertSeeHtml( 'x-on:click="focusAfter = \'count\'" data-clear-filters' );
+} );
+
+it( 'gives the price slider thumbs their clamped amounts as value text', function (): void {
+    Livewire::test( Index::class )
+        ->assertSeeHtml( 'x-bind:aria-valuetext="money( \'start\' === $el.dataset.thumb ? low() : high() )"' );
 } );

@@ -362,3 +362,100 @@ it( 'caches the filter counts, so a repeat render only runs the search', functio
     expect( $first )->toBeLessThanOrEqual( 12 )
         ->and( count( $queries ) - $first )->toBe( 1 );
 } );
+
+it( 'caps attribute filter keys and drops unknown attribute values before they reach the provider', function (): void {
+    $queries    = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider() )->search( $query ) );
+    $attributes = [];
+
+    foreach ( range( 1, 60 ) as $i ) {
+        $attributes[ 'k' . $i ] = [ 'x' ];
+    }
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'attr' => $attributes ] )
+        ->test( Index::class )
+        ->assertSet( 'attributeFilters', [] )
+        ->assertSee( 'Linen shirt' );
+
+    foreach ( $queries as $query ) {
+        expect( count( $query->filters['attributes'] ?? [] ) )->toBeLessThanOrEqual( Index::MAX_ATTRIBUTE_FILTERS );
+    }
+
+    $queries->exchangeArray( [] );
+    app()->forgetScopedInstances();
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'attr' => [ 'nope' => [ 'x' ], 'size' => [ 'm', 'zz' ] ] ] )
+        ->test( Index::class )
+        ->assertSet( 'attributeFilters', [ 'size' => [ 'm' ] ] )
+        ->assertSee( 'Linen shirt' )
+        ->assertDontSee( 'Linen trousers' );
+
+    foreach ( $queries as $query ) {
+        expect( array_keys( $query->filters['attributes'] ?? [] ) )->not->toContain( 'nope' );
+    }
+} );
+
+it( 'checks filters against the search scope only after the rate-limited search is allowed', function (): void {
+    config( [ 'artisanpack.ecommerce.rate_limits.catalog.read.per_ip' => 1 ] );
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider() )->search( $query ) );
+
+    Livewire::withQueryParams( [ 'q' => 'linen' ] )->test( Index::class )->assertSee( 'Linen shirt' );
+
+    $queries->exchangeArray( [] );
+    app()->forgetScopedInstances();
+
+    Livewire::withQueryParams( [ 'q' => 'linen shirt', 'attr' => [ 'size' => [ 'm' ] ], 'price_min' => 101 ] )
+        ->test( Index::class )
+        ->assertSeeHtml( 'data-empty-reason="throttled"' );
+
+    expect( $queries )->toHaveCount( 0 );
+} );
+
+it( 'snaps search price bounds to the scope\'s range', function (): void {
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider() )->search( $query ) );
+
+    // The linen products cost 45.00 and 60.00.
+    $component = Livewire::withQueryParams( [ 'q' => 'linen', 'price_min' => 5050, 'price_max' => 999999999 ] )->test( Index::class );
+
+    $component->assertSet( 'priceMin', 5000 )->assertSet( 'priceMax', null );
+
+    foreach ( $queries as $query ) {
+        expect( $query->filters['price_min'] ?? 5000 )->toBe( 5000 )
+            ->and( $query->filters )->not->toHaveKey( 'price_max' );
+    }
+} );
+
+it( 'moves a page past the last page back to the last page', function (): void {
+    scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => new SearchResult(
+        new Collection( $query->page > 2 ? [] : [ $this->linen ] ),
+        30,
+        page: $query->page,
+        perPage: $query->perPage,
+    ) );
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'page' => 9, 'per_page' => 24 ] )
+        ->test( Index::class )
+        ->assertSet( 'paginators.page', 2 )
+        ->assertSee( 'Linen shirt' )
+        ->assertDontSee( 'No results for' );
+} );
+
+it( 'searches for a numeric term', function (): void {
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => new SearchResult( new Collection( [ $this->linen ] ), 1 ) );
+
+    Livewire::withQueryParams( [ 'q' => '2024' ] )
+        ->test( Index::class )
+        ->assertSet( 'q', '2024' )
+        ->assertSee( 'Linen shirt' );
+
+    expect( $queries[0]->term )->toBe( '2024' );
+} );
+
+it( 'filters by an all-digit category slug', function (): void {
+    $queries = scriptedSearchProvider( fn ( SearchQuery $query ): SearchResult => ( new FakeSearchProvider() )->search( $query ) );
+    $year    = ProductCategory::factory()->create( [ 'name' => '2024', 'slug' => (string) ( $this->shirts->id + 100 ) ] );
+    CategoryTree::flush();
+
+    Livewire::withQueryParams( [ 'q' => 'linen', 'category' => $year->slug ] )->test( Index::class )->assertSet( 'categoryFilter', $year->slug );
+
+    expect( $queries[0]->filters['category'] ?? null )->toBe( $year->id );
+} );
