@@ -26,21 +26,6 @@ final class Accessibility
         // livewire-ui-components 3.0: the Drawer's panel is an <aside> with
         // role="dialog", a role axe doesn't allow on <aside>.
         [ 'aria-allowed-role', '[data-scope="drawer"][data-part="content"]' ],
-        // ArtisanPack-UI/livewire-ui-components#117: `x-artisanpack-select`
-        // labels with a <legend>, so the control itself has no accessible
-        // name.
-        [ 'select-name', 'fieldset' ],
-        // ArtisanPack-UI/livewire-ui-components#129:
-        // `x-artisanpack-breadcrumbs` puts the separator <span>s straight
-        // into its <ul>.
-        [ 'list', 'nav[aria-label="Breadcrumb"]' ],
-        // ArtisanPack-UI/livewire-ui-components#130: `x-artisanpack-collapse`
-        // inside an accordion renders an unlabelled radio as the section
-        // toggle.
-        [ 'label', '.collapse' ],
-        // ArtisanPack-UI/livewire-ui-components#131: form components print
-        // field errors in `text-error`, about 3:1 on the default light theme.
-        [ 'color-contrast', '[x-class="text-error"]' ],
     ];
 
     /**
