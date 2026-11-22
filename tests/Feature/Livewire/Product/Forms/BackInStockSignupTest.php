@@ -239,3 +239,42 @@ function makeOutOfStock(): Product
 
     return $product;
 }
+
+it( 'keeps a sold-out choice selectable and struck through, so the picker reaches Notify me', function (): void {
+    $made   = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2000, 'stock' => 5 ],
+        'blue/m' => [ 'price' => 2000, 'stock' => 0 ],
+    ] );
+    $colour = $made['groups']['colour']->id;
+    $size   = $made['groups']['size']->id;
+
+    $component = Livewire::test( VariableForm::class, [ 'product' => $made['product'] ] );
+    $blue      = (string) $made['values']['blue']->id;
+
+    expect( $component->html() )->toMatch( '/data-sold-out[^>]*>\s*<input[^>]*value="' . $blue . '"/' )
+        ->not->toMatch( '/value="' . $blue . '"[^>]*\sdisabled/' );
+
+    // Through the picker's action, as a swatch change calls it.
+    $component->call( 'choose', $colour, $blue )
+        ->call( 'choose', $size, (string) $made['values']['m']->id )
+        ->assertSet( 'variant', $made['variants']['blue/m']->id )
+        ->assertSeeHtml( 'data-notify-me' )
+        ->assertSee( 'This option is sold out' );
+
+    // Changing an earlier choice keeps a later choice that's only sold out.
+    $component->call( 'choose', $colour, (string) $made['values']['red']->id )
+        ->call( 'choose', $colour, $blue )
+        ->assertSet( "selected.{$size}", (int) $made['values']['m']->id );
+} );
+
+it( 'disables sold-out choices again when the signup is off', function (): void {
+    withoutBackInStock();
+
+    $made = makeVariableProduct( [
+        'red/m'  => [ 'price' => 2000, 'stock' => 5 ],
+        'blue/m' => [ 'price' => 2000, 'stock' => 0 ],
+    ] );
+
+    expect( Livewire::test( VariableForm::class, [ 'product' => $made['product'] ] )->html() )
+        ->toMatch( '/value="' . $made['values']['blue']->id . '"[^>]*\sdisabled/' );
+} );

@@ -8,7 +8,10 @@
     for text values such as sizes; an option's `meta` (a price difference)
     follows the name, muted. The checked chip takes the selected
     background and border. An unavailable value stays in place, faded and
-    struck through, with its reason in hidden text. With one value chosen,
+    struck through, with its reason in hidden text. A sold-out value that
+    stays selectable (`soldOut` without `disabled`, while back-in-stock
+    signups are on) is struck through too, but at full strength and
+    clickable. With one value chosen,
     the legend names it ("Glaze: Stoneware"). A `required` group has a "*"
     after the legend (hidden from screen readers, which hear the radios'
     `required`), and an `error` shows under the chips with the error icon,
@@ -43,6 +46,7 @@
                 class="ec-swatch"
                 wire:key="{{ $ecommerceInputId }}"
                 @if ( $ecommerceHasDot ) data-dot @endif
+                @if ( $item['soldOut'] ) data-sold-out @endif
                 @if ( null !== $item['reason'] ) title="{{ $item['reason'] }}" @endif
             >
                 <input

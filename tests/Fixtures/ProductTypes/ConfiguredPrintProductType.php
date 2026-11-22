@@ -15,8 +15,9 @@ use Money\Money;
 /**
  * A configurable print using the engine 1.4 storefront schema: a swatch
  * frame (one choice disabled, one an image), card sizes (the large one rules
- * out rag paper), a paper radio, a mat select shown only for a frame, and a
- * gift note shown only for a gift. Each choice's `price_delta` (USD) is
+ * out rag paper), a paper radio, a mat select shown only for a frame, a gift
+ * checkbox (which also rules out rag paper) with a note shown only for a gift,
+ * and an extra-copies quantity with a note shown once there are copies. Each choice's `price_delta` (USD) is
  * added to the product's price. Only load it with engine 1.4+.
  */
 class ConfiguredPrintProductType extends AbstractProductType implements DescribesLineOptions, ProvidesStorefrontOptions, QuotesPrice
@@ -51,7 +52,7 @@ class ConfiguredPrintProductType extends AbstractProductType implements Describe
         $fields = $this->storefrontOptions( $product );
         $chosen = app( StorefrontOptionSchema::class )->validate( $fields, $options );
 
-        return array_intersect_key( $chosen, array_flip( [ 'frame', 'size', 'paper', 'mat', 'gift', 'gift_note' ] ) );
+        return array_intersect_key( $chosen, array_flip( [ 'frame', 'size', 'paper', 'mat', 'gift', 'gift_note', 'copies', 'copy_note' ] ) );
     }
 
     public function priceLine( Product $product, array $options, int $quantity, string $currency ): Money
@@ -140,7 +141,7 @@ class ConfiguredPrintProductType extends AbstractProductType implements Describe
                     [ 'value' => 'black', 'label' => 'Black', 'price_delta' => $delta( 'mat:black' ) ],
                 ],
             ],
-            [ 'type' => 'checkbox', 'name' => 'gift', 'label' => 'This is a gift' ],
+            [ 'type' => 'checkbox', 'name' => 'gift', 'label' => 'This is a gift', 'meta' => [ 'disables' => [ '1' => [ 'paper' => [ 'rag' ] ] ] ] ],
             [
                 'type'         => 'textarea',
                 'name'         => 'gift_note',
@@ -148,6 +149,13 @@ class ConfiguredPrintProductType extends AbstractProductType implements Describe
                 'required'     => true,
                 'rules'        => [ 'max:200' ],
                 'visible_when' => [ [ 'field' => 'gift', 'in' => [ true ] ] ],
+            ],
+            [ 'type' => 'quantity', 'name' => 'copies', 'label' => 'Extra copies', 'rules' => [ 'max:5' ] ],
+            [
+                'type'         => 'text',
+                'name'         => 'copy_note',
+                'label'        => 'Note for the extra copies',
+                'visible_when' => [ [ 'field' => 'copies', 'in' => [ 1, 2, 3, 4, 5 ] ] ],
             ],
         ];
     }

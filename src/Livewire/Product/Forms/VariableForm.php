@@ -244,7 +244,7 @@ class VariableForm extends PurchaseForm
                 continue;
             }
 
-            if ( $after && ! $this->offered( [ ...$kept, $otherId => $this->selected[ $otherId ] ], true ) ) {
+            if ( $after && ! $this->offered( [ ...$kept, $otherId => $this->selected[ $otherId ] ], ! $this->soldOutSelectable() ) ) {
                 $cleared[] = (string) $other->label;
                 unset( $this->selected[ $otherId ] );
 
@@ -468,6 +468,19 @@ class VariableForm extends PurchaseForm
     }
 
     /**
+     * Whether sold-out choices stay selectable, so the shopper can reach a
+     * sold-out variant's "Notify me" signup (back-in-stock signups are on).
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    protected function soldOutSelectable(): bool
+    {
+        return self::backInStockEnabled( $this->product );
+    }
+
+    /**
      * The sold-out variant a back-in-stock signup is for.
      *
      * @since 2.0.0
@@ -654,13 +667,16 @@ class VariableForm extends PurchaseForm
 
         $options = [];
 
+        $soldOutSelectable = $this->soldOutSelectable();
+
         foreach ( $group->values as $value ) {
             $choice    = [ ...$before, (int) $group->id => (int) $value->id ];
             $available = $this->offered( $choice, true );
+            $soldOut   = ! $available && $this->offered( $choice, false );
             $reason    = null;
 
             if ( ! $available ) {
-                $reason = $this->offered( $choice, false ) ? __( 'Out of stock' ) : __( 'Not available with your other choices' );
+                $reason = $soldOut ? __( 'Out of stock' ) : __( 'Not available with your other choices' );
             }
 
             $options[] = [
@@ -668,7 +684,10 @@ class VariableForm extends PurchaseForm
                 'label'    => $this->valueLabel( $value ),
                 'swatch'   => $value->swatch,
                 'selected' => ( $this->selected[ (int) $group->id ] ?? null ) === (int) $value->id,
-                'disabled' => ! $available,
+                // A sold-out choice stays selectable (struck through) while the
+                // shopper can sign up to hear when it's back.
+                'disabled' => ! $available && ! ( $soldOut && $soldOutSelectable ),
+                'soldOut'  => $soldOut,
                 'reason'   => $reason,
             ];
         }

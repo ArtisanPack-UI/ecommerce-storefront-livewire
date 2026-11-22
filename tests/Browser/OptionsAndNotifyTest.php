@@ -112,3 +112,32 @@ it( 'lays the signup out right to left without overflow on a phone', function ()
         ->assertScript( 'document.documentElement.scrollWidth <= window.innerWidth' )
         ->assertVisible( '[data-notify-me-submit]' );
 } );
+
+it( 'reveals a field that depends on a quantity when the stepper changes it', function (): void {
+    if ( ! class_exists( PriceQuoteService::class ) ) {
+        $this->markTestSkipped( 'Needs engine 1.4.' );
+    }
+
+    visit( configuredPrintUrl() )
+        ->assertMissing( '[data-option-field="copy_note"]' )
+        ->click( '[data-option-field="copies"] button[aria-label^="Increase quantity"]' )
+        ->assertPresent( '[data-option-field="copy_note"]' );
+} );
+
+it( 'lets the shopper pick a sold-out variant from the swatches and sign up for it', function (): void {
+    if ( ! engineHasBackInStock() ) {
+        $this->markTestSkipped( 'Needs engine 1.4.' );
+    }
+
+    makeVariableProduct( [
+        'red/m'  => [ 'price' => 2500, 'stock' => 4 ],
+        'blue/m' => [ 'price' => 2500, 'stock' => 0 ],
+    ], [ 'slug' => 'sold-out-shirt' ], 'SOLD' );
+
+    visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'sold-out-shirt' ] ) )
+        ->assertPresent( 'label[data-sold-out]' )
+        ->click( 'label[data-sold-out]' )
+        ->click( 'label.ec-swatch:has-text("M")' )
+        ->assertSee( 'This option is sold out' )
+        ->assertPresent( '[data-notify-me-form]' );
+} );

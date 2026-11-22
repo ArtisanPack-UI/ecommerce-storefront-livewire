@@ -30,7 +30,9 @@ use Illuminate\View\Component;
  * an http(s) image URL), `count` (shown after the label), `meta` (a short
  * muted note after the label, such as a price difference; since 2.0.0), `selected`,
  * `disabled`, and `reason` (why it is disabled, read to screen readers and
- * shown as a tooltip). `wire:model` attributes go to every input.
+ * shown as a tooltip). `soldOut` (since 2.0.0) strikes an option through
+ * while it stays selectable, as for a sold-out variant the shopper can sign
+ * up for. `wire:model` attributes go to every input.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -44,7 +46,7 @@ class Swatches extends Component
      *
      * @since 1.0.0
      *
-     * @var array<int, array{value: string, label: string, color: string|null, image: string|null, count: int|null, meta: string|null, selected: bool, disabled: bool, reason: string|null}>
+     * @var array<int, array{value: string, label: string, color: string|null, image: string|null, count: int|null, meta: string|null, selected: bool, disabled: bool, soldOut: bool, reason: string|null}>
      */
     public array $items;
 
@@ -123,7 +125,7 @@ class Swatches extends Component
      *
      * @param  array<string, mixed>  $option  Option.
      *
-     * @return array{value: string, label: string, color: string|null, image: string|null, count: int|null, meta: string|null, selected: bool, disabled: bool, reason: string|null}
+     * @return array{value: string, label: string, color: string|null, image: string|null, count: int|null, meta: string|null, selected: bool, disabled: bool, soldOut: bool, reason: string|null}
      */
     private static function normalize( array $option ): array
     {
@@ -139,6 +141,7 @@ class Swatches extends Component
             'meta'     => is_string( $option['meta'] ?? null ) && '' !== trim( $option['meta'] ) ? $option['meta'] : null,
             'selected' => (bool) ( $option['selected'] ?? false ),
             'disabled' => (bool) ( $option['disabled'] ?? false ),
+            'soldOut'  => (bool) ( $option['soldOut'] ?? false ),
             'reason'   => is_string( $option['reason'] ?? null ) && '' !== $option['reason'] ? $option['reason'] : null,
         ];
     }

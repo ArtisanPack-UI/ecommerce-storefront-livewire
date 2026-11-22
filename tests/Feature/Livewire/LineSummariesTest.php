@@ -107,3 +107,15 @@ it( 'reads a row without a label as its value and drops rows without a value', f
 
     expect( LineSummaries::forOrderItem( $item ) )->toBe( [ 'Red', 'Size: M' ] );
 } );
+
+it( 'keeps a value of 0 in an order line\'s summary', function (): void {
+    if ( ! LineSummaries::engineDescribes() ) {
+        $this->markTestSkipped( 'Needs engine 1.4 (LineOptionDescriber).' );
+    }
+
+    [ , $customer ] = shopper();
+    $order          = orderWithSnapshot( $customer, [ 'option_lines' => [ [ 'label' => '', 'value' => '0' ], [ 'label' => 'Extra copies', 'value' => '0' ] ] ] );
+
+    Livewire::test( OrderShow::class, [ 'order' => $order->id ] )
+        ->assertSeeHtml( 'data-order-line-options>0 · Extra copies: 0</span>' );
+} );

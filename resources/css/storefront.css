@@ -752,6 +752,11 @@
         background: var(--apui-surface-default);
     }
 
+    /* A sold-out value the shopper can still pick, to sign up for it. */
+    .ec-swatch[data-sold-out] .ec-swatch__label {
+        text-decoration: line-through;
+    }
+
     .ec-swatch__dot {
         flex: none;
         box-sizing: border-box;

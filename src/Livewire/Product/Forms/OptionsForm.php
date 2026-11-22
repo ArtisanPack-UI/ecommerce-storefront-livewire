@@ -455,15 +455,15 @@ class OptionsForm extends PurchaseForm
         $blocked = [];
 
         foreach ( $visible as $field ) {
-            $value = data_get( $this->options, $field['name'] );
+            $value = self::conditionValue( data_get( $this->options, $field['name'] ) );
 
-            if ( ! is_scalar( $value ) || ! isset( $field['disables'][ (string) $value ] ) ) {
+            if ( null === $value || ! isset( $field['disables'][ $value ] ) ) {
                 continue;
             }
 
-            $chosen = collect( $field['options'] )->firstWhere( 'value', (string) $value )['label'] ?? (string) $value;
+            $chosen = collect( $field['options'] )->firstWhere( 'value', $value )['label'] ?? ( 'checkbox' === $field['type'] ? $field['label'] : $value );
 
-            foreach ( $field['disables'][ (string) $value ] as $target => $values ) {
+            foreach ( $field['disables'][ $value ] as $target => $values ) {
                 foreach ( $values as $disabled ) {
                     $blocked[ $target ][ $disabled ] ??= __( 'Not available with :choice', [ 'choice' => $chosen ] );
                 }
@@ -498,12 +498,12 @@ class OptionsForm extends PurchaseForm
     protected function conditionsHold( array $field ): bool
     {
         foreach ( $field['visibleWhen'] as $condition ) {
-            $value = data_get( $this->options, $condition['field'] );
-            $value = match ( true ) {
-                true === $value                               => [ '1', 'true' ],
-                false === $value                              => [ '0', 'false' ],
-                is_scalar( $value ) && '' !== (string) $value => [ (string) $value ],
-                default                                       => [],
+            $value = self::conditionValue( data_get( $this->options, $condition['field'] ) );
+            $value = match ( $value ) {
+                null    => [],
+                '1'     => [ '1', 'true' ],
+                '0'     => [ '0', 'false' ],
+                default => [ $value ],
             };
 
             if ( [] === array_intersect( $value, $condition['in'] ) ) {
@@ -512,6 +512,27 @@ class OptionsForm extends PurchaseForm
         }
 
         return true;
+    }
+
+    /**
+     * A field's value as the string the schema keys conditions and
+     * `meta.disables` by: a checkbox is `1` / `0`, other scalars their
+     * string. Null for no answer (null, an empty string, or a list).
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $value  The value.
+     *
+     * @return string|null
+     */
+    protected static function conditionValue( mixed $value ): ?string
+    {
+        return match ( true ) {
+            true === $value                               => '1',
+            false === $value                              => '0',
+            is_scalar( $value ) && '' !== (string) $value => (string) $value,
+            default                                       => null,
+        };
     }
 
     /**

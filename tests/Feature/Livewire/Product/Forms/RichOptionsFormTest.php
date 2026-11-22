@@ -193,3 +193,37 @@ it( 'keeps an option image\'s srcset only when every candidate is a safe URL', f
         ->and( ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::safeSrcset( 'https://example.com/a.jpg onerror=x' ) )->toBeNull()
         ->and( ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages::safeSrcset( '' ) )->toBeNull();
 } );
+
+it( 'keys a checkbox\'s meta.disables by 1 and 0', function (): void {
+    $value = new ReflectionMethod( OptionsForm::class, 'conditionValue' );
+
+    expect( $value->invoke( null, true ) )->toBe( '1' )
+        ->and( $value->invoke( null, false ) )->toBe( '0' )
+        ->and( $value->invoke( null, 'oak' ) )->toBe( 'oak' )
+        ->and( $value->invoke( null, '' ) )->toBeNull()
+        ->and( $value->invoke( null, [ 'x' ] ) )->toBeNull();
+
+    $component = Livewire::test( OptionsForm::class, [ 'product' => $this->print ] )
+        ->set( 'options.paper', 'rag' )
+        ->set( 'options.gift', true )
+        ->assertSet( 'options.paper', null )
+        ->assertSee( 'Not available with This is a gift' );
+
+    expect( $component->html() )->toMatch( '/value="rag"[^>]*\sdisabled/' );
+
+    $component->set( 'options.gift', false );
+
+    expect( $component->html() )->not->toMatch( '/value="rag"[^>]*\sdisabled/' );
+} );
+
+it( 'refreshes on a quantity field too, so a field that depends on it shows', function (): void {
+    $html = Livewire::test( OptionsForm::class, [ 'product' => $this->print ] )
+        ->assertDontSeeHtml( 'data-option-field="copy_note"' )
+        ->html();
+
+    expect( $html )->toMatch( '/data-option-field="copies"\s+x-on:change="\$wire\.\$refresh\(\)"/' );
+
+    Livewire::test( OptionsForm::class, [ 'product' => $this->print ] )
+        ->set( 'options.copies', 2 )
+        ->assertSeeHtml( 'data-option-field="copy_note"' );
+} );

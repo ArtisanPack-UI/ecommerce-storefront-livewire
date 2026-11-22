@@ -43,7 +43,7 @@
             class="ec-option-field"
             wire:key="option-field-{{ $field['id'] }}"
             data-option-field="{{ $field['name'] }}"
-            @if ( $reactive && 'info' !== $field['type'] && 'quantity' !== $field['type'] ) x-on:change="$wire.$refresh()" @endif
+            @if ( $reactive && 'info' !== $field['type'] ) x-on:change="$wire.$refresh()" @endif
             @if ( null !== $ecommerceMaxLength )
                 x-data="{
                     length: {{ $ecommerceLength }},
