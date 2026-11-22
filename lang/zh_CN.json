@@ -670,6 +670,7 @@
     "The products the shopper looked at last.": "购物者最近浏览的商品。",
     "The shop page, and category and tag pages without their own template.": "商店页面，以及没有专属模板的分类和标签页面。",
     "The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells.": "购物者的购物车：商品、优惠券、运费估算、合计和交叉销售商品。",
+    "Then build your assets (or run the development server while you work):": "然后构建您的资源（或在开发时运行开发服务器）：",
     "There are no products here yet. Check back soon.": "这里还没有商品。请稍后再来查看。",
     "There are no products to show yet. Add a product, or set a product ID in the block settings.": "暂无可显示的商品。请添加商品，或在区块设置中指定商品 ID。",
     "There is :count problem to fix:|There are :count problems to fix:": "有 :count 处问题需要修正：",

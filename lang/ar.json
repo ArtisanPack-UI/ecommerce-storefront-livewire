@@ -670,6 +670,7 @@
     "The products the shopper looked at last.": "آخر المنتجات التي شاهدها المتسوّق.",
     "The shop page, and category and tag pages without their own template.": "صفحة المتجر، وصفحات التصنيفات والوسوم التي ليس لها قالب خاص.",
     "The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells.": "سلة المتسوّق: العناصر، والقسيمة، وتقدير الشحن، والإجماليات، ومنتجات البيع التبادلي.",
+    "Then build your assets (or run the development server while you work):": "ثم ابنِ ملفات الأصول (أو شغّل خادم التطوير أثناء العمل):",
     "There are no products here yet. Check back soon.": "لا توجد منتجات هنا بعد. عُد قريبًا.",
     "There are no products to show yet. Add a product, or set a product ID in the block settings.": "لا توجد منتجات لعرضها بعد. أضف منتجًا، أو حدّد معرّف منتج في إعدادات المكوّن.",
     "There is :count problem to fix:|There are :count problems to fix:": "لا توجد مشكلات يلزم إصلاحها:|توجد مشكلة واحدة يلزم إصلاحها:|توجد مشكلتان يلزم إصلاحهما:|توجد :count مشكلات يلزم إصلاحها:|توجد :count مشكلة يلزم إصلاحها:|توجد :count مشكلة يلزم إصلاحها:",

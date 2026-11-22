@@ -55,7 +55,7 @@ Since 2.0 the library's selects are named by a `<label>` and its breadcrumbs kee
 
 Since 2.0 the library links field errors and hints to their controls and sets `aria-invalid` itself, so `<x-artisanpack-ec-field>` no longer has to work around it. Use it for your own fields anyway: it feeds the storefront's error summaries (see [Blade Components](extending/blade-components.md)).
 
-The issue is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it sits inside that selector, so nothing else can regress unnoticed. The drawer exclusion covers only the drawer's panel element (`[data-scope="drawer"][data-part="content"]`) and the `aria-allowed-role` rule, not everything inside a drawer. An exclusion is removed when the library fixes it.
+The issue is excluded from the automated check by axe rule and selector in `Accessibility::LIBRARY_ISSUES`; a node is ignored only when it matches that selector or sits inside an element that does. The drawer exclusion applies only to the `aria-allowed-role` rule, but it covers the drawer's panel (`[data-scope="drawer"][data-part="content"]`) and everything inside it, so an `aria-allowed-role` failure in the cart, filters, or menu drawer's content is ignored too. Every other rule is still checked inside drawers. An exclusion is removed when the library fixes it.
 
 ## What your theme needs
 

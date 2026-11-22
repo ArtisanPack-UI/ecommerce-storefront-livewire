@@ -670,6 +670,7 @@
     "The products the shopper looked at last.": "Les derniers produits consultés par le client.",
     "The shop page, and category and tag pages without their own template.": "La page de la boutique, et les pages de catégorie et d'étiquette sans modèle propre.",
     "The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells.": "Le panier du client : articles, code promo, estimation de livraison, totaux et ventes croisées.",
+    "Then build your assets (or run the development server while you work):": "Compilez ensuite vos ressources (ou lancez le serveur de développement pendant que vous travaillez) :",
     "There are no products here yet. Check back soon.": "Il n'y a pas encore de produits ici. Revenez bientôt.",
     "There are no products to show yet. Add a product, or set a product ID in the block settings.": "Il n'y a pas encore de produit à afficher. Ajoutez un produit ou indiquez un ID de produit dans les réglages du bloc.",
     "There is :count problem to fix:|There are :count problems to fix:": "Il y a :count problème à corriger :|Il y a :count problèmes à corriger :",

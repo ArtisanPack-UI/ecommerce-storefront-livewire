@@ -98,6 +98,16 @@ class InstallCommand extends Command
     ];
 
     /**
+     * The commands that build the host's assets once the lines are added:
+     * the production build, then the development server alternative.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const BUILD_COMMANDS = [ 'npm run build', 'npm run dev' ];
+
+    /**
      * The full front-end setup guide.
      *
      * @since 2.0.0
@@ -210,7 +220,7 @@ class InstallCommand extends Command
 
     /**
      * Prints the design-system setup: the npm packages, the stylesheet lines,
-     * the behavior engine, and the daisyUI reminder.
+     * the behavior engine, the build step, and the daisyUI reminder.
      *
      * @since 1.0.0
      *
@@ -245,6 +255,13 @@ class InstallCommand extends Command
 
         foreach ( self::JS_GLOBALS as $line ) {
             $this->line( '    ' . $line );
+        }
+
+        $this->newLine();
+        $this->components->info( __( 'Then build your assets (or run the development server while you work):' ) );
+
+        foreach ( self::BUILD_COMMANDS as $command ) {
+            $this->line( '    ' . $command );
         }
 
         $this->newLine();

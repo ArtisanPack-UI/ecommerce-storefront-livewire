@@ -72,11 +72,12 @@ it( 'prints the design-system setup', function (): void {
     $command = $this->artisan( 'ecommerce-storefront:install' )
         ->expectsOutputToContain( 'npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1' );
 
-    foreach ( [ ...InstallCommand::STYLESHEET_IMPORTS, ...InstallCommand::TAILWIND_SOURCES, ...InstallCommand::COMPONENT_LIBRARY_SOURCES, ...InstallCommand::JS_GLOBALS ] as $line ) {
+    foreach ( [ ...InstallCommand::STYLESHEET_IMPORTS, ...InstallCommand::TAILWIND_SOURCES, ...InstallCommand::COMPONENT_LIBRARY_SOURCES, ...InstallCommand::JS_GLOBALS, ...InstallCommand::BUILD_COMMANDS ] as $line ) {
         $command->expectsOutputToContain( $line );
     }
 
     $command->expectsOutputToContain( 'Keep the @layer line first in the file' )
+        ->expectsOutputToContain( 'Then build your assets' )
         ->expectsOutputToContain( 'Remove daisyUI' )
         ->expectsOutputToContain( InstallCommand::FRONT_END_DOCS )
         ->assertSuccessful();

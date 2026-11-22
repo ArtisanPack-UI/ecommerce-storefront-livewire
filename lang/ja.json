@@ -670,6 +670,7 @@
     "The products the shopper looked at last.": "買い物客が最近見た商品。",
     "The shop page, and category and tag pages without their own template.": "ショップページ、および専用テンプレートのないカテゴリーページとタグページ。",
     "The shopper's cart: items, coupon, shipping estimate, totals, and cross-sells.": "買い物客のカート: 商品、クーポン、送料の見積もり、合計、クロスセル。",
+    "Then build your assets (or run the development server while you work):": "次にアセットをビルドしてください(作業中は開発サーバーを起動しても構いません):",
     "There are no products here yet. Check back soon.": "まだ商品がありません。またのちほどご確認ください。",
     "There are no products to show yet. Add a product, or set a product ID in the block settings.": "表示する商品がまだありません。商品を追加するか、ブロック設定で商品IDを指定してください。",
     "There is :count problem to fix:|There are :count problems to fix:": "修正が必要な問題が:count件あります:",

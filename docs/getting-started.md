@@ -17,7 +17,7 @@ php artisan ecommerce-storefront:install
 The service provider is auto-discovered. The install command:
 
 - publishes `config/artisanpack/ecommerce-storefront-livewire.php`;
-- prints the front-end setup (the design system's npm packages, stylesheet lines, and behavior engine) and the layout snippets;
+- prints the front-end setup (the design system's npm packages, stylesheet lines, behavior engine, and build step) and the layout snippets;
 - warns when your `login` or `register` route is missing, when no payment gateway is registered or configured, and when `artisanpack-ui/visual-editor` is installed but storefront templates are off.
 
 Nothing it checks stops the install. See [Installation](installation.md).
