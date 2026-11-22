@@ -21,8 +21,12 @@ use Illuminate\View\Component;
  *
  * The design-system EmptyState (#84): an icon tile, a title, one line of
  * help, and the actions passed in the slot (at most two: one solid primary
- * when there is a clear next step, else outline neutral). It is a `status`
- * region, so a screen reader announces it when filtering empties a listing.
+ * when there is a clear next step, else outline neutral). With `live` it is
+ * a `status` region, for the few places where it appears after a shopper's
+ * action and no other live region reports the change (the cart after the
+ * last line is removed, a filtered order list that comes back empty). It is
+ * off by default: a static empty state, or one beside a results count that
+ * is already a live region, would only add a long, doubled announcement.
  *
  * `card` puts it in a Card, for when it replaces a list; `size="sm"` is
  * the compact form for inside other cards. The admin ships the same
@@ -47,7 +51,7 @@ class EmptyState extends Component
 
     /**
      * @since 1.0.0
-     * @since 2.0.0 Added `size`, `headingLevel` and `card`; the default icon is `inbox`.
+     * @since 2.0.0 Added `size`, `headingLevel`, `card` and `live`; the default icon is `inbox`.
      *
      * @param  string       $title         The headline.
      * @param  string|null  $description   The supporting text.
@@ -55,6 +59,7 @@ class EmptyState extends Component
      * @param  string       $size          `md`, or `sm` inside another card.
      * @param  int          $headingLevel  The title's heading level (2 to 6).
      * @param  bool         $card          Draw it in a Card, for when it replaces a list.
+     * @param  bool         $live          Make it a polite `status` live region.
      */
     public function __construct(
         public string $title,
@@ -63,6 +68,7 @@ class EmptyState extends Component
         public string $size = 'md',
         public int $headingLevel = 2,
         public bool $card = false,
+        public bool $live = false,
     ) {
         $this->size = in_array( $this->size, self::SIZES, true ) ? $this->size : 'md';
     }

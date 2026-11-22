@@ -23,8 +23,11 @@ final class Accessibility
      * @var array<int, array{0: string, 1: string}>
      */
     public const LIBRARY_ISSUES = [
-        // livewire-ui-components 3.0: the Drawer's panel is an <aside> with
-        // role="dialog", a role axe doesn't allow on <aside>.
+        // livewire-ui-components 3.0.0: the Drawer's panel is an <aside> with
+        // role="dialog", a role axe doesn't allow on <aside>. Still in 3.0.0
+        // (re-checked for 2.0); tracked upstream in
+        // https://github.com/ArtisanPack-UI/livewire-ui-components/issues/164.
+        // Remove this entry once the panel is a <div>.
         [ 'aria-allowed-role', '[data-scope="drawer"][data-part="content"]' ],
     ];
 
