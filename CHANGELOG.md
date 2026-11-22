@@ -6,13 +6,14 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-11-22
 
 2.0 rebuilds every screen, block, and Blade component on the ArtisanPack UI
 design system through `livewire-ui-components` 3.0. Routes, route names,
 Livewire component names, config keys, and hooks are unchanged unless listed
 below. It still runs on engine `^1.1`; engine 1.4 or later turns on rich
-product options and "Notify me".
+product options, "Notify me", line summaries, and the engine's hold for
+stranded payments.
 
 > **Breaking:** daisyUI is gone, published views and translations from 1.x
 > must be republished, and some Blade component props changed. Read

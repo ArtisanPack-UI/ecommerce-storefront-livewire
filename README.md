@@ -21,7 +21,7 @@ The storefront calls the engine's services in-process and owns no tables. Its ro
 - PHP 8.3+ with the `intl` extension
 - Laravel 12 or 13
 - Livewire 3.6+ or 4
-- `artisanpack-ui/ecommerce` 1.1+
+- `artisanpack-ui/ecommerce` 1.1+ (1.4+ for rich options, "Notify me", line summaries, and stranded-payment holds)
 - `artisanpack-ui/livewire-ui-components` 3.0+
 - Tailwind CSS 4 and the ArtisanPack UI design system (`@artisanpack-ui/css` and `@artisanpack-ui/behavior`) in your Vite build
 

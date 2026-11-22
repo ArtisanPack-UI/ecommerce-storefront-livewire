@@ -124,10 +124,9 @@ jobs:
     name: Test (engine ${{ matrix.engine-label }}, Livewire ${{ matrix.livewire }})
 
     # Rich options, notify-me and line summaries turn on only with engine
-    # 1.4+, so the main matrix (released engine) skips their tests. This job
-    # runs them, and fails on any skipped test so a gated path can't go
-    # silently untested. Switch ENGINE to a released constraint (e.g. ^1.4)
-    # once that engine version is tagged.
+    # 1.4+. composer.json still allows ^1.1 (the lowest leg covers that), so
+    # this job forces ^1.4 and fails on any skipped test: a gated path can't
+    # go silently untested if the highest legs ever resolve an older engine.
     strategy:
       fail-fast: false
       matrix:
@@ -137,7 +136,7 @@ jobs:
             livewire-constraint: '^3.6'
           - livewire: '4'
             livewire-constraint: '^4.0'
-        engine-label: ['1.4 (release/1.x)']
+        engine-label: ['^1.4']
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -154,10 +153,8 @@ jobs:
       - name: Install dependencies
         env:
           LIVEWIRE: ${{ matrix.livewire-constraint }}
-          ENGINE: 'dev-release/1.x as 1.4.0'
+          ENGINE: '^1.4'
         run: |
-          composer config minimum-stability dev
-          composer config prefer-stable true
           composer require "artisanpack-ui/ecommerce:${ENGINE}" "livewire/livewire:${LIVEWIRE}" --no-interaction --no-update
           composer update --no-interaction --prefer-dist --with-all-dependencies
 
@@ -265,12 +262,11 @@ jobs:
           - livewire: '4'
             livewire-constraint: '^4.0'
           # Engine 1.4 turns on the rich options and notify-me journeys,
-          # which skip against the released engine. Switch to a released
-          # constraint (e.g. ^1.4) once that engine version is tagged.
+          # which skip on an older engine; force it so they always run.
           - livewire: '4'
             livewire-constraint: '^4.0'
-            engine: 'next'
-            engine-constraint: 'dev-release/1.x as 1.4.0'
+            engine: '1.4'
+            engine-constraint: '^1.4'
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -309,8 +305,6 @@ jobs:
           composer require "livewire/livewire:${LIVEWIRE}" --no-interaction --no-update
 
           if [ -n "$ENGINE" ]; then
-            composer config minimum-stability dev
-            composer config prefer-stable true
             composer require "artisanpack-ui/ecommerce:${ENGINE}" --no-interaction --no-update
           fi
 

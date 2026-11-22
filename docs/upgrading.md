@@ -15,7 +15,7 @@ menu_order: 90
 composer require artisanpack-ui/ecommerce-storefront-livewire:^2.0
 ```
 
-This pulls in `artisanpack-ui/livewire-ui-components` `^3.0`. The engine requirement is still `^1.1`. Engine 1.4 or later adds rich product options and the "Notify me" back-in-stock signup, which the storefront turns on when it finds them.
+This pulls in `artisanpack-ui/livewire-ui-components` `^3.0`. The engine requirement is still `^1.1`, but update the engine to 1.4 or later (`composer update artisanpack-ui/ecommerce`) to get rich product options, the "Notify me" back-in-stock signup, line option summaries, and the engine's hold for stranded payments, which the storefront turns on when it finds them.
 
 ### Replace the front-end build
 

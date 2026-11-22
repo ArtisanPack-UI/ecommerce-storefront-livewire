@@ -15,7 +15,7 @@ Composer installs these ArtisanPack UI packages with it:
 
 | Package | Version | Why |
 | --- | --- | --- |
-| `artisanpack-ui/ecommerce` | `^1.1` | The engine: catalog queries, carts, checkout, orders, payment gateways, settings |
+| `artisanpack-ui/ecommerce` | `^1.1` (1.4+ recommended) | The engine: catalog queries, carts, checkout, orders, payment gateways, settings. Engine 1.4 or later adds rich product options, "Notify me", line option summaries, and holds for stranded payments |
 | `artisanpack-ui/livewire-ui-components` | `^3.0` | The design-system components: every input, button, card, drawer, dialog, and toast |
 | `artisanpack-ui/core` | `^1.0` | Shared helpers |
 | `artisanpack-ui/hooks` | `^1.2` | The filters used for [extension](../extending.md) |
