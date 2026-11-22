@@ -1,5 +1,6 @@
 ---
 title: Embedding Components
+menu_order: 10
 ---
 
 # Embedding Components
@@ -31,8 +32,8 @@ All names start with `artisanpack-ecommerce-storefront-`. Props marked *locked* 
 | `artisanpack-ecommerce-storefront-catalog` | `category` (id or slug), `tag` (id or slug), `featured` (bool), `ids` (array of product ids), `heading` (string or null), `filterable` (bool, default `true`); all locked | Product listing with filters, sorting, and pages. Sorting, page size, and filters are kept in the query string. |
 | `artisanpack-ecommerce-storefront-category-show` | `category` (a `ProductCategory`) | A category page: breadcrumbs, heading, description, and its products |
 | `artisanpack-ecommerce-storefront-tag-show` | `tag` (a `ProductTag`) | A tag page |
-| `artisanpack-ecommerce-storefront-product-grid` | `source`, `category`, `tag`, `ids`, `sort`, `limit`, `columns`, `showPrice`, `showRating`, `showAddToCart`, `heading`; all locked | A fixed grid of products, as the Product Grid block. See [Blocks](Visual-Editor-Blocks) for the values. |
-| `artisanpack-ecommerce-storefront-search` | none (reads `q` from the query string) | Search results |
+| `artisanpack-ecommerce-storefront-product-grid` | `source`, `category`, `tag`, `ids`, `sort`, `limit`, `columns`, `showPrice`, `showRating`, `showAddToCart`, `heading`; all locked | A fixed grid of products, as the Product Grid block. See [Blocks](../visual-editor/blocks.md) for the values. |
+| `artisanpack-ecommerce-storefront-search` | `show-title` (optional; "Results for …" or "Search" as an h1); reads `q` from the query string | Search results |
 | `artisanpack-ecommerce-storefront-search-box` | `inputId` (default `ecommerce-header-search`) | The header search box with live suggestions. Also available as `<x-artisanpack-ec-search-box>`. |
 
 ### Product
@@ -50,12 +51,12 @@ The purchase forms (`…-product-form-simple`, `-variable`, `-grouped`, `-bundle
 
 | Component | Props | Shows |
 | --- | --- | --- |
-| `artisanpack-ecommerce-storefront-cart` | `showCrossSells` (bool), `showCoupon` (bool) | The cart page |
+| `artisanpack-ecommerce-storefront-cart` | `showCrossSells` (bool), `showCoupon` (bool), `show-title` (optional; "Your cart" as an h1, with the item count) | The cart page |
 | `artisanpack-ecommerce-storefront-cart-drawer` | none | The slide-out cart. Part of the global partial. |
 | `artisanpack-ecommerce-storefront-cart-button` | none | The header cart button |
 | `artisanpack-ecommerce-storefront-cart-merge-prompt` | none | The prompt after sign-in when the guest cart and the account cart both have items. Part of the global partial. |
 | `artisanpack-ecommerce-storefront-currency-switcher` | none | The currency menu |
-| `artisanpack-ecommerce-storefront-checkout` | `layoutOverride` (`''`, `multi_step`, or `single_page`) | Checkout. Empty uses the store's layout setting. |
+| `artisanpack-ecommerce-storefront-checkout` | `layoutOverride` (`''`, `multi_step`, or `single_page`), `show-title` (optional; "Checkout" as an h1) | Checkout. Empty uses the store's layout setting. |
 
 ### Orders and account
 
@@ -83,9 +84,9 @@ The cart drawer, the toast container, and the cart merge prompt come from one pa
 
 It renders once per response even if it is included twice. Without it, "Add to cart" has no drawer to open and no toasts appear.
 
-Your layout also needs Livewire's styles and scripts, and your Tailwind build must scan the storefront's views. See [Front-End Setup](Installation-Front-End) and [Layouts](Installation-Layouts).
+Your layout also needs Livewire's styles and scripts, and your Tailwind build must scan the storefront's views. See [Front-End Setup](../installation/front-end.md) and [Layouts](../installation/layouts.md).
 
-The SEO tags and the visual-editor context are set by the storefront's own page controller. On your own routes, set what you need yourself: describe the page through `ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo` and include `ecommerce-storefront::partials.seo` in your `<head>` (see [SEO](Seo)), and set `StorefrontContext` if the page renders commerce blocks (see [Blocks](Visual-Editor-Blocks)).
+The SEO tags and the visual-editor context are set by the storefront's own page controller. On your own routes, set what you need yourself: describe the page through `ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo` and include `ecommerce-storefront::partials.seo` in your `<head>` (see [SEO](../seo.md)), and set `StorefrontContext` if the page renders commerce blocks (see [Blocks](../visual-editor/blocks.md)).
 
 ## Links when the routes are off
 

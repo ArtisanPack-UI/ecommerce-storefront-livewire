@@ -1,12 +1,12 @@
 # ArtisanPack UI Ecommerce Storefront (Livewire)
 
-The customer-facing storefront for the [ArtisanPack UI ecommerce engine](https://github.com/ArtisanPack-UI/ecommerce): catalog, product pages, cart, checkout, customer accounts, guest order lookup, and search, built with Livewire on [`livewire-ui-components`](https://github.com/ArtisanPack-UI/livewire-ui-components). With [`visual-editor`](https://github.com/ArtisanPack-UI/visual-editor) installed it also ships commerce blocks and editable product and category templates.
+The customer-facing storefront for the [ArtisanPack UI ecommerce engine](https://github.com/ArtisanPack-UI/ecommerce): catalog, product pages, cart, checkout, customer accounts, guest order lookup, and search, built with Livewire on the ArtisanPack UI design system through [`livewire-ui-components`](https://github.com/ArtisanPack-UI/livewire-ui-components). With [`visual-editor`](https://github.com/ArtisanPack-UI/visual-editor) installed it also ships commerce blocks and editable product and category templates.
 
 The storefront calls the engine's services in-process and owns no tables. Its routes work right after install, and every screen is also a Livewire component you can embed in your own pages.
 
 ## Features
 
-- **Catalog and product pages**: Filters with facet counts, sorting, and pagination kept in the query string; category and tag pages; purchase forms for simple, variable, grouped, bundled, and digital products; reviews; related products, upsells, and cross-sells.
+- **Catalog and product pages**: Filters with facet counts, sorting, and pagination kept in the query string; category and tag pages; purchase forms for simple, variable, grouped, bundled, and digital products, with rich options and a "Notify me" signup when sold out; reviews; related products, upsells, and cross-sells.
 - **Cart**: A cart page with coupons and a shipping estimate, a header cart button, and a slide-out cart drawer.
 - **Checkout**: A multi-step wizard or a single page, chosen by the store owner. Guest checkout rules, optional account creation, and idempotent order placement.
 - **Payments**: A Stripe Payment Element driver, a redirect driver, and a registry for other gateways' payment UIs. Card data never enters Livewire state.
@@ -22,7 +22,8 @@ The storefront calls the engine's services in-process and owns no tables. Its ro
 - Laravel 12 or 13
 - Livewire 3.6+ or 4
 - `artisanpack-ui/ecommerce` 1.1+
-- `artisanpack-ui/livewire-ui-components` 2.1+, with Tailwind CSS and daisyUI in the host app
+- `artisanpack-ui/livewire-ui-components` 3.0+
+- Tailwind CSS 4 and the ArtisanPack UI design system (`@artisanpack-ui/css` and `@artisanpack-ui/behavior`) in your Vite build
 
 ## Installation
 
@@ -33,7 +34,34 @@ php artisan ecommerce-storefront:install
 
 The service provider is auto-discovered and registers the package with the engine's satellite registry. The install command publishes the config, prints the Tailwind `@source` lines and the layout snippet, and warns when it finds no sign-in or registration routes or no configured payment gateway.
 
-Add the `@source` lines to your stylesheet, then open `/shop`. For a demo store:
+Then set up the front end. Install the design system:
+
+```bash
+npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
+```
+
+Add it and the printed `@source` lines to your main stylesheet, with the `@layer` line first:
+
+```css
+@layer theme, base, apui, components, utilities;
+@import 'tailwindcss';
+@import '@artisanpack-ui/css';
+
+@source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/resources/views/**/*.blade.php";
+@source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/src/**/*.php";
+@source "../../vendor/artisanpack-ui/livewire-ui-components/resources/views/**/*.php";
+@source "../../vendor/artisanpack-ui/livewire-ui-components/src/**/*.php";
+```
+
+Register the behavior engine in `resources/js/app.js`:
+
+```js
+import apuiBehavior from '@artisanpack-ui/behavior/alpine';
+
+document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
+```
+
+Run `npm run build`, then open `/shop`. See [Front-End Setup](docs/installation/front-end.md). For a demo store:
 
 ```bash
 php artisan ecommerce:seed-demo
@@ -54,15 +82,17 @@ See [Layouts](docs/installation/layouts.md) for the full layout contract and for
 - [Usage](docs/usage.md): [screens](docs/usage/screens.md)
 - [Checkout](docs/checkout.md): [layouts](docs/checkout/layouts.md), [guest checkout](docs/checkout/guest-checkout.md), [account creation](docs/checkout/account-creation.md), [payment drivers](docs/checkout/payment-drivers.md)
 - [Visual Editor](docs/visual-editor.md): [blocks](docs/visual-editor/blocks.md), [templates and patterns](docs/visual-editor/templates.md)
-- [Extending](docs/extending.md): [embedding components](docs/extending/embedding-components.md), [Blade components](docs/extending/blade-components.md), [hooks reference](docs/extending/hooks-reference.md)
+- [Extending](docs/extending.md): [embedding components](docs/extending/embedding-components.md), [Blade components](docs/extending/blade-components.md)
 - [Accessibility](docs/accessibility.md), [Localization](docs/localization.md), [SEO](docs/seo.md)
-- [Advanced](docs/advanced.md): [Artisan commands](docs/advanced/artisan-commands.md), [performance](docs/advanced/performance.md), [browser tests](docs/advanced/browser-tests.md)
+- [Advanced](docs/advanced.md): [performance](docs/advanced/performance.md)
+- [Reference](docs/reference.md): [hooks](docs/reference/hooks.md), [Artisan commands](docs/reference/commands.md)
+- [Upgrading](docs/upgrading.md), [FAQ](docs/faq.md), [Troubleshooting](docs/troubleshooting.md)
 
 ## Testing
 
 ```bash
 composer test           # Unit and Feature suites
-composer test:browser   # Browser suite; run npm ci and npx playwright install chromium first
+composer test:browser   # Browser suite; see CONTRIBUTING.md
 composer lint
 ```
 

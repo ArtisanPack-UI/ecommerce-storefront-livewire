@@ -1,5 +1,6 @@
 ---
 title: Blade Components
+menu_order: 20
 ---
 
 # Blade Components
@@ -62,7 +63,7 @@ The storefront composes its screens from a few store-specific Blade components b
 <x-artisanpack-ec-category-grid parent="clothing" :limit="6" :columns="3" :heading="__( 'Shop clothing' )" />
 ```
 
-The card's "Add to cart" button calls the parent Livewire component's `quickAdd()` (the `ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart` trait). Outside such a component, set `:quick-add="false"`. Eager-load `ProductCard::relations()` when rendering many cards (see [Performance](Advanced-Performance)). The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard` filter; see [Hooks Reference](Extending-Hooks-Reference).
+The card's "Add to cart" button calls the parent Livewire component's `quickAdd()` (the `ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\AddsToCart` trait). Outside such a component, set `:quick-add="false"`. Eager-load `ProductCard::relations()` when rendering many cards (see [Performance](../advanced/performance.md)). The card's data runs through the `ap.ecommerceStorefrontLivewire.catalog.productCard` filter; see [Hooks](../reference/hooks.md).
 
 The gallery switches images when it receives the browser event `ecommerce-gallery-show` with an image `url` and, when the gallery has one, its `scope`.
 

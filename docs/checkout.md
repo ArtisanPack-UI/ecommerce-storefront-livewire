@@ -1,5 +1,6 @@
 ---
-title: Checkout Overview
+title: Checkout
+menu_order: 40
 ---
 
 # Checkout
@@ -8,10 +9,10 @@ The checkout is one Livewire component, `<livewire:artisanpack-ecommerce-storefr
 
 ## In this section
 
-- [Checkout Layouts](Checkout-Layouts) - Multi-step or single page, the terms checkbox, and adding your own steps
-- [Guest Checkout](Checkout-Guest-Checkout) - The guest checkout policy, sign-in links, and cart merging
-- [Account Creation at Checkout](Checkout-Account-Creation) - The optional "create an account" and swapping the action that does it
-- [Payment Drivers](Checkout-Payment-Drivers) - How gateways render their payment UI, writing a driver, and testing with Stripe
+- [Checkout Layouts](checkout/layouts.md) - Multi-step or single page, the terms checkbox, and adding your own steps
+- [Guest Checkout](checkout/guest-checkout.md) - The guest checkout policy, sign-in links, and cart merging
+- [Account Creation at Checkout](checkout/account-creation.md) - The optional "create an account" and swapping the action that does it
+- [Payment Drivers](checkout/payment-drivers.md) - How gateways render their payment UI, writing a driver, and testing with Stripe
 
 ## Steps
 
@@ -23,7 +24,7 @@ The checkout is one Livewire component, `<livewire:artisanpack-ecommerce-storefr
 | Review | `review` | Checks the order, leaves an optional note (up to 2,000 characters), accepts the terms when a terms page is set, and optionally asks for an account. "Continue to payment" checks these and moves on. |
 | Payment | `payment` | Picks a gateway and pays through its payment driver. A single gateway is picked for them. Confirming the payment places the order. When nothing is due, a "Place order" button places it instead. |
 
-Satellites can add steps; see [Checkout Layouts](Checkout-Layouts#adding-a-step).
+Satellites can add steps; see [Checkout Layouts](checkout/layouts.md#adding-a-step).
 
 A shopper can open a step once the steps before it are done, judged from the cart and the engine's checkout state. Completed steps can be reopened until the payment is confirmed. On entry, checkout opens the furthest step the shopper can reach. The current step is in the query string (`?step=payment`), so browser back works.
 
@@ -38,7 +39,7 @@ When checkout opens (and whenever the cart changes in the cart drawer):
 - **Empty cart.** Back to the cart page with "Your cart is empty". Free lines a promotion added don't count.
 - **Lines that can't be bought.** Back to the cart page, which marks them, with "Some items can't be bought".
 - **Stock reservations.** The engine's `start()` holds the cart's stock for the engine's `checkout.reservation_ttl_minutes`. A line it had to reduce or remove is listed above the first step ("Only 2 of … are in stock, so we've changed the quantity in your cart."). If nothing is left, the shopper goes back to the cart.
-- **Guests.** The engine's `checkout.guest_checkout` setting decides whether a guest can continue. See [Guest Checkout](Checkout-Guest-Checkout).
+- **Guests.** The engine's `checkout.guest_checkout` setting decides whether a guest can continue. See [Guest Checkout](checkout/guest-checkout.md).
 
 Without the storefront's cart route (routes off), the reason shows in place of the checkout instead of redirecting.
 
@@ -46,10 +47,10 @@ Without the storefront's cart route (routes off), the reason shows in place of t
 
 Payment is the last step, so the shopper has already reviewed the order, left their note, accepted the terms, and asked for an account before they pay. Confirming the payment places the order.
 
-1. **Review.** "Continue to payment" checks the note length, the terms, and the account password (see [Account Creation at Checkout](Checkout-Account-Creation)). What the shopper reviewed is kept in the session for this cart, with the password encrypted and never sent back to the browser. The order is placed with it, even after a provider's redirect.
+1. **Review.** "Continue to payment" checks the note length, the terms, and the account password (see [Account Creation at Checkout](checkout/account-creation.md)). What the shopper reviewed is kept in the session for this cart, with the password encrypted and never sent back to the browser. The order is placed with it, even after a provider's redirect.
 2. **Payment session.** At the payment step, the chosen gateway creates (or reuses) a payment session through the engine's `createPaymentSession()`, with `return_url` set to `/shop/checkout/return`. The gateway's client config (`ClientPaymentConfig::for()`) names a driver, and the driver's Livewire component renders the payment UI. A gateway with no registered driver is hidden with "This payment method isn't available".
 3. **Action token.** When the payment step renders, it mints a one-time action token and passes it to the driver as its `token` prop. The order is placed under that token and the `ecommerce.checkout.finalize` rate limit, so a repeated confirmation, a double click, or a retried request places one order.
-4. **Driver confirms.** The shopper pays in the driver's UI. The driver reports `payment-confirmed` with the session reference and the token. The checkout checks the reference is the cart's session and asks the gateway whether it is confirmed (authorized, succeeded, or processing) for the cart's current total and currency. See [Payment Drivers](Checkout-Payment-Drivers).
+4. **Driver confirms.** The shopper pays in the driver's UI. The driver reports `payment-confirmed` with the session reference and the token. The checkout checks the reference is the cart's session and asks the gateway whether it is confirmed (authorized, succeeded, or processing) for the cart's current total and currency. See [Payment Drivers](checkout/payment-drivers.md).
 5. **Finalize.** Every step a satellite added is checked again, then `ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder` fires with the cart and context, and the engine's `finalize( $cart, $reference, $context )` places the order. The context holds the reviewed note (sanitized), IP address, and user agent.
 6. **Confirmation.** When the payment is captured, the account the shopper asked for is created and they are redirected to the confirmation page. Guests get a link signed with an order-view token. Without the storefront's routes, the checkout says the order is placed instead.
 

@@ -1,12 +1,13 @@
 ---
 title: Screens
+menu_order: 10
 ---
 
 # Screens
 
 Storefront paths are relative to `storefront.route_prefix` (`/shop` by default) and route names to `artisanpack.ecommerce.storefront.`, so `product` is `artisanpack.ecommerce.storefront.product`. Account paths are relative to `account.route_prefix` (`/account`) and route names to `artisanpack.ecommerce.account.`. Account routes run `account.middleware` (`web`, `auth` by default).
 
-Every page is a controller action in `Http\Controllers\StorefrontPageController` that renders a view in `resources/views/pages/` extending `storefront.layout`, with one Livewire component in it. Component names below drop the `artisanpack-ecommerce-storefront-` prefix, so `catalog` is `<livewire:artisanpack-ecommerce-storefront-catalog />`. To route the pages yourself, set `storefront.routes_enabled` to `false` and embed the components (see [Embedding Components](Extending-Embedding-Components)).
+Every page is a controller action in `Http\Controllers\StorefrontPageController` that renders a view in `resources/views/pages/` extending `storefront.layout`, with one Livewire component in it. Component names below drop the `artisanpack-ecommerce-storefront-` prefix, so `catalog` is `<livewire:artisanpack-ecommerce-storefront-catalog />`. To route the pages yourself, set `storefront.routes_enabled` to `false` and embed the components (see [Embedding Components](../extending/embedding-components.md)).
 
 ## Storefront
 
@@ -18,8 +19,8 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 | `/products/{product}` | `product` | `product-show` | The product page. |
 | `/search` | `search` | `search` | Search results for `?q=`. |
 | `/cart` | `cart` | `cart` | The cart page. |
-| `/checkout` | `checkout` | `checkout` | The checkout. See [Checkout](Checkout). |
-| `/checkout/return` | `checkout.return` | None (redirect) | Where a payment provider sends the shopper back. See [Checkout](Checkout#placing-the-order). |
+| `/checkout` | `checkout` | `checkout` | The checkout. See [Checkout](../checkout.md). |
+| `/checkout/return` | `checkout.return` | None (redirect) | Where a payment provider sends the shopper back. See [Checkout](../checkout.md#placing-the-order). |
 | `/orders/{order}/confirmation` | `confirmation` | `order-confirmation` | The order confirmation. |
 | `/order-lookup` | `lookup` | `order-lookup` | Guest order lookup by email and order number. |
 | `/order/{token}` | `order-view` | `account-order` | A guest's order, opened with a signed order-view token. Read-only. |
@@ -52,7 +53,7 @@ URL::temporarySignedRoute( 'artisanpack.ecommerce.account.downloads.file', now()
 
 ### Account navigation
 
-Every account page sits in `<x-artisanpack-ec-account-shell>`, whose menu lists the storefront's own pages (dashboard, orders, addresses, downloads, profile, and "Claim an order", which only shoppers who may claim see), then the entries satellites register with the engine's `AccountMenuRegistry` that the shopper may see, all sorted by `position`. The storefront's own entries use positions 10–60. The engine's core `ecommerce.account.*` entries (profile, orders, addresses, downloads, licence keys, notifications) are left out, since the storefront's own pages already cover them. See [Hooks Reference](Extending-Hooks-Reference#registries).
+Every account page sits in `<x-artisanpack-ec-account-shell>`, whose menu lists the storefront's own pages (dashboard, orders, addresses, downloads, profile, and "Claim an order", which only shoppers who may claim see), then the entries satellites register with the engine's `AccountMenuRegistry` that the shopper may see, all sorted by `position`. The storefront's own entries use positions 10–60. The engine's core `ecommerce.account.*` entries (profile, orders, addresses, downloads, licence keys, notifications) are left out, since the storefront's own pages already cover them. See [Hooks](../reference/hooks.md#registries).
 
 ## Catalog
 
@@ -153,7 +154,7 @@ Recently viewed (`recently-viewed`) shows the products the recently-viewed satel
 | `toast` | Shows an "Added to your cart" toast naming the product (and its variant), with a "View cart" button |
 | `none` | Only the cart count updates |
 
-**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](Checkout-Guest-Checkout).
+**Merge prompt** (`cart-merge-prompt`): when a shopper signs in with a guest cart in a different currency from their account cart, a modal asks them to keep the guest currency, switch to the account currency, or not merge. Same-currency carts are merged by the engine without asking. If the guest cart expired before the shopper chose, the prompt closes with "Your guest cart has expired." and the account cart is left unchanged. Switching to the account currency also makes it the shopper's display currency. See [Guest Checkout](../checkout/guest-checkout.md).
 
 ## Currency switcher
 
@@ -174,10 +175,10 @@ Prices are shown in the open cart's currency when there is one, so a shopper who
 | Dashboard | Latest orders, default shipping and billing addresses, download count, and links to the account pages and to the host's profile and password screens (`auth.profile_route`, `auth.password_route`). Prompts the shopper to claim unclaimed guest orders placed with their verified email. |
 | Orders | Newest first, with number, date, status, total, and item count: a table from 768px, a list below it. Filter by open, completed, or cancelled (`?status=`). If the orders can't load, "Try again" reloads them. |
 | Order | Number, date, status, lines, totals, addresses, payment method, shipments with tracking links, refunds, notes the store shared, and downloads. **Buy again** adds the lines that can still be bought, at today's prices, and says which couldn't be. |
-| Addresses | One card per address with its default badges. Add and edit in a dialog, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](Advanced#rate-limits)). |
+| Addresses | One card per address with its default badges. Add and edit in a dialog, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](../advanced.md#rate-limits)). |
 | Downloads | Each entitlement's file, version, downloads left, expiry, and order, with a download button (or a play button for streaming-only files), or an "Expired" or "No downloads left" badge. Licence keys with their product and tier, a state badge (valid until, expired, revoked), the key in a copy field, and the activation count. |
 | Profile | First and last name, phone, marketing consent, and notification preferences per channel. Order and account emails are always on. Marketing switches are locked off without consent, and withdrawing consent switches marketing off everywhere. Email and password link to the host's screens. |
-| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account, and a success alert names the order (or says how many) with a link to the order history. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](Installation-Configuration#customer-account-routes)). |
+| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account, and a success alert names the order (or says how many) with a link to the order history. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](../installation/configuration.md#customer-account-routes)). |
 
 A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save.
 
