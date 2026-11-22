@@ -102,6 +102,7 @@ class Downloads extends Component
         if ( null !== $customer ) {
             try {
                 $downloads = app( DigitalDownloadService::class )->forCustomer( $customer )
+                    ->with( 'orderItem.order' )
                     ->orderByDesc( 'id' )
                     ->paginate( self::PER_PAGE, pageName: 'downloads' )
                     ->through( fn ( DigitalDownload $download ): array => $this->downloadRow( $download ) );
@@ -135,7 +136,7 @@ class Downloads extends Component
      *
      * @param  DigitalDownload  $download  The entitlement, with its file and order line.
      *
-     * @return array{id: int, product: string, file: string, version: string|null, remaining: int|null, expires: string|null, state: string, streaming: bool, url: string|null}
+     * @return array{id: int, product: string, file: string, version: string|null, order: string|null, remaining: int|null, expires: string|null, state: string, streaming: bool, url: string|null}
      */
     protected function downloadRow( DigitalDownload $download ): array
     {
@@ -153,8 +154,9 @@ class Downloads extends Component
         return [
             'id'        => (int) $download->id,
             'product'   => $this->productName( $download->orderItem ),
-            'file'      => '' !== $label ? $label : __( 'Download' ),
+            'file'      => '' !== $label ? $label : $this->productName( $download->orderItem ),
             'version'   => '' !== $version ? $version : null,
+            'order'     => null === $download->orderItem?->order ? null : (string) $download->orderItem->order->order_number,
             'remaining' => null === $download->downloads_remaining ? null : (int) $download->downloads_remaining,
             'expires'   => null === $download->expires_at ? null : LocalizedDate::format( $download->expires_at ),
             'state'     => $state,
@@ -174,13 +176,14 @@ class Downloads extends Component
      *
      * @param  LicenseKey  $licence  The licence, with its order line.
      *
-     * @return array{id: int, product: string, key: string, activations: int, limit: int|null, expires: string|null, state: string}
+     * @return array{id: int, product: string, variant: string|null, key: string, activations: int, limit: int|null, expires: string|null, state: string}
      */
     protected function licenceRow( LicenseKey $licence ): array
     {
         return [
             'id'          => (int) $licence->id,
             'product'     => $this->productName( $licence->orderItem ),
+            'variant'     => $this->variantName( $licence->orderItem ),
             'key'         => (string) $licence->key,
             'activations' => (int) $licence->activations_count,
             'limit'       => null === $licence->activations_limit ? null : (int) $licence->activations_limit,
@@ -207,5 +210,21 @@ class Downloads extends Component
         $name = $item?->product_snapshot['name'] ?? null;
 
         return is_string( $name ) && '' !== trim( $name ) ? trim( $name ) : __( 'Item' );
+    }
+
+    /**
+     * The order line's variant name (a licence tier, say), if it has one.
+     *
+     * @since 2.0.0
+     *
+     * @param  OrderItem|null  $item  The order line.
+     *
+     * @return string|null
+     */
+    protected function variantName( ?OrderItem $item ): ?string
+    {
+        $variant = $item?->product_snapshot['variant_name'] ?? null;
+
+        return is_string( $variant ) && '' !== trim( $variant ) ? trim( $variant ) : null;
     }
 }

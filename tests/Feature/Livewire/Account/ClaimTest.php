@@ -44,13 +44,35 @@ it( 'claims the shopper\'s guest orders and moves them into the order history', 
         ->call( 'claim' )
         ->assertHasNoErrors()
         ->assertSet( 'failure', null )
-        ->assertRedirect( route( 'artisanpack.ecommerce.account.orders.index' ) );
+        ->assertSet( 'claimed', [ 'count' => 2, 'number' => 'ORD-1001' ] )
+        ->assertNoRedirect()
+        ->assertSeeHtml( 'data-account-claim-success' )
+        ->assertSee( '2 orders are now in your account' )
+        ->assertSee( 'You\'ll find them in your order history.' )
+        ->assertSeeHtml( 'href="' . route( 'artisanpack.ecommerce.account.orders.index' ) . '"' );
 
     expect( $first->refresh()->customer_id )->toBe( $customer->id )
         ->and( $first->is_claimed )->toBeTrue()
         ->and( $second->refresh()->customer_id )->toBe( $customer->id )
         ->and( $other->refresh()->customer_id )->toBeNull()
-        ->and( session( ToastPayload::SESSION_KEY )['toast']['title'] ?? '' )->toBe( '2 orders added to your account' );
+        ->and( session( ToastPayload::SESSION_KEY ) )->toBeNull();
+} );
+
+it( 'names the one claimed order in the success alert, and clears it on the next attempt', function (): void {
+    [ , $customer ] = verifiedShopper();
+    guestOrderFor( $customer->email, 'ORD-1001' );
+
+    Livewire::test( Claim::class )
+        ->set( 'orderNumber', 'ORD-1001' )
+        ->set( 'postalCode', '62701' )
+        ->call( 'claim' )
+        ->assertSet( 'claimed', [ 'count' => 1, 'number' => 'ORD-1001' ] )
+        ->assertSee( 'Order ORD-1001 is now in your account' )
+        ->assertSee( 'You\'ll find it in your order history.' )
+        ->set( 'orderNumber', '' )
+        ->call( 'claim' )
+        ->assertSet( 'claimed', null )
+        ->assertDontSeeHtml( 'data-account-claim-success' );
 } );
 
 it( 'requires the order number and postcode', function (): void {
@@ -209,7 +231,7 @@ it( 'claims for a user model that can\'t verify email when the host opts out', f
         ->set( 'postalCode', '62701' )
         ->call( 'claim' )
         ->assertSet( 'failure', null )
-        ->assertRedirect( route( 'artisanpack.ecommerce.account.orders.index' ) );
+        ->assertSet( 'claimed', [ 'count' => 1, 'number' => 'ORD-1001' ] );
 
     expect( $order->refresh()->customer_id )->toBe( $customer->id );
 } );

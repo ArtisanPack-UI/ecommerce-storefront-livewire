@@ -31,9 +31,9 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 | Path | Route name | Component | What it does |
 | --- | --- | --- | --- |
 | `/` | `dashboard` | `account-dashboard` | Greeting (the page's heading), latest orders, default addresses, download count, the claim prompt, and links. |
-| `/orders` | `orders.index` | `account-orders` | Order history. |
+| `/orders` | `orders.index` | `account-orders` | Order history: "Orders" as the heading, beside the filter. |
 | `/orders/{order}` | `orders.show` | `account-order` | One order: "Order {number}" as the heading, each shipment's progress (Placed, Shipped, In transit, Delivered) with its tracking, the store's messages, the details, and refunds. |
-| `/addresses` | `addresses` | `account-addresses` | The address book. |
+| `/addresses` | `addresses` | `account-addresses` | The address book: "Saved addresses" as the heading, beside "Add an address". |
 | `/downloads` | `downloads` | `account-downloads` | Downloads and licence keys. |
 | `/downloads/{download}` | `downloads.file` | None (file) | Sends the file as an attachment and spends a download. |
 | `/downloads/{download}/stream` | `downloads.stream` | None (file) | Streams a streaming-only file in the browser's player. |
@@ -171,12 +171,12 @@ Prices are shown in the open cart's currency when there is one, so a shopper who
 | Screen | Details |
 | --- | --- |
 | Dashboard | Latest orders, default shipping and billing addresses, download count, and links to the account pages and to the host's profile and password screens (`auth.profile_route`, `auth.password_route`). Prompts the shopper to claim unclaimed guest orders placed with their verified email. |
-| Orders | Newest first, with number, date, status, total, and item count. Filter by open, completed, or cancelled (`?status=`). |
+| Orders | Newest first, with number, date, status, total, and item count: a table from 768px, a list below it. Filter by open, completed, or cancelled (`?status=`). If the orders can't load, "Try again" reloads them. |
 | Order | Number, date, status, lines, totals, addresses, payment method, shipments with tracking links, refunds, notes the store shared, and downloads. **Buy again** adds the lines that can still be bought, at today's prices, and says which couldn't be. |
-| Addresses | Add and edit in a modal, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](Advanced#rate-limits)). |
-| Downloads | Each entitlement's product, file, version, downloads left, and expiry, with a download button (or a play button for streaming-only files). Licence keys in full with a copy button, activation count, and expired or revoked state. |
+| Addresses | One card per address with its default badges. Add and edit in a dialog, delete after confirming, and set the default shipping or billing address. The first address becomes both defaults. Writes count against the `ecommerce.cart.mutate` rate limit (see [Rate limits](Advanced#rate-limits)). |
+| Downloads | Each entitlement's file, version, downloads left, expiry, and order, with a download button (or a play button for streaming-only files), or an "Expired" or "No downloads left" badge. Licence keys with their product and tier, a state badge (valid until, expired, revoked), the key in a copy field, and the activation count. |
 | Profile | First and last name, phone, marketing consent, and notification preferences per channel. Order and account emails are always on. Marketing switches are locked off without consent, and withdrawing consent switches marketing off everywhere. Email and password link to the host's screens. |
-| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](Installation-Configuration#customer-account-routes)). |
+| Claim | The shopper gives one order's number and shipping postcode. When they match an unclaimed guest order under the account's email, every guest order under that email is attached to the account, and a success alert names the order (or says how many) with a link to the order history. Only a user whose model implements `MustVerifyEmail` and who has verified may claim, unless `account.claim_requires_verified_email` is off (see [Configuration](Installation-Configuration#customer-account-routes)). |
 
 A signed-in user with no engine customer record yet sees empty pages, and gets a record on their first save.
 

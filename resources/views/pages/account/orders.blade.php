@@ -1,5 +1,6 @@
 {{--
-    The order history.
+    The order history (#147): the account shell without a title of its
+    own, since the component's "Orders" shares its row with the filter.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -15,7 +16,7 @@
 @section( 'title', $ecommerceSeo->title( __( 'Orders' ) ) )
 
 @section( 'content' )
-    <x-artisanpack-ec-account-shell :title="__( 'Orders' )">
-        <livewire:artisanpack-ecommerce-storefront-account-orders />
+    <x-artisanpack-ec-account-shell>
+        <livewire:artisanpack-ecommerce-storefront-account-orders :show-title="true" />
     </x-artisanpack-ec-account-shell>
 @endsection

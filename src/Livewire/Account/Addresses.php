@@ -148,6 +148,18 @@ class Addresses extends Component
     public ?int $deletingId = null;
 
     /**
+     * Whether "Saved addresses" is the page's h1 (the address book page
+     * passes it), beside "Add an address"; embedded elsewhere, the host
+     * brings its own.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Starts with an empty form.
      *
      * @since 1.0.0
