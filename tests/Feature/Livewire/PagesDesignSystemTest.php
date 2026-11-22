@@ -136,6 +136,8 @@ it( 'lists the product\'s delivery and returns highlights, from the free-shippin
 } );
 
 it( 'says a sold-out product is sold out, and lets a satellite replace the notice', function (): void {
+    withoutBackInStock();
+
     $product = makeProduct( 2800, [ 'name' => 'Mug' ] );
 
     Livewire::test( 'artisanpack-ecommerce-storefront-product-show', [ 'product' => $product ] )->assertDontSeeHtml( 'data-product-sold-out' );

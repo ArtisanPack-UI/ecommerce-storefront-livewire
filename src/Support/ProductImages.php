@@ -270,6 +270,33 @@ final class ProductImages
     }
 
     /**
+     * A `srcset` whose every candidate is an http(s) URL with an optional
+     * `480w` or `2x` descriptor, or null (the image keeps its `src` alone).
+     *
+     * @since 2.0.0
+     *
+     * @param  mixed  $srcset  The srcset.
+     *
+     * @return string|null
+     */
+    public static function safeSrcset( mixed $srcset ): ?string
+    {
+        if ( ! is_string( $srcset ) || '' === trim( $srcset ) ) {
+            return null;
+        }
+
+        foreach ( explode( ',', $srcset ) as $candidate ) {
+            $parts = preg_split( '/\s+/', trim( $candidate ), -1, PREG_SPLIT_NO_EMPTY );
+
+            if ( [] === $parts || count( $parts ) > 2 || null === self::safeUrl( $parts[0] ) || ( isset( $parts[1] ) && 1 !== preg_match( '/^\d+(\.\d+)?[wx]$/', $parts[1] ) ) ) {
+                return null;
+            }
+        }
+
+        return trim( $srcset );
+    }
+
+    /**
      * Every image a product page gallery shows, featured image first, then
      * the gallery in position order (duplicates of the featured image
      * dropped). Each image's alternative text is its own, else the product

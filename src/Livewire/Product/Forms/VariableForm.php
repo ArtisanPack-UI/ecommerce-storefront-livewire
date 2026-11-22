@@ -16,6 +16,7 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms;
 use ArtisanPackUI\Ecommerce\Catalog\VariantResolver;
 use ArtisanPackUI\Ecommerce\Models\ProductAttribute;
 use ArtisanPackUI\Ecommerce\Models\ProductAttributeValue;
+use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -150,7 +151,8 @@ class VariableForm extends PurchaseForm
      */
     public function updatedVariant(): void
     {
-        $this->selectionNotice = '';
+        $this->notifySubscribed = false;
+        $this->selectionNotice  = '';
         $this->clearChoiceErrors();
         $this->variant = self::normalizedVariant( $this->variant );
         $this->selectVariant( $this->variant );
@@ -199,6 +201,8 @@ class VariableForm extends PurchaseForm
      */
     public function updatedSelected( mixed $value, int|string|null $key = null ): void
     {
+        $this->notifySubscribed = false;
+
         $this->selectionNotice = '';
         $this->clearChoiceErrors();
 
@@ -310,6 +314,23 @@ class VariableForm extends PurchaseForm
         $row = $this->rowFor( $variantId );
 
         return null === $row || ! $row['available'] ? __( 'This option is out of stock.' ) : null;
+    }
+
+    /**
+     * Whether the matched variant is sold out: it exists and has a price in
+     * the shopper's currency, but can't be bought. False while a choice is
+     * missing or the combination doesn't exist.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function outOfStock(): bool
+    {
+        $variantId = self::normalizedVariant( $this->variant );
+        $row       = null === $variantId || null !== $this->missingGroup() ? null : $this->rowFor( $variantId );
+
+        return null !== $row && ! $row['available'] && null !== $row['price'];
     }
 
     /**
@@ -444,6 +465,20 @@ class VariableForm extends PurchaseForm
     protected function lineVariantId(): ?int
     {
         return self::normalizedVariant( $this->variant );
+    }
+
+    /**
+     * The sold-out variant a back-in-stock signup is for.
+     *
+     * @since 2.0.0
+     *
+     * @return ProductVariant|null
+     */
+    protected function notifyVariant(): ?ProductVariant
+    {
+        $variantId = self::normalizedVariant( $this->variant );
+
+        return null === $variantId ? null : $this->product->variants()->whereKey( $variantId )->first();
     }
 
     /**

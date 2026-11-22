@@ -114,6 +114,19 @@ class GroupedForm extends PurchaseForm
     }
 
     /**
+     * Each grouped product has its own stock, shown next to its quantity,
+     * so the group never offers one back-in-stock signup.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    public function outOfStock(): bool
+    {
+        return false;
+    }
+
+    /**
      * Renders the component.
      *
      * @since 1.0.0

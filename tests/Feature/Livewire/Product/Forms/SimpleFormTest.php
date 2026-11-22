@@ -81,6 +81,8 @@ it( 'shows the engine\'s reason on the quantity field', function (): void {
 } );
 
 it( 'disables the button for an out-of-stock or unpriced product', function ( Closure $make, string $reason ): void {
+    withoutBackInStock();
+
     Livewire::test( SimpleForm::class, [ 'product' => $make() ] )
         ->assertSee( $reason )
         ->assertSeeHtml( 'data-add-blocked' );
@@ -134,6 +136,8 @@ describe( 'add-to-cart row (#86)', function (): void {
     } )->with( [ 'empty' => '', 'zero' => 0, 'text' => 'two', 'too many' => 100000 ] );
 
     it( 'leaves the line price out and binds the quantity deferred when the product cannot be bought', function (): void {
+        withoutBackInStock();
+
         $product = makeProduct( 2800 );
         setStock( $product, 0 );
 

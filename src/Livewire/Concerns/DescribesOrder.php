@@ -21,6 +21,7 @@ use ArtisanPackUI\Ecommerce\Models\Refund;
 use ArtisanPackUI\Ecommerce\Models\Shipment;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\LineSummaries;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -139,17 +140,18 @@ trait DescribesOrder
     }
 
     /**
-     * The order's lines: `id`, `name`, `variant`, `sku`, `quantity`,
+     * The order's lines: `id`, `name`, `variant`, `options` (the configuration
+     * summary recorded at placement, {@see LineSummaries}), `sku`, `quantity`,
      * `unit`, `total` (before discounts), `currency`, `free`, whether the
      * product still exists (`product_id`), and `image` (the variant's, else
      * the product's card image; null once the product is gone).
      *
      * @since 1.0.0
-     * @since 2.0.0 Adds `image`.
+     * @since 2.0.0 Adds `image` and `options`.
      *
      * @param  Order  $order  The order, with its items.
      *
-     * @return array<int, array{id: int, name: string, variant: string|null, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null, image: array{url: string, srcset: string|null, alt: string}|null}>
+     * @return array<int, array{id: int, name: string, variant: string|null, options: array<int, string>, sku: string|null, quantity: int, unit: int, total: int, currency: string, free: bool, product_id: int|null, image: array{url: string, srcset: string|null, alt: string}|null}>
      */
     protected function orderLines( Order $order ): array
     {
@@ -168,6 +170,7 @@ trait DescribesOrder
                 'id'         => (int) $item->id,
                 'name'       => $name,
                 'variant'    => $variant,
+                'options'    => LineSummaries::forOrderItem( $item ),
                 'sku'        => $sku,
                 'quantity'   => (int) $item->quantity,
                 'unit'       => (int) $item->unit_price_amount,

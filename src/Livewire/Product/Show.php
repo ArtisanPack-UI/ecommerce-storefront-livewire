@@ -23,6 +23,7 @@ use ArtisanPackUI\Ecommerce\Models\ProductVariant;
 use ArtisanPackUI\Ecommerce\Pricing\PriceDisplayResolver;
 use ArtisanPackUI\Ecommerce\Services\CurrencyConverter;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\Forms\PurchaseForm;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Registries\ProductFormRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\DisplayData;
@@ -424,7 +425,9 @@ class Show extends Component
      * `ap.ecommerceStorefrontLivewire.product.soldOut`: a view name or an
      * Htmlable, such as a back-in-stock satellite's "Notify me" form. By
      * default, an alert saying it is sold out. A view that doesn't exist, or
-     * anything else, shows nothing.
+     * anything else, shows nothing. The default is left out when the
+     * purchase form offers its own back-in-stock signup
+     * ({@see PurchaseForm::backInStockEnabled()}).
      *
      * @since 2.0.0
      *
@@ -434,7 +437,13 @@ class Show extends Component
      */
     protected function soldOutNotice( ?ProductVariant $variant ): Htmlable|string|null
     {
-        $notice = applyFilters( 'ap.ecommerceStorefrontLivewire.product.soldOut', 'ecommerce-storefront::livewire.product.partials.sold-out', $this->product, $variant );
+        $default = 'ecommerce-storefront::livewire.product.partials.sold-out';
+        $notice  = applyFilters( 'ap.ecommerceStorefrontLivewire.product.soldOut', $default, $this->product, $variant );
+
+        // The purchase form's "Notify me" alert already says it's sold out.
+        if ( $default === $notice && PurchaseForm::backInStockEnabled( $this->product ) ) {
+            return null;
+        }
 
         if ( $notice instanceof Htmlable ) {
             return $notice;

@@ -21,9 +21,9 @@ use ArtisanPackUI\Ecommerce\Models\InventoryReservation;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\Support\MoneyFormatter;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\LineSummaries;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\ProductImages;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -206,6 +206,8 @@ trait DescribesCart
      * "Engraving: Happy birthday").
      *
      * @since 1.0.0
+     * @since 2.0.0 Reads the engine's line descriptions ({@see LineSummaries}), so a
+     *              product type's own labels replace the headlined option keys.
      *
      * @param  CartItem  $item  The line.
      *
@@ -213,19 +215,7 @@ trait DescribesCart
      */
     protected function lineOptions( CartItem $item ): array
     {
-        $options = [];
-
-        if ( null !== $item->variant && '' !== trim( (string) $item->variant->name ) ) {
-            $options[] = (string) $item->variant->name;
-        }
-
-        foreach ( (array) ( $item->options ?? [] ) as $key => $value ) {
-            if ( is_string( $key ) && ( is_string( $value ) || is_int( $value ) || is_float( $value ) ) && '' !== trim( (string) $value ) ) {
-                $options[] = __( ':option: :value', [ 'option' => Str::headline( $key ), 'value' => (string) $value ] );
-            }
-        }
-
-        return $options;
+        return LineSummaries::forCartItem( $item );
     }
 
     /**

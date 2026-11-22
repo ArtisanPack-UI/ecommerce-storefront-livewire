@@ -107,6 +107,7 @@ it( 'adds the bundle as one line at the bundle price', function (): void {
 } );
 
 it( 'is blocked when a member is out of stock', function (): void {
+    withoutBackInStock();
     setStock( $this->paint, 1 );
 
     Livewire::test( BundledForm::class, [ 'product' => $this->bundle ] )

@@ -47,8 +47,9 @@
                     <x-slot:title>{{ $line['name'] }}</x-slot:title>
 
                     <x-slot:description>
-                        @if ( null !== $line['variant'] || $line['free'] )
-                            <span class="ec-order-line__options">{{ implode( ' · ', array_filter( [ $line['variant'], $line['free'] ? __( 'Free gift' ) : null ] ) ) }}</span>
+                        @php( $ecommerceLineOptions = array_values( array_filter( [ ...( ( $line['options'] ?? [] ) ?: [ $line['variant'] ] ), $line['free'] ? __( 'Free gift' ) : null ] ) ) )
+                        @if ( [] !== $ecommerceLineOptions )
+                            <span class="ec-order-line__options" data-order-line-options>{{ implode( ' · ', $ecommerceLineOptions ) }}</span>
                         @endif
 
                         <span class="ec-order-line__meta">
