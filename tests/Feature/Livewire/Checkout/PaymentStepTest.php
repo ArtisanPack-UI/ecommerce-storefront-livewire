@@ -3,6 +3,7 @@
 declare( strict_types=1 );
 
 use ArtisanPackUI\Ecommerce\Checkout\CheckoutState;
+use ArtisanPackUI\Ecommerce\Models\Order;
 use ArtisanPackUI\Ecommerce\Models\Product;
 use ArtisanPackUI\Ecommerce\Models\ProductPrice;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
@@ -11,6 +12,7 @@ use ArtisanPackUI\Ecommerce\Services\StorefrontCartService;
 use ArtisanPackUI\Ecommerce\ValueObjects\PaymentSession;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Checkout\Index;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment\RedirectDriver;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StrandedPayments;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\Fixtures\Gateways\FakeGateway;
@@ -189,18 +191,130 @@ it( 'refuses a confirmation the gateway doesn\'t back up', function ( bool $prov
         ->assertSet( 'step', 'payment' );
 } )->with( [ 'not paid' => [ false ], 'provider down' => [ true ] ] );
 
-it( 'refuses a confirmed payment made for an older total', function (): void {
+it( 'strands a payment confirmed for an older total instead of asking the shopper to pay again', function (): void {
+    $gateway = checkoutGateway();
+    $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
+
+    $mismatches = [];
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.paymentMismatch', static function ( $cart, string $gatewayKey, string $reference, PaymentSession $session ) use ( &$mismatches ): void {
+        $mismatches[] = [ $gatewayKey, $reference, (int) $session->amount->getAmount() ];
+    } );
+
+    $component = checkoutAtPayment()->assertSet( 'payment.reference', 'fake_ps_1' );
+    $token     = placeOrderToken( $component );
+
+    // Another tab adds to the cart; this tab's form still pays $25.
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
+
+    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1', token: $token )
+        ->assertHasErrors( 'payment' )
+        ->assertSee( StrandedPayments::message() )
+        ->assertDontSee( 'Try again.' )
+        ->assertSet( 'strandedPayment', 'fake_ps_1' )
+        ->assertSet( 'confirmedPayment', null )
+        ->assertSet( 'payment', null )
+        ->assertSet( 'orderPlaced', false )
+        ->assertSeeHtml( 'data-checkout-payment-stranded' )
+        ->assertDontSeeLivewire( FakePaymentDriver::class );
+
+    expect( $mismatches )->toBe( [ [ 'fake', 'fake_ps_1', 2500 ] ] )
+        ->and( session( StrandedPayments::SESSION_KEY ) )->toBe( [ 'cart' => (int) $cart->id, 'reference' => 'fake_ps_1' ] );
+
+    // Nothing sets up another payment: not the gateway, the step, a cart update or a reload.
+    $component->set( 'gateway', 'fake' )
+        ->assertHasErrors( 'payment' )
+        ->call( 'goTo', 'payment' )
+        ->dispatch( 'ecommerce-cart-updated', count: 2 )
+        ->assertSet( 'payment', null );
+
+    Livewire::test( Index::class )
+        ->assertSet( 'strandedPayment', 'fake_ps_1' )
+        ->assertSet( 'payment', null )
+        ->assertSee( StrandedPayments::title() );
+
+    expect( $gateway->sessions )->toHaveCount( 1 )
+        ->and( $cart->refresh()->payment_reference )->toBe( 'fake_ps_1' )
+        ->and( Order::query()->count() )->toBe( 0 )
+        ->and( $mismatches )->toHaveCount( 1 );
+} );
+
+it( 'strands a payment the shopper made before a reload instead of replacing it', function (): void {
+    $gateway = checkoutGateway();
+    $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
+
+    checkoutAtPayment();
+
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
+
+    Livewire::test( Index::class )
+        ->assertSet( 'step', 'payment' )
+        ->assertSet( 'strandedPayment', 'fake_ps_1' )
+        ->assertSet( 'payment', null )
+        ->assertSee( StrandedPayments::title() );
+
+    expect( $gateway->sessions )->toHaveCount( 1 )
+        ->and( $cart->refresh()->payment_reference )->toBe( 'fake_ps_1' );
+} );
+
+it( 'strands a confirmed payment for a session the cart has since replaced', function (): void {
+    $gateway = checkoutGateway();
+    $cart    = checkoutCart( [ makeProduct( 2000 ) ] );
+
+    $component = checkoutAtPayment();
+
+    // Another tab changed the cart and set up a new session.
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+    app( CheckoutService::class )->createPaymentSession( $cart->refresh() );
+    $gateway->setStatus( 'fake_ps_1', PaymentSession::STATUS_SUCCEEDED );
+
+    expect( $cart->refresh()->payment_reference )->toBe( 'fake_ps_2' );
+
+    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1' )
+        ->assertSet( 'strandedPayment', 'fake_ps_1' )
+        ->assertSee( StrandedPayments::message() )
+        ->assertDontSee( 'That payment doesn\'t belong to this checkout.' );
+} );
+
+it( 'doesn\'t let the browser drop a payment the gateway confirmed', function (): void {
     $gateway = checkoutGateway();
     checkoutCart( [ makeProduct( 2000 ) ] );
 
     $component = checkoutAtPayment();
 
-    $gateway->sessions['fake_ps_1'] = new PaymentSession( 'fake', 'fake_ps_1', new Money\Money( 100, new Money\Currency( 'USD' ) ), status: PaymentSession::STATUS_AUTHORIZED );
+    addAction( 'ap.ecommerceStorefrontLivewire.checkout.beforePlaceOrder', static function (): void {
+        throw new RuntimeException( 'A listener broke.' );
+    } );
 
-    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1' )
-        ->assertHasErrors( 'gateway' )
-        ->assertSet( 'confirmedPayment', null )
-        ->assertSet( 'step', 'payment' );
+    payAtCheckout( $component, $gateway )
+        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
+        ->dispatch( 'payment-failed', message: 'Fake failure' )
+        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] )
+        ->dispatch( 'payment-confirmed', reference: 'fake_ps_1' )
+        ->assertSet( 'confirmedPayment', [ 'reference' => 'fake_ps_1', 'total' => 2500 ] );
+
+    expect( $gateway->sessions )->toHaveCount( 1 );
+} );
+
+it( 'announces every payment error, even the same one twice', function (): void {
+    checkoutGateway();
+    checkoutCart();
+
+    $component = checkoutAtPayment();
+    $before    = (int) $component->get( 'errorSummary' );
+
+    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1' );
+    $first = (int) $component->get( 'errorSummary' );
+
+    $component->dispatch( 'payment-confirmed', reference: 'fake_ps_1' );
+
+    expect( $first )->toBeGreaterThan( $before )
+        ->and( (int) $component->get( 'errorSummary' ) )->toBeGreaterThan( $first );
+
+    $component->dispatch( 'payment-confirmed', reference: 'someone_elses' );
+
+    expect( (int) $component->get( 'errorSummary' ) )->toBeGreaterThan( $first + 1 );
 } );
 
 it( 'throttles payment confirmations', function (): void {

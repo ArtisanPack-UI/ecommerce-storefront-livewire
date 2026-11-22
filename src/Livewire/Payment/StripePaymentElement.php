@@ -13,8 +13,11 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Payment;
 
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\CheckoutPlacement;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Livewire;
 
 /**
@@ -92,6 +95,61 @@ class StripePaymentElement extends PaymentDriver
     }
 
     /**
+     * Whether this session still pays for the order as it is now. The
+     * script asks before `confirmPayment()`, because Stripe charges the
+     * PaymentIntent's amount: a form set up before the cart changed (in
+     * another tab, say) would charge the old total.
+     *
+     * True for the session of an order already placed
+     * ({@see CheckoutPlacement}), whose total is fixed, and for the cart's
+     * session when Stripe has it for the cart's total and currency. When
+     * the cart has replaced the session or its total moved on, it is false
+     * and `ecommerce-cart-updated` is dispatched, so the checkout sets the
+     * payment up again and this form is replaced. When Stripe can't be
+     * reached the answer is true: the checkout checks the amount again
+     * before it places the order.
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    #[Renderless]
+    public function stillPayable(): bool
+    {
+        $placement = CheckoutPlacement::current();
+        $placed    = null === $placement ? '' : (string) ( $placement['order']->payment_reference ?? '' );
+
+        if ( '' !== $placed && '' !== $this->reference && hash_equals( $placed, $this->reference ) ) {
+            return true;
+        }
+
+        $carts   = app( StorefrontCart::class );
+        $cart    = $carts->current();
+        $current = null === $cart ? '' : (string) ( $cart->payment_reference ?? '' );
+
+        if ( null === $cart || '' === $current || '' === $this->reference || ! hash_equals( $current, $this->reference ) ) {
+            $this->dispatch( 'ecommerce-cart-updated', count: $carts->count(), source: static::class );
+
+            return false;
+        }
+
+        $session = $this->session();
+
+        if ( null === $session ) {
+            return ! $this->wasThrottled();
+        }
+
+        $payable = (int) $session->amount->getAmount() === (int) $cart->total_amount
+            && strtoupper( $session->amount->getCurrency()->getCode() ) === strtoupper( (string) $cart->currency );
+
+        if ( ! $payable ) {
+            $this->dispatch( 'ecommerce-cart-updated', count: $carts->count(), source: static::class );
+        }
+
+        return $payable;
+    }
+
+    /**
      * Checks the PaymentIntent the Payment Element confirmed and reports
      * it to the checkout. Called by the view's script with the
      * PaymentIntent id once `confirmPayment()` succeeds.
@@ -154,6 +212,8 @@ class StripePaymentElement extends PaymentDriver
                 'messages'       => [
                     'loadFailed' => __( 'The payment form couldn\'t load. Check your connection and reload the page.' ),
                     'failed'     => __( 'Your payment couldn\'t be completed. Try again or use another payment method.' ),
+                    'placing'    => __( 'Placing your order…' ),
+                    'changed'    => __( 'Your order changed, so we\'re updating the payment form. Check the new total, then pay.' ),
                 ],
             ],
         ] );

@@ -16,6 +16,10 @@
     radio's `label`. So the radio's label is the card's header, and the
     card around it carries the selected styles.
 
+    While a payment is stranded (confirmed for an earlier total), no
+    payment method is offered: the warning above the steps tells the
+    shopper to contact the store.
+
     A free order is placed with "Place order", and one whose payment is
     already confirmed with "Place order · {total}". A guest who needs an account is asked to sign
     in or register; with no gateway, a warning says to contact the store.
@@ -32,7 +36,10 @@
     $ecommerceSingle = 1 === count( $paymentMethods );
 @endphp
 <div class="ec-checkout-form" data-checkout-payment>
-    @if ( ! $paymentRequired || $paymentConfirmed )
+    @if ( null !== $strandedPayment )
+        {{-- The warning above the steps says what happened; nothing here takes another payment. --}}
+        <p class="ec-checkout-form__note" data-checkout-payment-stranded-note>{{ __( 'Don\'t pay again. Contact us about your payment.' ) }}</p>
+    @elseif ( ! $paymentRequired || $paymentConfirmed )
         @if ( $paymentRequired )
             <x-artisanpack-alert color="success" icon="circle-check" :title="__( 'Your payment is confirmed. Place your order to finish.' )" data-checkout-payment-confirmed />
         @else

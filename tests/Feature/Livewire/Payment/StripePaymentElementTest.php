@@ -228,3 +228,49 @@ it( 'returns to the page it was mounted on when the return route is off, even af
         ->and( $mountedOn )->not->toEndWith( '/livewire/update' )
         ->and( $component->instance()->render()->getData()['stripe']['returnUrl'] )->toBe( $mountedOn );
 } );
+
+it( 'keeps "Pay now" disabled after Stripe confirms, saying the order is being placed', function (): void {
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
+    $script    = implode( "\n", (array) ( $component->effects['scripts'] ?? [] ) );
+
+    expect( $script )->not->toContain( 'finally' )
+        ->toContain( 'placing();' )
+        ->toContain( "setAttribute( 'aria-busy', 'true' )" )
+        ->toMatch( '/\$wire\.on\( \'payment-failed\'.*?release\(\);/s' )
+        ->and( $component->viewData( 'stripe' )['messages'] )->toMatchArray( [ 'placing' => 'Placing your order…' ] );
+} );
+
+it( 'asks whether the session still pays for the order before confirming it', function (): void {
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() );
+    $script    = implode( "\n", (array) ( $component->effects['scripts'] ?? [] ) );
+
+    expect( strpos( $script, '$wire.stillPayable()' ) )->toBeInt()->toBeLessThan( strpos( $script, 'stripe.confirmPayment' ) );
+} );
+
+it( 'says the session still pays for the cart only when it is the cart\'s, for its total', function (): void {
+    $gateway = stripeLikeGateway();
+    $cart    = checkoutCart( [ makeProduct( 2500 ) ] );
+
+    $cart->forceFill( [ 'payment_reference' => 'pi_123', 'payment_gateway_key' => 'stripe', 'total_amount' => 2500, 'currency' => 'USD' ] )->save();
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeTrue();
+    $component->assertNotDispatched( 'ecommerce-cart-updated' );
+
+    // The cart's total moved on in another tab.
+    $gateway->sessions['pi_123'] = new PaymentSession( 'stripe', 'pi_123', new Money( 1000, new Currency( 'USD' ) ), 'pi_123_secret_abc' );
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeFalse();
+    $component->assertDispatched( 'ecommerce-cart-updated' );
+
+    // The cart has a new session.
+    $cart->forceFill( [ 'payment_reference' => 'pi_456' ] )->save();
+
+    $component = Livewire::test( StripePaymentElement::class, stripeDriverProps() )->call( 'stillPayable' );
+
+    expect( $component->effects['returns'][0] ?? null )->toBeFalse();
+    $component->assertDispatched( 'ecommerce-cart-updated' );
+} );
