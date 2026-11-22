@@ -8,7 +8,7 @@
     show as a row of tabs that scrolls sideways. Both are
     `<nav aria-label="Account">`; only one shows at a time. The current page
     carries `aria-current="page"`. The content starts with a PageHeader
-    holding the page's one h1.
+    holding the page's one h1; without a title the content brings its own.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -74,7 +74,9 @@
     </nav>
 
     <div class="ec-account__content">
-        <x-artisanpack-page-header :title="$title" :level="1" class="ec-account__title" />
+        @if ( null !== $title && '' !== $title )
+            <x-artisanpack-page-header :title="$title" :level="1" class="ec-account__title" />
+        @endif
 
         {{ $slot }}
     </div>

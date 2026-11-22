@@ -108,7 +108,7 @@ The library prints errors and hints without ids and never marks a control invali
 
 ## Account pages
 
-`<x-artisanpack-ec-account-shell :title="…">` is the frame every account page sits in: the page heading, and the account navigation beside the slot. The navigation lists the storefront's account pages that have a route, then the entries satellites register with the engine's `AccountMenuRegistry`, sorted by position. The current entry is marked `aria-current="page"`.
+`<x-artisanpack-ec-account-shell :title="…">` is the frame every account page sits in: the page heading, and the account navigation beside the slot. The navigation lists the storefront's account pages that have a route, then the entries satellites register with the engine's `AccountMenuRegistry`, sorted by position. The current entry is marked `aria-current="page"`. Leave `title` out when the slot brings its own h1 (the dashboard and order pages do).
 
 ```blade
 <x-artisanpack-ec-account-shell :title="__( 'Wishlist' )">

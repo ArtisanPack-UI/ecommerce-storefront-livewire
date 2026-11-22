@@ -128,10 +128,10 @@ it( 'lists downloads as rows in their own card', function (): void {
         ->toContain( 'class="ec-order-card__footnote" data-order-downloads-email' );
 } );
 
-it( 'shows each status as a soft badge in its design-system color', function ( string $status, string $label, string $color ): void {
+it( 'shows each status as a soft badge in its design-system color, with an icon', function ( string $status, string $label, string $color ): void {
     $html = orderDetailsHtml( placedOrder( [ 'system_status' => $status ] ) );
 
-    expect( $html )->toMatch( '/class="apui-badge" data-order-status="data-order-status"\s+data-variant="soft"\s+data-color="' . $color . '"[^>]*>\s*<span data-scope="badge" data-part="label">' . preg_quote( $label, '/' ) . '</' )
+    expect( $html )->toMatch( '/class="apui-badge" data-order-status="data-order-status"\s+data-variant="soft"\s+data-color="' . $color . '"[^>]*>\s*<span data-scope="badge" data-part="icon"[^>]*>.*?<\/span><span data-scope="badge" data-part="label">' . preg_quote( $label, '/' ) . '</s' )
         ->not->toContain( 'badge-' );
 } )->with( [
     'processing' => [ 'processing', 'Processing', 'info' ],
