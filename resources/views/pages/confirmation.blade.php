@@ -1,5 +1,6 @@
 {{--
-    An order's confirmation page.
+    An order's confirmation page (#143): the confirmation component, whose
+    "Thank you for your order" is the page's title.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -15,9 +16,5 @@
 @section( 'title', $ecommerceSeo->title( __( 'Order confirmation' ) ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Order confirmation' ) }}</h1>
-
-        <livewire:artisanpack-ecommerce-storefront-order-confirmation :order="$order" :token="$token" />
-    </div>
+    <livewire:artisanpack-ecommerce-storefront-order-confirmation :order="$order" :token="$token" :show-title="true" />
 @endsection

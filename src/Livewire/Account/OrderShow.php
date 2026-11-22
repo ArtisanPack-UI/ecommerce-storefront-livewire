@@ -87,6 +87,17 @@ class OrderShow extends Component
     public bool $readOnly = false;
 
     /**
+     * Show "Order {number}" as the page's h1 (the account order page and
+     * the guest order view do); otherwise it's an h2.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Loads and authorizes the order.
      *
      * @since 1.0.0
@@ -169,6 +180,7 @@ class OrderShow extends Component
             'order'         => $order,
             'status'        => $this->orderStatusLabel( $order ),
             'statusColor'   => $this->orderStatusColor( $order ),
+            'statusIcon'    => $this->orderStatusIcon( $order ),
             'date'          => $this->orderDate( $order ),
             'lines'         => $this->orderLines( $order ),
             'totals'        => $this->orderTotals( $order ),
@@ -179,6 +191,8 @@ class OrderShow extends Component
             'notes'         => $this->orderNotes( $order ),
             'downloadsUrl'  => ! $this->readOnly && Route::has( 'artisanpack.ecommerce.account.downloads' ) ? route( 'artisanpack.ecommerce.account.downloads' ) : null,
             'ordersUrl'     => ! $this->readOnly && Route::has( 'artisanpack.ecommerce.account.orders.index' ) ? route( 'artisanpack.ecommerce.account.orders.index' ) : null,
+            'lookupUrl'     => $this->readOnly && Route::has( 'artisanpack.ecommerce.storefront.lookup' ) ? route( 'artisanpack.ecommerce.storefront.lookup' ) : null,
+            'storeName'     => (string) config( 'app.name' ),
             'canBuyAgain'   => ! $this->readOnly && $order->items->contains( static fn ( OrderItem $item ): bool => null !== $item->product_id && true !== ( $item->product_snapshot['free_item'] ?? false ) ),
         ] );
     }

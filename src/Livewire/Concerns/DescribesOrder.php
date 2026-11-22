@@ -92,6 +92,27 @@ trait DescribesOrder
     }
 
     /**
+     * The icon at the start of an order status's badge, so the status
+     * doesn't rest on its color.
+     *
+     * @since 2.0.0
+     *
+     * @param  Order  $order  The order.
+     *
+     * @return string
+     */
+    protected function orderStatusIcon( Order $order ): string
+    {
+        return match ( (string) $order->system_status ) {
+            'complete'  => 'circle-check',
+            'cancelled' => 'circle-x',
+            'refunded'  => 'rotate-ccw',
+            'failed'    => 'circle-alert',
+            default     => 'clock',
+        };
+    }
+
+    /**
      * An order as a row in a list: `id`, `number`, `date`, `status`,
      * `color`, `total`, `currency`, `items` (units), and `url` (its page in
      * the account, when the route exists).
@@ -308,18 +329,20 @@ trait DescribesOrder
     }
 
     /**
-     * The order's shipments: `id`, `carrier`, `status`, `tracking`
-     * (number), `url` (only an http(s) link), and `shipped` (a date).
+     * The order's shipments: `id`, `carrier`, `status` (as the shopper
+     * reads it), `tracking`, `url` (an http(s) tracking link, else null),
+     * `shipped` (the date), and `steps` for the design-system Steps.
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `steps`.
      *
      * @param  Order  $order  The order.
      *
-     * @return array<int, array{id: int, carrier: string|null, status: string, tracking: string|null, url: string|null, shipped: string|null}>
+     * @return array<int, array{id: int, carrier: string|null, status: string, tracking: string|null, url: string|null, shipped: string|null, steps: array<int, array{label: string, date: string|null, state: string}>}>
      */
     protected function orderShipments( Order $order ): array
     {
-        return $order->shipments()->orderBy( 'id' )->get()->map( function ( Shipment $shipment ): array {
+        return $order->shipments()->orderBy( 'id' )->get()->map( function ( Shipment $shipment ) use ( $order ): array {
             $url = trim( (string) $shipment->tracking_url );
 
             return [
@@ -329,8 +352,48 @@ trait DescribesOrder
                 'tracking' => '' !== trim( (string) $shipment->tracking_number ) ? trim( (string) $shipment->tracking_number ) : null,
                 'url'      => 1 === preg_match( '#^https?://#i', $url ) && false !== filter_var( $url, FILTER_VALIDATE_URL ) ? $url : null,
                 'shipped'  => null === $shipment->shipped_at ? null : LocalizedDate::format( $shipment->shipped_at ),
+                'steps'    => $this->shipmentSteps( $order, $shipment ),
             ];
         } )->all();
+    }
+
+    /**
+     * A shipment's progress as four steps: Placed, Shipped, In transit
+     * and Delivered, each with its date when there is one and a state
+     * (`complete`, `current`, `upcoming`, or `error` for the step a
+     * delivery problem stopped at).
+     *
+     * @since 2.0.0
+     *
+     * @param  Order     $order     The order.
+     * @param  Shipment  $shipment  The shipment.
+     *
+     * @return array<int, array{label: string, date: string|null, state: string}>
+     */
+    protected function shipmentSteps( Order $order, Shipment $shipment ): array
+    {
+        $status  = (string) $shipment->status;
+        $shipped = null !== $shipment->shipped_at || in_array( $status, [ Shipment::STATUS_IN_TRANSIT, Shipment::STATUS_EXCEPTION ], true );
+        $done    = Shipment::STATUS_DELIVERED === $status ? 4 : ( $shipped ? 2 : 1 );
+
+        $steps = [
+            [ 'label' => __( 'Placed' ), 'date' => $this->orderDate( $order ) ],
+            [ 'label' => __( 'Shipped' ), 'date' => null === $shipment->shipped_at ? null : LocalizedDate::format( $shipment->shipped_at ) ],
+            [ 'label' => Shipment::STATUS_EXCEPTION === $status ? __( 'Delivery problem' ) : __( 'In transit' ), 'date' => null ],
+            [ 'label' => __( 'Delivered' ), 'date' => null === $shipment->delivered_at ? null : LocalizedDate::format( $shipment->delivered_at ) ],
+        ];
+
+        foreach ( $steps as $index => $step ) {
+            $number = $index + 1;
+
+            $steps[ $index ]['state'] = match ( true ) {
+                $number <= $done      => 'complete',
+                $number === $done + 1 => Shipment::STATUS_EXCEPTION === $status ? 'error' : 'current',
+                default               => 'upcoming',
+            };
+        }
+
+        return $steps;
     }
 
     /**
@@ -375,20 +438,23 @@ trait DescribesOrder
     }
 
     /**
-     * The notes the store shared with the shopper: `id`, `body`, `date`.
+     * The notes the store shared with the shopper: `id`, `body`, `date`,
+     * and `datetime` (ISO 8601, for the time element).
      *
      * @since 1.0.0
+     * @since 2.0.0 Adds `datetime`.
      *
      * @param  Order  $order  The order.
      *
-     * @return array<int, array{id: int, body: string, date: string}>
+     * @return array<int, array{id: int, body: string, date: string, datetime: string|null}>
      */
     protected function orderNotes( Order $order ): array
     {
         return $order->customerNotes()->orderBy( 'id' )->get()->map( static fn ( OrderNote $note ): array => [
-            'id'   => (int) $note->id,
-            'body' => (string) $note->body,
-            'date' => LocalizedDate::format( $note->created_at ),
+            'id'       => (int) $note->id,
+            'body'     => (string) $note->body,
+            'date'     => LocalizedDate::format( $note->created_at ),
+            'datetime' => $note->created_at?->toIso8601String(),
         ] )->all();
     }
 }

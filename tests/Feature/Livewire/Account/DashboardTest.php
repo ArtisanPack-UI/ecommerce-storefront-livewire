@@ -55,7 +55,7 @@ it( 'works for a signed-in user the store has no customer record for', function 
         ->assertSee( 'Welcome back, Grace.' )
         ->assertSeeHtml( 'data-account-no-orders' )
         ->assertSee( 'None saved yet.' )
-        ->assertSee( '0 downloads available' )
+        ->assertSee( 'Files from your orders will appear here.' )
         ->assertDontSeeHtml( 'data-account-dashboard-failed' );
 } );
 

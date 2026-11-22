@@ -5171,4 +5171,541 @@
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
     }
+
+    /*
+     * Unpaid order (#142): one centered Card at most 640px wide: the
+     * warning icon tile, the title and lead, the error Alert, the items,
+     * shipping and total as a meta list, then the order's payment driver.
+     */
+    .ec-placement {
+        display: grid;
+        gap: 16px;
+        inline-size: 100%;
+        max-inline-size: 40rem;
+        margin-inline: auto;
+    }
+
+    .ec-placement__card [data-scope="card"][data-part="body"] {
+        display: grid;
+        gap: 20px;
+    }
+
+    .ec-placement__intro {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-placement__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-lg-font-size);
+        font-weight: var(--apui-type-heading-lg-font-weight);
+        line-height: var(--apui-type-heading-lg-line-height);
+        letter-spacing: var(--apui-type-heading-lg-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-placement__title:focus {
+        outline: none;
+    }
+
+    .ec-placement__title:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    .ec-placement__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-placement__meta {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .ec-placement__meta-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-placement__meta-row > dt {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-placement__meta-row > dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-placement__meta-row--total > dd {
+        font-weight: var(--apui-font-weight-semibold);
+    }
+
+    .ec-placement__payment {
+        display: grid;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .ec-placement__error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Order confirmation (#143): the success icon tile, the title and the
+     * email line; a meta strip Card whose three cells are ruled apart (they
+     * stack below 640px); the guest hints side by side from 768px; the
+     * order details; then the actions.
+     */
+    .ec-confirmation {
+        display: grid;
+        gap: 24px;
+        min-inline-size: 0;
+    }
+
+    .ec-confirmation__header {
+        display: grid;
+        justify-items: start;
+        gap: 12px;
+        max-inline-size: 36rem;
+    }
+
+    .ec-confirmation__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-confirmation__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-confirmation__strip [data-scope="card"][data-part="body"] {
+        padding: 0;
+    }
+
+    .ec-confirmation__facts {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        margin: 0;
+    }
+
+    .ec-confirmation__fact {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        padding: 16px var(--apui-card-padding);
+        min-inline-size: 0;
+    }
+
+    .ec-confirmation__fact + .ec-confirmation__fact {
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    @media (min-width: 40rem) {
+        .ec-confirmation__facts {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .ec-confirmation__fact + .ec-confirmation__fact {
+            border-block-start: 0;
+            border-inline-start: var(--apui-border-width) solid var(--apui-border-muted);
+        }
+    }
+
+    .ec-confirmation__fact > dt {
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-confirmation__fact > dd {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-confirmation__number {
+        font-family: var(--apui-font-family-mono);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-confirmation__hints {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-confirmation__hints {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-confirmation__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    /*
+     * Guest order lookup (#144): a centered 480px column: the title and
+     * lead, the failure Alert, the form in a Card with a full-width submit,
+     * and the sign-in line centered under it.
+     */
+    .ec-lookup {
+        display: grid;
+        gap: 16px;
+        inline-size: 100%;
+        max-inline-size: 30rem;
+        margin-inline: auto;
+        padding-block: 32px;
+    }
+
+    .ec-lookup__intro {
+        display: grid;
+        gap: 8px;
+    }
+
+    .ec-lookup__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+    }
+
+    .ec-lookup__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    /* The live region stays in the tree (so a failure is announced), but adds no gap while it's empty. */
+    .ec-lookup__failure:not(:has(*)) {
+        margin-block-start: -16px;
+    }
+
+    .ec-lookup__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-lookup__number input {
+        font-family: var(--apui-font-family-mono);
+    }
+
+    .ec-lookup__submit {
+        inline-size: 100%;
+    }
+
+    .ec-lookup__login {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        text-align: center;
+    }
+
+    /*
+     * Order detail (#145): the back link or breadcrumb, the title with the
+     * placed line, the status Badge and the reorder button at the end (below the
+     * title under 640px); then the shipment Cards (Steps, and the carrier
+     * and tracking on a sunken panel), the store's messages, the details
+     * and the refunds.
+     */
+    .ec-order-show {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-show__header {
+        display: grid;
+        gap: 12px;
+        margin-block-end: 8px;
+    }
+
+    .ec-order-show__back {
+        justify-self: start;
+    }
+
+    .ec-order-show__heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-order-show__titles {
+        display: grid;
+        gap: 4px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-show__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-show__meta {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-show__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-order-show__shipments {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-order-shipment__steps {
+        min-inline-size: 0;
+        overflow-x: auto;
+    }
+
+    .ec-order-shipment__panel {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+        padding: 14px 16px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+    }
+
+    .ec-order-shipment__details {
+        display: grid;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-order-shipment__carrier {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-order-shipment__tracking {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-order-shipment__tracking-number {
+        color: var(--apui-text-default);
+        font-family: var(--apui-font-family-mono);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-order-notes [data-scope="timeline"][data-part="body"] {
+        padding: 10px 12px;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-default);
+        white-space: pre-line;
+        overflow-wrap: anywhere;
+    }
+
+    /*
+     * Account dashboard (#146): the greeting, Recent orders (package icon
+     * tiles, the status Badge and total at the end), three Cards that stack
+     * below 768px, the outline claim prompt, and the profile links.
+     */
+    .ec-dashboard {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-dashboard__greeting {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-dashboard__lead {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-lg-font-size);
+        line-height: var(--apui-type-body-lg-line-height);
+    }
+
+    .ec-dashboard__card-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: var(--apui-card-padding) var(--apui-card-padding) 8px;
+    }
+
+    .ec-dashboard__empty {
+        padding: 8px var(--apui-card-padding) var(--apui-card-padding);
+    }
+
+    .ec-dashboard__order.apui-list-item {
+        align-items: center;
+        padding-block: 12px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    .ec-dashboard__order-link {
+        color: inherit;
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+    }
+
+    .ec-dashboard__order-link:hover {
+        text-decoration: underline;
+    }
+
+    .ec-dashboard__order-link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    .ec-dashboard__order-end {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px 16px;
+    }
+
+    .ec-dashboard__order-total {
+        color: var(--apui-text-default);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .ec-dashboard__cards {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-dashboard__cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    .ec-dashboard__card [data-scope="card"][data-part="body"] {
+        align-content: start;
+        gap: 12px;
+    }
+
+    .ec-dashboard__card p {
+        margin: 0;
+    }
+
+    .ec-dashboard__card .apui-link {
+        justify-self: start;
+    }
+
+    .ec-dashboard__card-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-dashboard__muted {
+        color: var(--apui-text-muted);
+    }
+
+    .ec-dashboard__claim {
+        border-color: var(--apui-border-strong);
+    }
+
+    .ec-dashboard__claim-body {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 16px;
+    }
+
+    .ec-dashboard__claim-body > .apui-icon {
+        flex: none;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-dashboard__claim-text {
+        display: grid;
+        flex: 1 1 16rem;
+        gap: 2px;
+        min-inline-size: 0;
+    }
+
+    .ec-dashboard__claim-title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+    }
+
+    .ec-dashboard__claim-description {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-dashboard__links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 }

@@ -30,9 +30,9 @@ Every page is a controller action in `Http\Controllers\StorefrontPageController`
 
 | Path | Route name | Component | What it does |
 | --- | --- | --- | --- |
-| `/` | `dashboard` | `account-dashboard` | Greeting, latest orders, default addresses, download count, and links. |
+| `/` | `dashboard` | `account-dashboard` | Greeting (the page's heading), latest orders, default addresses, download count, the claim prompt, and links. |
 | `/orders` | `orders.index` | `account-orders` | Order history. |
-| `/orders/{order}` | `orders.show` | `account-order` | One order. |
+| `/orders/{order}` | `orders.show` | `account-order` | One order: "Order {number}" as the heading, each shipment's progress (Placed, Shipped, In transit, Delivered) with its tracking, the store's messages, the details, and refunds. |
 | `/addresses` | `addresses` | `account-addresses` | The address book. |
 | `/downloads` | `downloads` | `account-downloads` | Downloads and licence keys. |
 | `/downloads/{download}` | `downloads.file` | None (file) | Sends the file as an attachment and spends a download. |
@@ -182,8 +182,8 @@ A signed-in user with no engine customer record yet sees empty pages, and gets a
 
 ## Orders after checkout
 
-**Confirmation** (`order-confirmation`): the order number, status, lines, totals, addresses, payment method, and downloads the order unlocked. The signed-in owner can always open it; anyone else needs the signed `token` checkout put in the link, otherwise it's a 404. It only reads the order, so refreshing changes nothing. Owners get a link to the order in their account; guests get "create an account" and "look up this order later" hints.
+**Confirmation** (`order-confirmation`): the order number, status, lines, totals, addresses, payment method, and downloads the order unlocked. The signed-in owner can always open it; anyone else needs the signed `token` checkout put in the link, otherwise it's a 404. It only reads the order, so refreshing changes nothing. Owners get a link to the order in their account; guests get "create an account" and "look up this order later" hints. The page passes `show-title`, so "Thank you for your order" is its heading, above a strip with the order number, date, and status.
 
-**Order lookup** (`order-lookup`): a guest enters the order's email and number. A match opens the signed order page, which stops working after `order_lookup.link_ttl_minutes` (60). Every failure gets the same message, and the engine locks out an order number or address after repeated failures.
+**Order lookup** (`order-lookup`): a guest enters the order's email and number. A match opens the signed order page, which stops working after `order_lookup.link_ttl_minutes` (60). Every failure gets the same message (with "Check the order number and use the same email as at checkout." and the order number marked invalid when nothing matched), and the engine locks out an order number or address after repeated failures. The page passes `show-title` for its "Find your order" heading.
 
-**Signed order view** (`order-view`): the order read-only, opened from a lookup or from a guest confirmation email. A malformed, tampered, or expired token is a 404. The storefront points the engine's `checkout.order_view_url` at this route (unless you set your own), so guest emails link here. Email links last the engine's `checkout.order_view_ttl_days`.
+**Signed order view** (`order-view`): the order read-only, under an "Order lookup" breadcrumb, opened from a lookup or from a guest confirmation email. A malformed, tampered, or expired token is a 404. The storefront points the engine's `checkout.order_view_url` at this route (unless you set your own), so guest emails link here. Email links last the engine's `checkout.order_view_ttl_days`.

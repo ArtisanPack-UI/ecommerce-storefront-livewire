@@ -23,6 +23,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesOrder;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\OrderAccess;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -59,6 +60,17 @@ class Dashboard extends Component
      * @var int
      */
     public const RECENT_ORDERS = 3;
+
+    /**
+     * Show the greeting as the page's h1 (the dashboard page does);
+     * otherwise it's a lead paragraph under the host's own heading.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
 
     /**
      * Renders the component.
@@ -98,6 +110,7 @@ class Dashboard extends Component
             'orders'          => $orders,
             'shippingAddress' => $shipping instanceof CustomerAddress ? $shipping->toArray() : null,
             'billingAddress'  => $billing instanceof CustomerAddress ? $billing->toArray() : null,
+            'billingSame'     => $shipping instanceof CustomerAddress && $billing instanceof CustomerAddress && $shipping->is( $billing ),
             'downloads'       => $count,
             'failed'          => $failed,
             'claimable'       => $this->claimableOrders( $customer ),

@@ -24,6 +24,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -81,6 +82,29 @@ class Lookup extends Component
     public ?string $failure = null;
 
     /**
+     * Whether the last attempt found no order (rather than being locked
+     * out): the failure then says what to check, and the order number
+     * field is marked invalid.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $notFound = false;
+
+    /**
+     * Show the "Find your order" title (the lookup page does; a host's
+     * own page, under its own heading, doesn't).
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
+
+    /**
      * Looks the order up and, when it matches, opens it.
      *
      * @since 1.0.0
@@ -91,7 +115,8 @@ class Lookup extends Component
     {
         $this->newErrorSummary();
         $this->resetErrorBag();
-        $this->failure = null;
+        $this->failure  = null;
+        $this->notFound = false;
 
         $this->email       = trim( $this->email );
         $this->orderNumber = trim( $this->orderNumber );
@@ -128,7 +153,8 @@ class Lookup extends Component
         }
 
         if ( ! $outcome instanceof Order ) {
-            $this->failure = is_string( $outcome ) ? $outcome : __( 'We couldn\'t find an order with that email address and order number.' );
+            $this->failure  = is_string( $outcome ) ? $outcome : __( 'We couldn\'t find an order with that email address and order number.' );
+            $this->notFound = ! is_string( $outcome );
 
             return;
         }

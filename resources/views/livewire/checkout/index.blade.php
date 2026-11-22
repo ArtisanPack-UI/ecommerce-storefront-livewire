@@ -15,7 +15,8 @@
     component.
 
     After an order is placed but its payment isn't finished, the payment
-    for that order is shown instead (partials.placement).
+    for that order is shown instead (partials.placement, #142), with
+    "Finish paying for order …" as the title in place of "Checkout".
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -64,10 +65,6 @@
             @endif
         </x-artisanpack-ec-empty-state>
     @elseif ( null !== $placement )
-        @if ( $showTitle )
-            <h1 class="ec-checkout__title">{{ __( 'Checkout' ) }}</h1>
-        @endif
-
         @include( 'ecommerce-storefront::livewire.checkout.partials.placement' )
     @else
         @php

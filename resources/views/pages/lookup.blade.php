@@ -1,5 +1,5 @@
 {{--
-    The guest order lookup.
+    The guest order lookup (#144), with its "Find your order" title.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -12,12 +12,8 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', $ecommerceSeo->title( __( 'Find an order' ) ) )
+@section( 'title', $ecommerceSeo->title( __( 'Find your order' ) ) )
 
 @section( 'content' )
-    <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">{{ __( 'Find an order' ) }}</h1>
-
-        <livewire:artisanpack-ecommerce-storefront-order-lookup />
-    </div>
+    <livewire:artisanpack-ecommerce-storefront-order-lookup :show-title="true" />
 @endsection

@@ -82,7 +82,7 @@ Placing the order turns the cart into the order, so after a challenged or failed
 
 - a paid order, or one held for the store's fraud review, goes to its confirmation;
 - a payment confirmed on return finishes the order (the engine's `finalize()` is idempotent per cart and resumes the payment);
-- otherwise the payment step shows again: "Your order … is placed, but its payment isn't finished. Pay below to complete it."
+- otherwise the payment shows again, on a "Finish paying for order …" card with the order's items, shipping and total: "Your order … is placed, but its payment isn't finished. Pay below to complete it."
 
 A cancelled, failed, or refunded order is forgotten.
 

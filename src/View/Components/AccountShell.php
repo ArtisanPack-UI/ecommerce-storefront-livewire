@@ -25,6 +25,9 @@ use Throwable;
 /**
  * `<x-artisanpack-ec-account-shell :title="__( 'Orders' )">…</x-artisanpack-ec-account-shell>`
  *
+ * Without a title the shell prints no heading, for content that brings its
+ * own h1 (the dashboard's greeting, an order's number).
+ *
  * The frame every account page sits in (spec §7.5, S25), built on the
  * design system: from 1024px a 232px sidebar (the shopper's Avatar, name
  * and email, the account navigation and a "Sign out" button) beside the
@@ -91,11 +94,12 @@ class AccountShell extends Component
 
     /**
      * @since 1.0.0
+     * @since 2.0.0 The title is optional.
      *
-     * @param  string  $title  The page heading.
+     * @param  string|null  $title  The page heading, or null when the content has its own h1.
      */
     public function __construct(
-        public string $title,
+        public ?string $title = null,
     ) {
     }
 
