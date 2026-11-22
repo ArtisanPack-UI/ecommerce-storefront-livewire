@@ -2,8 +2,9 @@
     Downloads and licence keys (#149). See Livewire\Account\Downloads.
 
     The lead line, then two Cards. Files: a divided List, each row a file
-    (or play, for a stream) icon tile, the file's name, then its version,
-    downloads left, expiry and order (or why it can't be downloaded), with
+    (or play, for a stream) icon tile, the file's name, then its product
+    (when the name isn't the product's), version, downloads left, expiry
+    and order (or why it can't be downloaded), with
     an outline "Download" or "Play" (opens in a new tab) at the end, or an
     "Expired" / "No downloads left" Badge. Licence keys: each key's product
     and tier with a state Badge ("Valid until …", "Active", "Expired",
@@ -37,6 +38,11 @@
 
             <x-artisanpack-list variant="divided" class="ec-downloads__files">
                 @foreach ( $downloads as $row )
+                    {{-- Two products can ship files with the same name, so the product goes along with it. --}}
+                    @php
+                        $ecommerceDownloadProduct = $row['product'] !== $row['file'] ? $row['product'] : null;
+                        $ecommerceDownloadName    = null === $ecommerceDownloadProduct ? $row['file'] : $row['file'] . ' (' . $ecommerceDownloadProduct . ')';
+                    @endphp
                     <x-artisanpack-list-item class="ec-downloads__file" wire:key="account-download-{{ $row['id'] }}" data-account-download="{{ $row['id'] }}" data-state="{{ $row['state'] }}">
                         <x-slot:leading>
                             <x-artisanpack-icon :name="$row['streaming'] ? 'play' : 'file-text'" variant="tile" color="neutral" />
@@ -47,6 +53,9 @@
                         </x-slot:title>
 
                         <x-slot:description>
+                            @if ( null !== $ecommerceDownloadProduct )
+                                <span data-account-download-product>{{ $ecommerceDownloadProduct }}</span><span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>
+                            @endif
                             @if ( 'expired' === $row['state'] )
                                 <span data-account-download-reason="expired">{{ null === $row['expires'] ? __( 'This download has expired.' ) : __( 'This download expired on :date.', [ 'date' => $row['expires'] ] ) }}</span>
                             @elseif ( 'exhausted' === $row['state'] )
@@ -70,9 +79,9 @@
                         <x-slot:trailing>
                             @if ( null !== $row['url'] )
                                 @if ( $row['streaming'] )
-                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="external-link" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $row['file'] ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
+                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="external-link" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $ecommerceDownloadName ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
                                 @else
-                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="download" :href="$row['url']" :aria-label="__( 'Download :file', [ 'file' => $row['file'] ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
+                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="download" :href="$row['url']" :aria-label="__( 'Download :file', [ 'file' => $ecommerceDownloadName ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
                                 @endif
                             @elseif ( 'expired' === $row['state'] )
                                 <x-artisanpack-badge color="neutral" size="sm" data-account-download-badge="expired">{{ __( 'Expired' ) }}</x-artisanpack-badge>

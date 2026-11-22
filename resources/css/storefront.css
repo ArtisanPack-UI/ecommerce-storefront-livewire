@@ -5810,6 +5810,13 @@
         padding-inline: var(--apui-card-padding);
     }
 
+    /* The date, items and total wrap rather than clip beside the status Badge. */
+    .ec-orders__row [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
     .ec-orders__row-link {
         color: inherit;
         font-weight: var(--apui-font-weight-medium);
@@ -5940,6 +5947,13 @@
         align-items: center;
         padding-block: 14px;
         padding-inline: var(--apui-card-padding);
+    }
+
+    /* The product, version, allowance, expiry and order wrap rather than clip. */
+    .ec-downloads__file [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .ec-downloads__name {

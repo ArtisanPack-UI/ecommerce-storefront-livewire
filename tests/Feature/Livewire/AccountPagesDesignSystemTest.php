@@ -204,6 +204,35 @@ it( 'lists files with icon tiles and the order, and licence keys in the clipboar
         ->and( classTokens( $html ) )->not->toContain( ...OLD_ACCOUNT_SCREEN_CLASSES );
 } );
 
+it( 'tells same-named files apart by their product, in the row and the button\'s name', function (): void {
+    [ , $customer ] = shopper();
+    $order          = placedOrder( [], $customer, [ makeProduct( 1500, [ 'name' => 'Glaze recipe book' ] ), makeProduct( 900, [ 'name' => 'Kiln log template' ] ) ] );
+
+    foreach ( $order->items as $item ) {
+        $file = DigitalFile::factory()->create( [ 'product_id' => $item->product_id, 'label' => 'Manual.pdf', 'version' => '1.0', 'path' => 'digital/manual-' . $item->id . '.pdf' ] );
+        DigitalDownload::factory()->create( [ 'order_item_id' => $item->id, 'digital_file_id' => $file->id ] );
+    }
+
+    Livewire::test( Downloads::class )
+        ->assertSeeHtml( 'data-account-download-product>Glaze recipe book</span>' )
+        ->assertSeeHtml( 'data-account-download-product>Kiln log template</span>' )
+        ->assertSeeHtml( 'aria-label="Download Manual.pdf (Glaze recipe book)"' )
+        ->assertSeeHtml( 'aria-label="Download Manual.pdf (Kiln log template)"' );
+} );
+
+it( 'leaves the product out when the file is named after it', function (): void {
+    [ , $customer ] = shopper();
+    $order          = placedOrder( [], $customer, [ makeProduct( 1500, [ 'name' => 'Field guide' ] ) ] );
+    $item           = $order->items->first();
+    $file           = DigitalFile::factory()->create( [ 'product_id' => $item->product_id, 'label' => '', 'path' => 'digital/guide.pdf' ] );
+    DigitalDownload::factory()->create( [ 'order_item_id' => $item->id, 'digital_file_id' => $file->id ] );
+
+    Livewire::test( Downloads::class )
+        ->assertSee( 'Field guide' )
+        ->assertDontSeeHtml( 'data-account-download-product' )
+        ->assertSeeHtml( 'aria-label="Download Field guide"' );
+} );
+
 it( 'marks an expired file with a badge instead of a button', function (): void {
     [ , $customer ] = shopper();
     $order          = placedOrder( [], $customer );
