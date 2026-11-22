@@ -314,3 +314,35 @@ it( 'clears a malformed variant set from the client', function (): void {
         ->assertSet( 'variant', null )
         ->assertSet( 'selected', [] );
 } );
+
+it( 'says an unpriced variant isn\'t for sale, not out of stock, and offers no signup', function (): void {
+    // Red XL is in stock but has no price in the shopper's currency.
+    $redXl = $this->made['variants']['red/xl'];
+    $redXl->inventoryItems()->update( [ 'quantity_on_hand' => 5 ] );
+    ArtisanPackUI\Ecommerce\Models\ProductPrice::query()->where( 'priceable_type', $redXl->getMorphClass() )->where( 'priceable_id', $redXl->id )->delete();
+
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->set( "selected.{$this->colour}", (string) $this->values['red']->id );
+
+    $html = $component->html();
+
+    // Disabled even with back-in-stock signups on, which keep sold-out choices selectable.
+    expect( optionInput( $html, $this->values['xl']->id ) )->toContain( 'disabled' )
+        ->and( $html )->toContain( 'Not available to buy right now' )
+        ->and( $html )->not->toContain( 'Out of stock' );
+
+    $component->call( 'choose', $this->size, (string) $this->values['xl']->id );
+
+    expect( $component->instance()->blockedReason() )->toBe( 'This option isn\'t available to buy right now.' )
+        ->and( $component->instance()->offersBackInStock() )->toBeFalse()
+        ->and( $component->instance()->outOfStock() )->toBeFalse();
+} );
+
+it( 'still calls a priced, sold-out variant out of stock', function (): void {
+    $component = Livewire::test( VariableForm::class, [ 'product' => $this->made['product'] ] )
+        ->call( 'choose', $this->colour, (string) $this->values['red']->id )
+        ->call( 'choose', $this->size, (string) $this->values['xl']->id );
+
+    expect( $component->instance()->blockedReason() )->toBe( 'This option is out of stock.' )
+        ->and( $component->html() )->toContain( 'Out of stock' );
+} );

@@ -155,3 +155,20 @@ it( 'ignores a child id that is not in the group', function (): void {
 
     expect( Cart::query()->count() )->toBe( 0 );
 } );
+
+it( 'prices the rows and the running total for the signed-in customer, as the cart will', function (): void {
+    // A customer-group pricing satellite: half price for any known customer.
+    addFilter( 'ap.ecommerce.pricing.priceDisplay', static fn ( Money\Money $price, mixed $subject, ?ArtisanPackUI\Ecommerce\Models\Customer $customer ): Money\Money => null === $customer ? $price : $price->divide( 2 ) );
+
+    shopper();
+    app()->forgetScopedInstances();
+
+    Livewire::test( GroupedForm::class, [ 'product' => $this->group ] )
+        ->assertSee( '$15.00' )
+        ->assertDontSee( '$30.00' )
+        ->set( 'quantities.' . $this->potRow->id, 1 )
+        ->set( 'quantities.' . $this->cupRow->id, 2 )
+        ->assertSeeHtml( 'data-grouped-total>$23.00</bdi>' );
+
+    removeAllFilters( 'ap.ecommerce.pricing.priceDisplay' );
+} );

@@ -49,11 +49,11 @@ class Quantity extends Component
      * @since 1.0.0
      *
      * @param  string       $id        The input id.
-     * @param  string|null  $label     The visible label (null for an sr-only "Quantity").
+     * @param  string|null  $label     The visible label (null for an sr-only "Quantity", or "Quantity, {itemName}").
      * @param  int          $min       The lowest value.
      * @param  int|null     $max       The highest value.
      * @param  string|null  $error     The error message to show.
-     * @param  string|null  $itemName  Names the item in the buttons' labels ("Increase quantity, Mug").
+     * @param  string|null  $itemName  Names the item in the buttons' labels ("Increase quantity, Mug") and the hidden field label.
      * @param  string       $size      `lg` (product page), `md`, `sm` (cart) or `xs` (drawer).
      */
     public function __construct(

@@ -301,3 +301,60 @@ describe( 'gallery', function (): void {
             ->and( $images[1]['full'] )->toBe( 'https://cdn.example.test/b.jpg' );
     } );
 } );
+
+describe( 'image URLs', function (): void {
+    it( 'accepts same-origin root-relative paths and refuses everything unsafe', function ( string $url, ?string $expected ): void {
+        expect( ProductImages::safeUrl( $url ) )->toBe( $expected );
+    } )->with( [
+        'root-relative'     => [ '/storage/a.jpg', '/storage/a.jpg' ],
+        'absolute https'    => [ 'https://cdn.example.test/a.jpg', 'https://cdn.example.test/a.jpg' ],
+        'protocol-relative' => [ '//evil.test/a.jpg', null ],
+        'slash-backslash'   => [ '/\\evil.test/a.jpg', null ],
+        'inner backslash'   => [ '/images\\a.jpg', null ],
+        'whitespace'        => [ '/a b.jpg', null ],
+        'control character' => [ "/a\x01.jpg", null ],
+        'quote'             => [ '/a.jpg"onerror="x', null ],
+        'javascript'        => [ 'javascript:alert(1)', null ],
+        'data'              => [ 'data:image/png;base64,xx', null ],
+        'relative'          => [ 'images/a.jpg', null ],
+    ] );
+
+    it( 'keeps a root-relative srcset', function (): void {
+        expect( ProductImages::safeSrcset( '/a-480.jpg 480w, /a-960.jpg 960w' ) )->toBe( '/a-480.jpg 480w, /a-960.jpg 960w' )
+            ->and( ProductImages::safeSrcset( '/a-480.jpg 480w, //evil.test/b.jpg 960w' ) )->toBeNull();
+    } );
+
+    it( 'shows a root-relative product image in the gallery and on the card', function (): void {
+        $product = makeProduct( 1000, [ 'name' => 'Mug' ] );
+        ProductImage::factory()->create( [ 'product_id' => $product->id, 'media_id' => null, 'image_url' => '/images/mug.jpg', 'position' => 0 ] );
+
+        $this->blade( '<x-artisanpack-ec-gallery :images="$images" name="Mug" />', [ 'images' => ProductImages::gallery( $product->fresh() ) ] )
+            ->assertSee( 'src="/images/mug.jpg"', false )
+            ->assertDontSee( 'No image available' );
+
+        $this->blade( '<x-artisanpack-ec-sf-product-card :product="$product" />', [ 'product' => $product->fresh( 'images' ) ] )
+            ->assertSee( 'src="/images/mug.jpg"', false );
+    } );
+} );
+
+describe( 'quantity label', function (): void {
+    it( 'names the item in the hidden label', function (): void {
+        $this->blade( '<x-artisanpack-ec-quantity id="qty" item-name="Oxbow mug" />' )
+            ->assertSee( 'for="qty"', false )
+            ->assertSee( 'Quantity, Oxbow mug' );
+    } );
+
+    it( 'still reads "Quantity" with neither a label nor an item name', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-quantity id="qty" />' );
+
+        expect( $html )->toMatch( '#<label[^>]*for="qty"[^>]*>\s*Quantity\s*</label>#' );
+    } );
+
+    it( 'passes required to the input', function (): void {
+        $html = (string) $this->blade( '<x-artisanpack-ec-quantity id="qty" label="Copies" :required="true" />' );
+
+        expect( $html )->toContain( 'data-part="required"' )
+            ->and( $html )->toMatch( '#<input[^>]*\brequired\b#' )
+            ->and( $html )->not->toMatch( '#<div[^>]*class="ec-quantity"[^>]*\brequired\b#' );
+    } );
+} );

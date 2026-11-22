@@ -14,6 +14,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Index;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Product\RelatedProducts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontCart;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 /**
@@ -498,3 +499,164 @@ it( 'skips its own cart event and follows the drawer\'s', function (): void {
         ->dispatch( 'ecommerce-cart-updated', count: 4, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
         ->assertSet( "quantities.{$line->id}", 4 );
 } );
+
+/**
+ * A cart page with US shipping quoted and the "Standard" rate chosen,
+ * whose price then moves to `$newAmount`, so the engine drops the rate on
+ * the cart's next change.
+ */
+function cartWithChosenRateThatMoves( int $newAmount = 700 ): Testable
+{
+    usShipping( [ 'Standard' => 500 ] );
+    shopperCartWith( [ makeProduct( 2000 ) ] );
+
+    $component = Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->set( 'estimatePostcode', '60601' )
+        ->call( 'estimateShipping' );
+
+    $component->set( 'selectedRate', $component->get( 'rates' )[0]['id'] )
+        ->assertSeeHtml( 'data-cart-shipping="chosen"' );
+
+    ShippingMethod::query()->sole()->update( [ 'config' => [ 'amount' => $newAmount ] ] );
+
+    return $component;
+}
+
+it( 'clears the estimate when a quantity change makes the engine drop the chosen rate', function (): void {
+    $component = cartWithChosenRateThatMoves();
+    $line      = Cart::query()->sole()->items()->sole();
+
+    $component->set( 'quantities.' . $line->id, 3 )
+        ->assertHasNoErrors()
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertDontSeeHtml( 'data-cart-estimate-rates' )
+        ->assertSet( 'announcement', 'Cart updated. Your shipping estimate changed. Get shipping rates again. Total: $60.00.' );
+} );
+
+it( 'clears the estimate when a coupon makes the engine drop the chosen rate', function (): void {
+    percentCoupon( 'SAVE10', 10 );
+    $component = cartWithChosenRateThatMoves();
+
+    $component->set( 'couponCode', 'SAVE10' )
+        ->call( 'applyCoupon' )
+        ->assertHasNoErrors()
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertSet( 'announcement', 'Coupon applied. Your shipping estimate changed. Get shipping rates again. Total: $18.00.' );
+} );
+
+it( 'clears the estimate when a drawer change made the engine drop the chosen rate', function (): void {
+    $component = cartWithChosenRateThatMoves();
+    $cart      = Cart::query()->sole();
+
+    app( StorefrontCartService::class )->updateItem( $cart, $cart->items()->sole(), 2 );
+    app( StorefrontCart::class )->remember( $cart->fresh() );
+
+    $component->dispatch( 'ecommerce-cart-updated', count: 2, source: ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Cart\Drawer::class )
+        ->assertSet( 'selectedRate', '' )
+        ->assertSet( 'rates', null )
+        ->assertSeeHtml( 'data-cart-shipping="checkout"' )
+        ->assertSet( 'announcement', 'Your shipping estimate changed. Get shipping rates again.' );
+} );
+
+it( 'keeps the chosen rate when the engine keeps it', function (): void {
+    $component = cartWithChosenRateThatMoves( 500 );
+    $chosen    = $component->get( 'selectedRate' );
+    $line      = Cart::query()->sole()->items()->sole();
+
+    $component->set( 'quantities.' . $line->id, 2 )
+        ->assertSet( 'selectedRate', $chosen )
+        ->assertSeeHtml( 'data-cart-shipping="chosen"' )
+        ->assertSeeHtml( 'data-cart-estimate-rates' )
+        ->assertSet( 'announcement', 'Cart updated. Total: $45.00.' );
+} );
+
+it( 'counts units, not lines, in the item count', function (): void {
+    $mug   = makeProduct( 1000, [ 'name' => 'Mug' ] );
+    $plate = makeProduct( 500, [ 'name' => 'Plate' ] );
+    $cart  = app( StorefrontCart::class )->current( true );
+
+    app( StorefrontCartService::class )->addItem( $cart, $mug->id, null, 3 );
+    app( StorefrontCartService::class )->addItem( $cart, $plate->id, null, 2 );
+
+    Livewire::test( Index::class, [ 'showTitle' => true ] )
+        ->assertSeeHtml( '<p class="ec-cart__count" data-cart-item-count>5 items</p>' );
+} );
+
+it( 'names the product in each quantity field\'s label', function (): void {
+    $line = shopperCartWith( [ makeProduct( 1000, [ 'name' => 'Oxbow mug' ] ) ] )->items()->sole();
+
+    Livewire::test( Index::class )
+        ->assertSeeHtml( 'for="ec-cart-quantity-' . $line->id . '"' )
+        ->assertSee( 'Quantity, Oxbow mug' );
+} );
+
+it( 'sends quantity changes on change, with no debounce to lose before Checkout', function (): void {
+    $line = shopperCartWith( [ makeProduct() ] )->items()->sole();
+
+    Livewire::test( Index::class )
+        ->assertSeeHtml( 'wire:model.live.change="quantities.' . $line->id . '"' )
+        ->assertDontSeeHtml( 'debounce' );
+} );
+
+it( 'ties a refused rate\'s error to the rate radios and announces it', function (): void {
+    usShipping( [ 'Standard' => 500, 'Express' => 1500 ] );
+    shopperCartWith( [ makeProduct( 2000 ) ] );
+
+    $component = Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->call( 'estimateShipping' );
+
+    $express = collect( $component->get( 'rates' ) )->firstWhere( 'label', 'Express' );
+
+    // The method goes away between the quote and the choice, so the engine refuses it.
+    ShippingMethod::query()->where( 'label', 'Express' )->delete();
+
+    $component->set( 'selectedRate', $express['id'] )
+        ->assertHasErrors( 'selectedRate' )
+        ->assertSet( 'selectedRate', '' )
+        ->assertSeeHtml( 'aria-invalid="true"' )
+        ->assertSeeHtml( 'aria-describedby="ec-cart-estimate-rate-error"' )
+        ->assertSeeHtml( 'id="ec-cart-estimate-rate-error"' )
+        ->assertDontSeeHtml( 'data-cart-estimate-error' );
+
+    expect( $component->get( 'announcement' ) )->not->toBe( '' );
+} );
+
+it( 'shows a rates failure as an alert when there are no rates to tie it to', function (): void {
+    shopperCartWith( [ makeProduct() ] );
+
+    app()->instance( StorefrontCartService::class, Mockery::mock( app( StorefrontCartService::class ) )->makePartial()
+        ->shouldReceive( 'quoteShipping' )->andThrow( new RuntimeException( 'Carrier down' ) )->getMock() );
+
+    Livewire::test( Index::class )
+        ->set( 'estimateCountry', 'US' )
+        ->call( 'estimateShipping' )
+        ->assertHasErrors( 'selectedRate' )
+        ->assertSeeHtml( 'role="alert" data-cart-estimate-error' )
+        ->assertSee( 'Shipping rates are unavailable right now. You can still check out.' );
+} );
+
+it( 'hands focus to the coupon field after the coupon is removed', function (): void {
+    percentCoupon( 'SAVE10', 10 );
+    shopperCartWith( [ makeProduct( 5000 ) ] );
+
+    Livewire::test( Index::class )
+        ->set( 'couponCode', 'SAVE10' )
+        ->call( 'applyCoupon' )
+        ->assertDontSeeHtml( 'data-cart-coupon-focus' )
+        ->call( 'removeCoupon', 'SAVE10' )
+        ->assertSet( 'couponChanges', 1 )
+        ->assertSeeHtml( 'wire:key="cart-coupon-focus-1"' )
+        ->assertSeeHtml( "document.getElementById( 'ec-cart-coupon' )?.focus()" );
+} );
+
+it( 'keeps the coupon focus counter out of the browser\'s reach', function (): void {
+    shopperCartWith( [ makeProduct() ] );
+
+    Livewire::test( Index::class )->set( 'couponChanges', 5 );
+} )->throws( CannotUpdateLockedPropertyException::class );

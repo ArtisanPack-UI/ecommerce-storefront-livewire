@@ -337,3 +337,35 @@ it( 'shows no meter when the threshold has no amount for the cart\'s currency', 
         ->dispatch( 'ecommerce-cart-open' )
         ->assertDontSeeHtml( 'data-cart-free-shipping' );
 } );
+
+it( 're-reads the quantities every time it opens, not just the first time', function (): void {
+    $line = drawerCartWith()->items()->sole();
+
+    $component = Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertSet( "quantities.{$line->id}", 1 );
+
+    // Changed somewhere the drawer never heard about (another tab), with no event.
+    app( StorefrontCartService::class )->updateItem( Cart::query()->sole(), $line, 4 );
+
+    $component->dispatch( 'ecommerce-cart-open' )
+        ->assertSet( "quantities.{$line->id}", 4 );
+} );
+
+it( 'names the product in each quantity field\'s label', function (): void {
+    $line = drawerCartWith( 'Oxbow mug' )->items()->sole();
+
+    Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertSeeHtml( 'for="ec-drawer-quantity-' . $line->id . '"' )
+        ->assertSee( 'Quantity, Oxbow mug' );
+} );
+
+it( 'sends quantity changes on change, with no debounce to lose before Checkout', function (): void {
+    $line = drawerCartWith()->items()->sole();
+
+    Livewire::test( Drawer::class )
+        ->dispatch( 'ecommerce-cart-open' )
+        ->assertSeeHtml( 'wire:model.live.change="quantities.' . $line->id . '"' )
+        ->assertDontSeeHtml( 'debounce' );
+} );

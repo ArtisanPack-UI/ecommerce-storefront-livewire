@@ -285,11 +285,12 @@ class VariableForm extends PurchaseForm
 
     /**
      * Why "Add to cart" is disabled: no variants, a combination that doesn't
-     * exist, or the matched variant can't be bought. A choice still to make
-     * doesn't disable it; {@see self::readyToAdd()} asks for it.
+     * exist, or the matched variant can't be bought (out of stock, or with
+     * no price in the shopper's currency). A choice still to make doesn't
+     * disable it; {@see self::readyToAdd()} asks for it.
      *
      * @since 1.0.0
-     * @since 2.0.0 A missing choice no longer disables "Add to cart".
+     * @since 2.0.0 A missing choice no longer disables "Add to cart"; an unpriced variant isn't called out of stock.
      *
      * @return string|null
      */
@@ -312,6 +313,10 @@ class VariableForm extends PurchaseForm
         }
 
         $row = $this->rowFor( $variantId );
+
+        if ( null !== $row && ! $row['available'] && null === $row['price'] ) {
+            return __( 'This option isn\'t available to buy right now.' );
+        }
 
         return null === $row || ! $row['available'] ? __( 'This option is out of stock.' ) : null;
     }
@@ -587,6 +592,30 @@ class VariableForm extends PurchaseForm
     }
 
     /**
+     * Whether some variant with a price in the shopper's currency has every
+     * value in `$choices`: an unbuyable choice that matches one is sold
+     * out, while one that only matches unpriced variants isn't for sale.
+     *
+     * @since 2.0.0
+     *
+     * @param  array<int|string, int|string|null>  $choices  Value ids per attribute.
+     *
+     * @return bool
+     */
+    protected function offeredPriced( array $choices ): bool
+    {
+        $wanted = array_map( 'intval', array_values( array_filter( $choices, static fn ( mixed $value ): bool => null !== $value && '' !== $value ) ) );
+
+        foreach ( $this->matrix() as $row ) {
+            if ( null !== $row['price'] && [] === array_diff( $wanted, $row['attribute_value_ids'] ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * The selection with only real attributes and their own values.
      *
      * @since 1.0.0
@@ -672,11 +701,17 @@ class VariableForm extends PurchaseForm
         foreach ( $group->values as $value ) {
             $choice    = [ ...$before, (int) $group->id => (int) $value->id ];
             $available = $this->offered( $choice, true );
-            $soldOut   = ! $available && $this->offered( $choice, false );
-            $reason    = null;
+            $exists    = ! $available && $this->offered( $choice, false );
+            // Only a priced variant is sold out; one with no price in this currency isn't for sale.
+            $soldOut = $exists && $this->offeredPriced( $choice );
+            $reason  = null;
 
             if ( ! $available ) {
-                $reason = $soldOut ? __( 'Out of stock' ) : __( 'Not available with your other choices' );
+                $reason = match ( true ) {
+                    $soldOut => __( 'Out of stock' ),
+                    $exists  => __( 'Not available to buy right now' ),
+                    default  => __( 'Not available with your other choices' ),
+                };
             }
 
             $options[] = [

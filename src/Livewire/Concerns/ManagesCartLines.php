@@ -26,7 +26,9 @@ use Livewire\Attributes\Locked;
  * lines, and undo a removal (the cart page and the cart drawer).
  *
  * Quantities live in `$quantities` (keyed by line id) and are bound with
- * `wire:model.live.debounce` to the quantity stepper; each change goes to
+ * `wire:model.live.change` to the quantity stepper (sent on every step and
+ * when typing is committed, never held back by a debounce, so a click on
+ * "Checkout" right after can't lose it); each change goes to
  * the engine's `StorefrontCartService::updateItem()` (0 removes the line),
  * counts against `ecommerce.cart.mutate`, and shows the engine's message
  * under the line's field (`quantities.{id}`) when it is refused.

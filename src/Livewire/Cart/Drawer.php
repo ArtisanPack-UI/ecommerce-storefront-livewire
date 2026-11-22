@@ -78,19 +78,18 @@ class Drawer extends Component
     public bool $loaded = false;
 
     /**
-     * Lists the lines the first time the drawer opens.
+     * Lists the lines when the drawer opens, re-reading the quantities on
+     * every open: the cart may have changed somewhere the drawer never
+     * heard about (another tab, a host action that sent no event).
      *
      * @since 1.0.0
+     * @since 2.0.0 Re-syncs the quantities on every open, not just the first.
      *
      * @return void
      */
     #[On( 'ecommerce-cart-open' )]
     public function opened(): void
     {
-        if ( $this->loaded ) {
-            return;
-        }
-
         $this->loaded = true;
         $this->syncQuantities();
     }

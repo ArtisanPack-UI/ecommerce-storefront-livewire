@@ -135,13 +135,15 @@ class GroupedForm extends PurchaseForm
      */
     public function render(): View
     {
-        $currency = app( StorefrontCart::class )->currency();
+        $cart     = app( StorefrontCart::class );
+        $currency = $cart->currency();
+        $customer = $cart->customer();
         $prices   = app( PriceDisplayResolver::class );
 
-        $rows = $this->children()->map( static function ( ProductChild $child ) use ( $currency, $prices ): array {
+        $rows = $this->children()->map( static function ( ProductChild $child ) use ( $currency, $customer, $prices ): array {
             $subject = $child->variant ?? $child->product;
             $stock   = StockStatus::for( $subject );
-            $price   = $prices->for( $subject, $currency );
+            $price   = $prices->for( $subject, $currency, null, $customer );
 
             return [
                 'id'      => (int) $child->id,
