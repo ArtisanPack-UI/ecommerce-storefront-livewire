@@ -64,7 +64,7 @@ It registers storefront and account routes that work right after install, and ev
 - **Visual-editor blocks**: Commerce blocks and editable product, category, cart, and checkout templates when `artisanpack-ui/visual-editor` is installed.
 - **Embeddable**: Turn the routes off and mount the components in your own pages.
 - **Extension points**: Registries for purchase forms and payment drivers, and filters for catalog filters and sorts, product sections, cart sections, checkout steps, header actions, and more.
-- **Accessible and translated**: Targets WCAG 2.2 AA, checked with axe and keyboard tests in a real browser. Ships English, Spanish, French, and German.
+- **Accessible and translated**: Targets WCAG 2.2 AA, checked with axe and keyboard tests in a real browser. Ships English, Spanish, French, German, Brazilian Portuguese, Japanese, Simplified Chinese, Italian, and Arabic.
 
 ## Quick Example
 

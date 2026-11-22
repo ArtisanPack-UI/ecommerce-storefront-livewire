@@ -2,6 +2,8 @@
 
 declare( strict_types=1 );
 
+const STOREFRONT_TRANSLATED_LOCALES = [ 'es', 'fr', 'de', 'pt_BR', 'ja', 'zh_CN', 'it', 'ar' ];
+
 /**
  * The package's decoded catalogue for `$locale`.
  *
@@ -24,6 +26,30 @@ function storefrontPlaceholders( string $value ): array
     return collect( $matches[0] )->unique()->sort()->values()->all();
 }
 
+/**
+ * The number of `|` a translation of `$key` should have in `$locale`.
+ *
+ * Arabic has six plural forms (zero, one, two, few, many, other), so a plain
+ * `singular|plural` key becomes six segments there. Laravel always picks the
+ * first segment for Japanese and Chinese, so those locales use one segment
+ * that carries `:count`. Interval keys (`{0} …|[2,*] …`) keep their segments.
+ */
+function storefrontExpectedPipes( string $locale, string $key ): int
+{
+    $pipes    = substr_count( $key, '|' );
+    $interval = 1 === preg_match( '/^\s*[{\[]/', $key );
+
+    if ( 'ar' === $locale && 1 === $pipes && ! $interval ) {
+        return 5;
+    }
+
+    if ( in_array( $locale, [ 'ja', 'zh_CN' ], true ) && ! $interval ) {
+        return 0;
+    }
+
+    return $pipes;
+}
+
 it( 'has a catalogue entry in every locale for every key in src/ and resources/', function (): void {
     $root = dirname( __DIR__, 3 );
 
@@ -38,7 +64,7 @@ it( 'ships identical key sets in every locale', function (): void {
     $en = array_keys( storefrontCatalogue( 'en' ) );
     sort( $en );
 
-    foreach ( [ 'es', 'fr', 'de' ] as $locale ) {
+    foreach ( STOREFRONT_TRANSLATED_LOCALES as $locale ) {
         $keys = array_keys( storefrontCatalogue( $locale ) );
         sort( $keys );
 
@@ -56,9 +82,9 @@ it( 'preserves placeholders and plural segments in every translation', function 
     foreach ( storefrontCatalogue( $locale ) as $key => $value ) {
         expect( trim( $value ) )->not->toBe( '', "{$locale}: {$key}" )
             ->and( storefrontPlaceholders( $value ) )->toBe( storefrontPlaceholders( $key ), "{$locale}: {$key}" )
-            ->and( substr_count( $value, '|' ) )->toBe( substr_count( $key, '|' ), "{$locale}: {$key}" );
+            ->and( substr_count( $value, '|' ) )->toBe( storefrontExpectedPipes( $locale, $key ), "{$locale}: {$key}" );
     }
-} )->with( [ 'es', 'fr', 'de' ] );
+} )->with( STOREFRONT_TRANSLATED_LOCALES );
 
 it( 'pluralizes for 0, 1, and many in each locale', function ( string $locale, array $expected ): void {
     app()->setLocale( $locale );
@@ -71,11 +97,31 @@ it( 'pluralizes for 0, 1, and many in each locale', function ( string $locale, a
         trans_choice( $line, 5, [ 'count' => 5 ] ),
     ] )->toBe( $expected );
 } )->with( [
-    'en' => [ 'en', [ '0 products', '1 product', '5 products' ] ],
-    'es' => [ 'es', [ '0 productos', '1 producto', '5 productos' ] ],
-    'fr' => [ 'fr', [ '0 produit', '1 produit', '5 produits' ] ],
-    'de' => [ 'de', [ '0 Produkte', '1 Produkt', '5 Produkte' ] ],
+    'en'    => [ 'en', [ '0 products', '1 product', '5 products' ] ],
+    'es'    => [ 'es', [ '0 productos', '1 producto', '5 productos' ] ],
+    'fr'    => [ 'fr', [ '0 produit', '1 produit', '5 produits' ] ],
+    'de'    => [ 'de', [ '0 Produkte', '1 Produkt', '5 Produkte' ] ],
+    'pt_BR' => [ 'pt_BR', [ '0 produtos', '1 produto', '5 produtos' ] ],
+    'ja'    => [ 'ja', [ '0件の商品', '1件の商品', '5件の商品' ] ],
+    'zh_CN' => [ 'zh_CN', [ '0 个商品', '1 个商品', '5 个商品' ] ],
+    'it'    => [ 'it', [ '0 prodotti', '1 prodotto', '5 prodotti' ] ],
 ] );
+
+it( 'uses all six Arabic plural forms', function (): void {
+    app()->setLocale( 'ar' );
+
+    $line = ':count product|:count products';
+
+    expect( collect( [ 0, 1, 2, 3, 11, 100 ] )->map( fn ( int $count ): string => trans_choice( $line, $count, [ 'count' => $count ] ) )->all() )
+        ->toBe( [
+            'لا توجد منتجات',
+            'منتج واحد',
+            'منتجان',
+            '3 منتجات',
+            '11 منتجًا',
+            '100 منتج',
+        ] );
+} );
 
 it( 'agrees with the engine and the admin on every key they share', function ( string $locale ): void {
     // Every package's JSON catalogue loads into one namespace, so a shared key
@@ -103,7 +149,12 @@ it( 'translates every key, apart from the ones that read the same in the locale'
 
     expect( $untranslated )->toBe( $same );
 } )->with( [
-    'es' => [ 'es', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', ', ', ':code (:symbol)', ':group: :value', ':index / :count', ':label (:count)', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'SKU: :sku', 'Subtotal', 'Total', 'incl. :label', '× :quantity', ':field: :message', 'SKU' ] ],
-    'fr' => [ 'fr', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', ', ', 'Active', ':code (:symbol)', ':count activation|:count activations', ':count suggestion|:count suggestions', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', ':title – Page :page', ':value (:reason)', 'Date', 'Description', 'Licence', 'Menu', 'Notifications', 'Options', 'Total', 'Version :version', 'archive', 'commerce', '× :quantity' ] ],
-    'de' => [ 'de', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', '(optional)', ', ', ':code (:symbol)', ':group: :value', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':value (:reason)', 'Dashboard', 'Download', 'Downloads', 'Layout', 'Minus', 'Name', 'Region', 'SKU: :sku', 'Shop', 'Status', 'Streaming', 'Upsells', 'Version :version', 'cross-sells', 'shop', 'upsells', '× :quantity', ':field: :message', 'SKU' ] ],
+    'es'    => [ 'es', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', ', ', ':code (:symbol)', ':group: :value', ':index / :count', ':label (:count)', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'SKU: :sku', 'Subtotal', 'Total', 'incl. :label', '× :quantity', ':field: :message', 'SKU' ] ],
+    'fr'    => [ 'fr', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', ', ', 'Active', ':code (:symbol)', ':count activation|:count activations', ':count suggestion|:count suggestions', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', ':title – Page :page', ':value (:reason)', 'Date', 'Description', 'Licence', 'Menu', 'Notifications', 'Options', 'Total', 'Version :version', 'archive', 'commerce', '× :quantity' ] ],
+    'de'    => [ 'de', [ '(:reason)', '+:amount', ':choice · :delta', '−:amount', '(:count)', '(optional)', ', ', ':code (:symbol)', ':group: :value', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':value (:reason)', 'Dashboard', 'Download', 'Downloads', 'Layout', 'Minus', 'Name', 'Region', 'SKU: :sku', 'Shop', 'Status', 'Streaming', 'Upsells', 'Version :version', 'cross-sells', 'shop', 'upsells', '× :quantity', ':field: :message', 'SKU' ] ],
+    'pt_BR' => [ 'pt_BR', [ '(:count)', '(:reason)', '+:amount', ', ', ':choice · :delta', ':code (:symbol)', ':field: :message', ':group: :value', ':index / :count', ':label (:count)', ':message Total: :total.', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'Checkout', 'Download', 'Downloads', 'Item', 'Layout', 'Menu', 'SKU', 'SKU: :sku', 'Status', 'Streaming', 'Subtotal', 'Tag', 'Total', 'Upsells', 'Zoom', 'checkout', 'incl. :label', 'upsells', '× :quantity', '−:amount' ] ],
+    'ja'    => [ 'ja', [ '(:count)', '(:reason)', '+:amount', ':choice · :delta', ':code (:symbol)', ':field: :message', ':group: :value', ':index / :count', ':label (:count)', ':name (:code)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'SKU', 'SKU: :sku', 'you@example.com', '× :quantity', '−:amount' ] ],
+    'zh_CN' => [ 'zh_CN', [ '(:count)', '+:amount', ':choice · :delta', ':code (:symbol)', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':quantity × :name', 'SKU', 'you@example.com', '× :quantity', '−:amount' ] ],
+    'it'    => [ 'it', [ '(:count)', '(:reason)', '+:amount', ', ', ':choice · :delta', ':code (:symbol)', ':field: :message', ':group: :value', ':index / :count', ':label (:count)', ':name (:code)', ':name (:code, :symbol)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'Account', 'Checkout', 'Dashboard', 'Email', 'Layout', 'Menu', 'Password', 'SKU', 'SKU: :sku', 'Tag', 'Zoom', 'checkout', 'coupon', '× :quantity', '−:amount' ] ],
+    'ar'    => [ 'ar', [ '(:count)', '(:reason)', '+:amount', ':choice · :delta', ':code (:symbol)', ':field: :message', ':group: :value', ':index / :count', ':label (:count)', ':name (:code)', ':option: :value', ':quantity × :name', ':section: :field', ':stars: :reviews (:percent%)', ':value (:reason)', 'SKU', 'SKU: :sku', 'you@example.com', '× :quantity', '−:amount' ] ],
 ] );

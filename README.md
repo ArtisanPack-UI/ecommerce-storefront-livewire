@@ -14,7 +14,7 @@ The storefront calls the engine's services in-process and owns no tables. Its ro
 - **Guest order lookup** and **search** with facets and live header suggestions.
 - **Visual-editor blocks and templates** when `artisanpack-ui/visual-editor` is installed.
 - **Extension points**: Registries for purchase forms and payment drivers, and filters for catalog filters and sorts, product sections, cart sections, checkout steps, and header actions.
-- **Accessible and translated**: Targets WCAG 2.2 AA, checked with axe and keyboard tests in a real browser. Ships English, Spanish, French, and German.
+- **Accessible and translated**: Targets WCAG 2.2 AA, checked with axe and keyboard tests in a real browser. Ships English, Spanish, French, German, Brazilian Portuguese, Japanese, Simplified Chinese, Italian, and Arabic.
 
 ## Requirements
 
