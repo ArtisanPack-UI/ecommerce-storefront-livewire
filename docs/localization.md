@@ -74,10 +74,10 @@ CI fails when a user-facing string is not wrapped in a translation function, or 
 vendor/bin/testbench ecommerce:lint:translations --no-engine --path=src --path=resources --lang=lang
 ```
 
-It scans `src/` and `resources/` (Blade included) and compares against every catalogue in `lang/`. `--no-engine` leaves the engine's own sources out. The test suite also checks that every locale has the same keys, that English is its own translation, and that translations keep their placeholders and plural segments.
+It scans `src/` and `resources/` (Blade included) and compares against every catalogue in `lang/`. `--no-engine` leaves the engine's own sources out. The test suite also checks that every locale has the same keys, that English is its own translation, and that translations keep their placeholders and have the right number of plural segments for their language.
 
 When you add a string, add it to all nine catalogues.
 
 ## Adding a language
 
-Copy `lang/en.json` to `lang/vendor/ecommerce-storefront/{locale}.json` in your application and translate the values. Keep every `:placeholder` and `|` segment. Consider contributing it back.
+Copy `lang/en.json` to `lang/vendor/ecommerce-storefront/{locale}.json` in your application and translate the values. Keep every `:placeholder`, and give each plural key as many `|` segments as the language has plural forms (see [Plurals](#plurals)): two for most languages, six for Arabic, and one for Japanese and Chinese. Consider contributing it back.
