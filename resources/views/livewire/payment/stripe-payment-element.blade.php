@@ -10,6 +10,11 @@
     assertive live region. Without a publishable key and client secret, a
     warning Alert says the method isn't available.
 
+    Before confirming, the script asks the driver whether the session still
+    pays for the order (`stillPayable()`); after Stripe confirms, "Pay now"
+    stays disabled and says "Placing your order…" until the checkout moves
+    on. Only a failure gives the button back.
+
     The form sits in `wire:ignore` so Livewire never re-renders Stripe's
     iframe; the script below runs once per mount. Stripe's `appearance` is
     built from the `--apui-*` tokens so its fields match the Input.
@@ -46,7 +51,7 @@
                     <span>{{ __( 'Your card details go straight to Stripe. This store never sees or stores them.' ) }}</span>
                 </p>
 
-                <x-artisanpack-button type="button" color="primary" leading-icon="lock" class="ec-stripe__pay" disabled data-stripe-pay>{{ __( 'Pay now' ) }}</x-artisanpack-button>
+                <x-artisanpack-button type="button" color="primary" leading-icon="lock" class="ec-stripe__pay" disabled data-stripe-pay><span data-stripe-pay-label>{{ __( 'Pay now' ) }}</span></x-artisanpack-button>
             </div>
         </x-artisanpack-card>
     @else
@@ -64,6 +69,8 @@
         const mountPoint = root.querySelector( '[data-stripe-element]' );
         const errorBox   = root.querySelector( '[data-stripe-error]' );
         const payButton  = root.querySelector( '[data-stripe-pay]' );
+        const payLabel   = root.querySelector( '[data-stripe-pay-label]' );
+        const payText    = payLabel ? payLabel.textContent : '';
 
         let stripe   = null;
         let elements = null;
@@ -183,7 +190,33 @@
             field.removeAttribute( 'data-loading' );
         };
 
-        $wire.on( 'payment-failed', ( event ) => showError( event?.message ) );
+        // Only a failure gives the shopper "Pay now" back. After Stripe
+        // confirms, the checkout is placing the order: a second click would
+        // try to confirm a PaymentIntent that has already succeeded.
+        const release = () => {
+            busy               = false;
+            payButton.disabled = false;
+            payButton.removeAttribute( 'aria-busy' );
+
+            if ( payLabel ) {
+                payLabel.textContent = payText;
+            }
+        };
+
+        const placing = () => {
+            busy               = true;
+            payButton.disabled = true;
+            payButton.setAttribute( 'aria-busy', 'true' );
+
+            if ( payLabel ) {
+                payLabel.textContent = settings.messages.placing;
+            }
+        };
+
+        $wire.on( 'payment-failed', ( event ) => {
+            showError( event?.message );
+            release();
+        } );
 
         loadStripe()
             .then( ( Stripe ) => {
@@ -243,6 +276,16 @@
             errorBox.textContent = '';
 
             try {
+                // The order may have changed in another tab since this form
+                // was set up: Stripe would charge the old amount. The
+                // checkout sets the payment up again for the new total.
+                if ( true !== await $wire.stillPayable() ) {
+                    showError( settings.messages.changed );
+                    release();
+
+                    return;
+                }
+
                 const { error, paymentIntent } = await stripe.confirmPayment( {
                     elements,
                     confirmParams: { return_url: settings.returnUrl },
@@ -251,9 +294,11 @@
 
                 if ( error ) {
                     // Field errors are the shopper's to fix; anything else
-                    // (a declined card) is a failed payment.
+                    // (a declined card) is a failed payment, and the
+                    // payment-failed listener gives the button back.
                     if ( 'validation_error' === error.type ) {
                         showError( error.message );
+                        release();
                     } else {
                         await $wire.fail( error.message || '' );
                     }
@@ -261,12 +306,12 @@
                     return;
                 }
 
+                placing();
+
                 await $wire.confirm( paymentIntent?.id ?? null );
             } catch ( exception ) {
                 showError( settings.messages.failed );
-            } finally {
-                busy               = false;
-                payButton.disabled = false;
+                release();
             }
         } );
     </script>

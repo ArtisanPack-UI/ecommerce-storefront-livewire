@@ -37,10 +37,10 @@
 
     <x-artisanpack-card class="ec-lookup__card">
         <form wire:submit="find" class="ec-lookup__form" novalidate data-order-lookup-form>
-            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-order-lookup' ] )
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-order-lookup', 'summaryFieldIds' => $fieldIds ] )
 
-            <x-artisanpack-ec-field id="email" type="email" size="lg" leading-icon="mail" :label="__( 'Email' )" autocomplete="email" required wire:model="email" />
-            <x-artisanpack-ec-field id="orderNumber" size="lg" class="ec-lookup__number" :label="__( 'Order number' )" autocomplete="off" spellcheck="false" required :invalid="$notFound" wire:model="orderNumber" />
+            <x-artisanpack-ec-field :id="$fieldIds['email']" type="email" size="lg" leading-icon="mail" :label="__( 'Email' )" autocomplete="email" required wire:model="email" />
+            <x-artisanpack-ec-field :id="$fieldIds['orderNumber']" size="lg" class="ec-lookup__number" :label="__( 'Order number' )" autocomplete="off" spellcheck="false" required :invalid="$notFound" wire:model="orderNumber" />
 
             <x-artisanpack-button type="submit" size="lg" color="primary" class="ec-lookup__submit" wire:loading.attr="disabled" wire:target="find" data-order-lookup-submit>{{ __( 'Find my order' ) }}</x-artisanpack-button>
         </form>

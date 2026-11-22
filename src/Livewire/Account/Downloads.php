@@ -20,6 +20,7 @@ use ArtisanPackUI\Ecommerce\Models\OrderItem;
 use ArtisanPackUI\Ecommerce\Services\DigitalDownloadService;
 use ArtisanPackUI\Ecommerce\Services\LicenseService;
 use ArtisanPackUI\Ecommerce\Support\LocalizedDate;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -38,8 +39,9 @@ use Throwable;
  * expiry, with a download button to the account's owner route (which
  * spends a download) — or, for a streaming-only file, a button that opens
  * it in the browser's player. Both are temporary signed URLs
- * (`DOWNLOAD_LINK_MINUTES`, `STREAM_LINK_MINUTES`). An expired or used-up entitlement says why
- * instead. Licence keys show in full with a copy button, their activation
+ * (`DOWNLOAD_LINK_MINUTES`, `STREAM_LINK_MINUTES`); the Download button
+ * asks `download()` for a fresh one when clicked, so a page left open
+ * still works. An expired or used-up entitlement says why instead. Licence keys show in full with a copy button, their activation
  * count, and whether they are expired or revoked.
  *
  * Both lists are paginated (`downloads` and `licences` in the query
@@ -52,6 +54,7 @@ use Throwable;
  */
 class Downloads extends Component
 {
+    use SendsToasts;
     use WithPagination;
 
     /**
@@ -84,6 +87,45 @@ class Downloads extends Component
      * @var int
      */
     public const STREAM_LINK_MINUTES = 240;
+
+    /**
+     * Sends the shopper to a freshly signed link for one of their files, so
+     * a page left open longer than `DOWNLOAD_LINK_MINUTES` still downloads.
+     * The Download button calls this; its `href` is the fallback without
+     * JavaScript. Another customer's entitlement (or none) is a 404; an
+     * expired or used-up one gets a toast and the page re-renders with why.
+     *
+     * @since 2.0.0
+     *
+     * @param  int  $id  The entitlement id.
+     *
+     * @return void
+     */
+    public function download( int $id ): void
+    {
+        $customer = Customer::forUser( auth()->user() );
+
+        abort_if( null === $customer, 404 );
+
+        $download = app( DigitalDownloadService::class )->forCustomer( $customer )->whereKey( $id )->first();
+
+        abort_unless( $download instanceof DigitalDownload, 404 );
+
+        if ( $download->isExpired() || ! $download->hasDownloadsRemaining() ) {
+            $this->toastWarning(
+                __( 'This download isn\'t available' ),
+                $download->isExpired() ? __( 'This download has expired.' ) : __( 'You\'ve used all the downloads for this file.' ),
+            );
+
+            return;
+        }
+
+        $route = true === $download->file?->is_streaming_only ? 'artisanpack.ecommerce.account.downloads.stream' : 'artisanpack.ecommerce.account.downloads.file';
+
+        abort_unless( Route::has( $route ), 404 );
+
+        $this->redirect( URL::temporarySignedRoute( $route, now()->addMinutes( self::DOWNLOAD_LINK_MINUTES ), [ 'download' => $download->id ] ) );
+    }
 
     /**
      * Renders the component.

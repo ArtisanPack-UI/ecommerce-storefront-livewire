@@ -1,7 +1,7 @@
 {{--
     Empty state (#84). See EmptyState.
 
-    The design-system EmptyState as a status region: the icon tile, the
+    The design-system EmptyState (a status region only with `live`): the icon tile, the
     title, the description and, from the slot, the actions. With `card` it
     sits in a Card.
 

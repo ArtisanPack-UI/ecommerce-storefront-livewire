@@ -13,7 +13,8 @@ use Tests\Browser\Support\Locators;
 
 /*
  * axe on every storefront and account screen (#43), against the seeded
- * demo store. Known component-library failures are listed in
+ * demo store, the shopper screens in the light and dark themes and in
+ * Arabic (right to left). Known component-library failures are listed in
  * Accessibility::LIBRARY_ISSUES.
  */
 
@@ -25,8 +26,8 @@ function demoProduct(): Product
     return Product::query()->storefrontVisible()->where( 'type', 'simple' )->whereDoesntHave( 'variants' )->orderBy( 'id' )->firstOrFail();
 }
 
-it( 'has no accessibility violations for shoppers', function ( Closure $url ): void {
-    Accessibility::assertAccessible( visit( $url() )->assertNoJavaScriptErrors() );
+it( 'has no accessibility violations for shoppers', function ( Closure $url, Closure $open ): void {
+    Accessibility::assertAccessible( $open( $url() )->assertNoJavaScriptErrors() );
 } )->with( [
     'catalog'          => [ fn (): string => route( 'artisanpack.ecommerce.storefront.catalog' ) ],
     'category'         => [ function (): string {
@@ -49,9 +50,18 @@ it( 'has no accessibility violations for shoppers', function ( Closure $url ): v
     'order lookup'     => [ fn (): string => route( 'artisanpack.ecommerce.storefront.lookup' ) ],
     'guest order view' => [ fn (): string => route( 'artisanpack.ecommerce.storefront.order-view', [ 'token' => OrderViewToken::for( placedOrder() ) ] ) ],
     'confirmation'     => [ fn (): string => (string) CheckoutPlacement::confirmationUrl( placedOrder() ) ],
+] )->with( [
+    'light'      => [ fn ( string $url ): object => visit( $url )->inLightMode()->assertScript( 'document.documentElement.dataset.theme', 'light' ) ],
+    // The theme script resolves the default `system` choice against prefers-color-scheme.
+    'dark'       => [ fn ( string $url ): object => visit( $url )->inDarkMode()->assertScript( 'document.documentElement.dataset.theme', 'dark' ) ],
+    'arabic rtl' => [ function ( string $url ): object {
+        config()->set( 'app.locale', 'ar' );
+
+        return visit( $url )->assertScript( 'document.documentElement.dir', 'rtl' )->assertScript( 'document.documentElement.lang', 'ar' );
+    } ],
 ] );
 
-it( 'has no accessibility violations in a filled cart and at each checkout step', function (): void {
+it( 'has no accessibility violations in a filled cart, the cart drawer and the first checkout step', function (): void {
     $page = visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => demoProduct()->slug ] ) )
         ->click( '[data-add-to-cart]' )
         ->assertSee( 'Your cart' );
@@ -66,6 +76,46 @@ it( 'has no accessibility violations in a filled cart and at each checkout step'
     Accessibility::assertAccessible( $page );
 
     $page->navigate( route( 'artisanpack.ecommerce.storefront.checkout' ) )->assertPresent( '[data-checkout-contact-form]' );
+    Accessibility::assertAccessible( $page );
+} );
+
+it( 'has no accessibility violations at every checkout step on a desktop', function (): void {
+    checkoutCart( [ demoProduct() ] );
+    checkoutShipping( [ 'Standard shipping' => 500 ] );
+
+    $page = visit( route( 'artisanpack.ecommerce.storefront.checkout' ) )
+        ->resize( 1280, 900 )
+        ->assertPresent( '[data-checkout-contact-form]' );
+
+    Accessibility::assertAccessible( $page );
+
+    $page->type( Locators::label( 'Email' ), 'desktop@example.test' )
+        ->click( '[data-checkout-contact-submit]' )
+        ->assertPresent( '[data-checkout-address-form]' );
+
+    Accessibility::assertAccessible( $page );
+
+    $page->select( Locators::field( 'shipping.country_code' ), 'US' )
+        ->type( Locators::field( 'shipping.first_name' ), 'Ada' )
+        ->type( Locators::field( 'shipping.last_name' ), 'Lovelace' )
+        ->type( Locators::field( 'shipping.address1' ), '1 Main Street' )
+        ->type( Locators::field( 'shipping.city' ), 'Springfield' )
+        ->select( Locators::field( 'shipping.region_code' ), 'IL' )
+        ->type( Locators::field( 'shipping.postal_code' ), '62701' )
+        ->click( '[data-checkout-address-submit]' )
+        ->assertPresent( '[data-checkout-shipping-form]' );
+
+    Accessibility::assertAccessible( $page );
+
+    $page->click( 'internal:label=/Standard shipping/' )
+        ->click( '[data-checkout-shipping-submit]' )
+        ->assertPresent( '[data-checkout-review-form]' );
+
+    Accessibility::assertAccessible( $page );
+
+    $page->click( '[data-checkout-review-submit]' )
+        ->assertPresent( '[data-test-card-pay]' );
+
     Accessibility::assertAccessible( $page );
 } );
 
@@ -96,7 +146,7 @@ it( 'has no accessibility violations on the account screens', function ( string 
 it( 'has no accessibility violations when showing errors', function (): void {
     $page = visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => demoProduct()->slug ] ) )
         ->click( '[data-add-to-cart]' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', demoProduct()->name )
+        ->assertPresent( '#ecommerce-cart-drawer-panel a[href$="/' . demoProduct()->slug . '"]' )
         ->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )
         ->type( Locators::field( 'ec-cart-coupon' ), 'NOT-A-CODE' )
         ->click( '[data-cart-coupon] button[type="submit"]' )
@@ -111,8 +161,8 @@ it( 'has no accessibility violations when showing errors', function (): void {
     Accessibility::assertAccessible( $page );
 
     $page->navigate( route( 'artisanpack.ecommerce.storefront.lookup' ) )
-        ->type( Locators::field( 'email' ), 'nobody@example.test' )
-        ->type( Locators::field( 'orderNumber' ), 'NOPE' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-email' ), 'nobody@example.test' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-number' ), 'NOPE' )
         ->click( '[data-order-lookup-form] button[type="submit"]' )
         ->assertPresent( '[data-order-lookup-failure]' );
 

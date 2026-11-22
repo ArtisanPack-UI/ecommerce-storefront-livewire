@@ -41,11 +41,11 @@
 
     <x-artisanpack-card class="ec-claim__card">
         <form wire:submit="claim" class="ec-claim__form" novalidate data-account-claim-form>
-            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-claim' ] )
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-claim', 'summaryFieldIds' => $fieldIds ] )
 
             <div class="ec-claim__fields">
-                <x-artisanpack-ec-field id="orderNumber" class="ec-claim__number" :label="__( 'Order number' )" autocomplete="off" spellcheck="false" required wire:model="orderNumber" />
-                <x-artisanpack-ec-field id="postalCode" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
+                <x-artisanpack-ec-field :id="$fieldIds['orderNumber']" class="ec-claim__number" :label="__( 'Order number' )" autocomplete="off" spellcheck="false" required wire:model="orderNumber" />
+                <x-artisanpack-ec-field :id="$fieldIds['postalCode']" :label="__( 'Shipping postcode' )" autocomplete="postal-code" required wire:model="postalCode" />
             </div>
 
             <div>

@@ -7,7 +7,9 @@
 
     Expects `$summaryId` (unique on the page) and optionally
     `$summaryExcept` (error keys shown elsewhere, such as a form-level
-    alert) and `$summaryClass` (extra classes, such as a grid span).
+    alert), `$summaryClass` (extra classes, such as a grid span) and
+    `$summaryFieldIds` (error key => the field's id, when the ids differ
+    from the keys, so each link targets the form's own field; since 2.0.0).
 
     Each link targets `#{key}`: the library moves focus to the element with
     that id, or the control with that name or `wire:model`. When it finds
@@ -23,6 +25,14 @@
 @php
     $ecommerceSummaryErrors = array_diff_key( $errors->getMessages(), array_flip( $summaryExcept ?? [] ) );
     $ecommerceSummaryCount  = count( $ecommerceSummaryErrors );
+
+    if ( [] !== ( $summaryFieldIds ?? [] ) ) {
+        $ecommerceSummaryErrors = array_map(
+            static fn ( string $key, array $messages ): array => [ 'field' => (string) ( $summaryFieldIds[ $key ] ?? $key ), 'message' => (string) ( $messages[0] ?? '' ) ],
+            array_keys( $ecommerceSummaryErrors ),
+            array_values( $ecommerceSummaryErrors ),
+        );
+    }
 @endphp
 @if ( [] !== $ecommerceSummaryErrors )
     <x-artisanpack-validation-summary

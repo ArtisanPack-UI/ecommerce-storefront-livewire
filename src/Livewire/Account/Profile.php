@@ -15,10 +15,13 @@ namespace ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Account;
 
 use ArtisanPackUI\Ecommerce\Models\Customer;
 use ArtisanPackUI\Ecommerce\Models\CustomerNotificationPreference;
+use ArtisanPackUI\Ecommerce\RateLimiting\RateLimitSubject;
 use ArtisanPackUI\Ecommerce\Services\CustomerService;
 use ArtisanPackUI\Ecommerce\Services\NotificationPreferenceService;
+use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStorefront;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
@@ -44,7 +47,8 @@ use Throwable;
  * Email and password belong to the host's auth (D6): they're shown with
  * links to the host's screens (`auth.profile_route`,
  * `auth.password_route`) when those exist. A signed-in user without a
- * customer record gets one on their first save.
+ * customer record gets one on their first save (once a `MustVerifyEmail`
+ * user has verified). Saves count against `ecommerce.cart.mutate`.
  *
  * @package    ArtisanPack_UI
  * @subpackage EcommerceStorefrontLivewire
@@ -53,8 +57,19 @@ use Throwable;
  */
 class Profile extends Component
 {
+    use RateLimitsStorefront;
     use SendsToasts;
     use SummarizesErrors;
+
+    /**
+     * The engine rate-limit policy profile and preference saves count
+     * against, shared with the account's address writes.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const RATE_LIMIT_POLICY = 'ecommerce.cart.mutate';
 
     /**
      * The profile fields: `first_name`, `last_name`, `phone`, and
@@ -142,18 +157,9 @@ class Profile extends Component
             return;
         }
 
-        try {
-            $updated = app( CustomerService::class )->updateProfile( $customer, [
-                'first_name'        => $this->profile['first_name'],
-                'last_name'         => $this->profile['last_name'],
-                'phone'             => $this->profile['phone'],
-                'accepts_marketing' => (bool) $this->profile['accepts_marketing'],
-            ] );
-        } catch ( Throwable $exception ) {
-            report( $exception );
+        $updated = $this->rateLimited( self::RATE_LIMIT_POLICY, fn (): ?Customer => $this->writeProfile( $customer ), $this->rateLimitSubject() );
 
-            $this->toastError( __( 'We couldn\'t save your profile' ), __( 'Try again in a moment.' ) );
-
+        if ( ! $updated instanceof Customer ) {
             return;
         }
 
@@ -212,13 +218,21 @@ class Profile extends Component
             }
         }
 
-        try {
-            $service->update( $customer, $changes );
-        } catch ( Throwable $exception ) {
-            report( $exception );
+        $saved = $this->rateLimited( self::RATE_LIMIT_POLICY, function () use ( $service, $customer, $changes ): bool {
+            try {
+                $service->update( $customer, $changes );
+            } catch ( Throwable $exception ) {
+                report( $exception );
 
-            $this->toastError( __( 'We couldn\'t save your notification preferences' ), __( 'Try again in a moment.' ) );
+                $this->toastError( __( 'We couldn\'t save your notification preferences' ), __( 'Try again in a moment.' ) );
 
+                return false;
+            }
+
+            return true;
+        }, $this->rateLimitSubject() );
+
+        if ( true !== $saved ) {
             return;
         }
 
@@ -239,6 +253,7 @@ class Profile extends Component
         $user = auth()->user();
 
         return view( 'ecommerce-storefront::livewire.account.profile', [
+            'fieldIds'    => $this->fieldIds(),
             'email'       => is_string( $user?->email ?? null ) ? $user->email : null,
             'consented'   => (bool) Customer::forUser( $user )?->accepts_marketing,
             'channels'    => $this->channelLabels(),
@@ -251,7 +266,9 @@ class Profile extends Component
     /**
      * The shopper's customer record, made (or linked) when they have none.
      * Null, with a toast, when the engine won't make one (an unverified
-     * email another customer already uses).
+     * email another customer already uses), or when a `MustVerifyEmail`
+     * user hasn't verified yet: nobody gets a record under an address they
+     * haven't proved is theirs.
      *
      * @since 1.0.0
      *
@@ -263,7 +280,10 @@ class Profile extends Component
         $customer = null;
 
         try {
-            $customer = null === $user ? null : app( CustomerService::class )->customerForUser( $user, true );
+            // An unverified email may belong to someone else: don't make a
+            // customer record under it (the engine never moves one to a new email).
+            $create   = ! ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() );
+            $customer = null === $user ? null : app( CustomerService::class )->customerForUser( $user, $create );
         } catch ( Throwable $exception ) {
             report( $exception );
         }
@@ -273,6 +293,49 @@ class Profile extends Component
         }
 
         return $customer;
+    }
+
+    /**
+     * Saves the profile fields through the engine. Null, with a toast, when
+     * the engine fails.
+     *
+     * @since 2.0.0
+     *
+     * @param  Customer  $customer  The shopper's customer record.
+     *
+     * @return Customer|null The updated record.
+     */
+    protected function writeProfile( Customer $customer ): ?Customer
+    {
+        try {
+            return app( CustomerService::class )->updateProfile( $customer, [
+                'first_name'        => $this->profile['first_name'],
+                'last_name'         => $this->profile['last_name'],
+                'phone'             => $this->profile['phone'],
+                'accepts_marketing' => (bool) $this->profile['accepts_marketing'],
+            ] );
+        } catch ( Throwable $exception ) {
+            report( $exception );
+
+            $this->toastError( __( 'We couldn\'t save your profile' ), __( 'Try again in a moment.' ) );
+
+            return null;
+        }
+    }
+
+    /**
+     * Who a profile write counts against: the signed-in shopper and their IP.
+     *
+     * @since 2.0.0
+     *
+     * @return RateLimitSubject
+     */
+    protected function rateLimitSubject(): RateLimitSubject
+    {
+        $ip   = request()->ip() ?? '127.0.0.1';
+        $user = auth()->user();
+
+        return null === $user ? RateLimitSubject::ip( $ip ) : RateLimitSubject::customer( $user, $ip );
     }
 
     /**
@@ -409,5 +472,26 @@ class Profile extends Component
     protected function routeUrl( string $name ): ?string
     {
         return '' !== $name && Route::has( $name ) ? route( $name ) : null;
+    }
+
+    /**
+     * The form's field ids, by error key: prefixed and unique to this
+     * component instance, so they can't collide with the host page's own
+     * fields (or a second copy of this form), and never dotted.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    protected function fieldIds(): array
+    {
+        $base = 'ec-account-profile-' . preg_replace( '/[^A-Za-z0-9_-]+/', '', (string) $this->getId() ) . '-';
+
+        return [
+            'profile.first_name'        => $base . 'first-name',
+            'profile.last_name'         => $base . 'last-name',
+            'profile.phone'             => $base . 'phone',
+            'profile.accepts_marketing' => $base . 'marketing',
+        ];
     }
 }

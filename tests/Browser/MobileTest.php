@@ -162,4 +162,19 @@ it( 'does not scroll sideways at 320px', function ( Closure $url ): void {
 
         return route( 'artisanpack.ecommerce.account.dashboard' );
     } ],
+    // Chips with labels wider than the screen wrap instead of overflowing (FE-17).
+    'long sub-category chips' => [ function (): string {
+        $parent = ArtisanPackUI\Ecommerce\Models\ProductCategory::query()->create( [ 'name' => 'Handmade stoneware kitchen and dining collection for everyday', 'slug' => 'long-parent' ] );
+        $child  = ArtisanPackUI\Ecommerce\Models\ProductCategory::query()->create( [ 'name' => 'Extraordinarily long hand-thrown speckled stoneware serving bowls', 'slug' => 'long-child', 'parent_id' => $parent->id ] );
+        $parent->products()->attach( phoneProduct()->id );
+        $child->products()->attach( phoneProduct()->id );
+
+        return (string) app( ArtisanPackUI\EcommerceStorefrontLivewire\Support\CategoryPaths::class )->url( $parent->id );
+    } ],
+    'long active filter chip' => [ function (): string {
+        $category = ArtisanPackUI\Ecommerce\Models\ProductCategory::query()->create( [ 'name' => 'Extraordinarily long hand-thrown speckled stoneware serving bowls', 'slug' => 'long-filter' ] );
+        $category->products()->attach( phoneProduct()->id );
+
+        return route( 'artisanpack.ecommerce.storefront.catalog', [ 'category' => 'long-filter' ] );
+    } ],
 ] );

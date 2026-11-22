@@ -155,3 +155,45 @@ it( 'keeps a separately-added quantity the engine refused and clears the rest', 
 
     expect( Cart::query()->sole()->items()->sole()->product_id )->toBe( $mug->id );
 } );
+
+it( 'marks a required checkbox and a required quantity field as required', function (): void {
+    app( ProductTypeRegistry::class )->register( 'engraved-terms', new class extends EngravedProductType {
+        public function key(): string
+        {
+            return 'engraved-terms';
+        }
+
+        public function storefrontOptions( Product $product ): array
+        {
+            return [
+                ...parent::storefrontOptions( $product ),
+                [ 'type' => 'checkbox', 'name' => 'terms', 'label' => 'I accept the custom-print terms', 'required' => true ],
+                [ 'type' => 'quantity', 'name' => 'copies', 'label' => 'Extra copies', 'required' => true ],
+            ];
+        }
+    } );
+
+    $product = Product::factory()->create( [ 'type' => 'engraved-terms', 'name' => 'Print' ] );
+    ProductPrice::factory()->forPriceable( $product )->create( [ 'currency' => 'USD', 'price_amount' => 9900, 'compare_at_amount' => null ] );
+
+    $component = Livewire::test( OptionsForm::class, [ 'product' => $product ] );
+    $html      = $component->html();
+    $terms     = 'ec-product-' . $product->id . '-option-terms';
+    $copies    = 'ec-product-' . $product->id . '-option-copies';
+
+    expect( $html )->toMatch( '#<input[^<]*id="' . $terms . '"[^<]*\srequired\s#' )
+        ->and( $html )->toMatch( '#I accept the custom-print terms<span data-scope="checkbox" data-part="required" aria-hidden="true">\*</span>#' )
+        ->and( $html )->toMatch( '#<input[^<]*id="' . $copies . '"[^<]*\srequired\s#' )
+        // The optional gift-wrap checkbox gets neither.
+        ->and( $html )->not->toMatch( '#Gift wrap<span[^>]*data-part="required"#' );
+
+    $component->set( 'options.engraving.text', 'J.M.' )
+        ->set( 'options.copies', 0 )
+        ->call( 'addToCart' )
+        ->assertHasErrors( 'options.terms' )
+        ->set( 'options.terms', true )
+        ->call( 'addToCart' )
+        ->assertHasNoErrors();
+
+    expect( Cart::query()->sole()->items()->count() )->toBe( 1 );
+} );

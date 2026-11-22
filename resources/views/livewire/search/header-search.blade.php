@@ -6,8 +6,12 @@
     (`aria-activedescendant`, `aria-selected` on the active option), Enter
     opens the highlighted option or submits the form to the search page,
     Escape closes the popover, and the result count is announced politely.
-    Pressing "/" anywhere outside a text field focuses the box, unless a
-    modal (the cart drawer, a dialog) is open.
+    Pressing "/" anywhere outside a text field or widget focuses the box,
+    unless a modal (the cart drawer, a dialog) is open; the
+    `search.keyboard_shortcut` config key turns the shortcut (and its hint
+    and `aria-keyshortcuts`) off, as WCAG 2.1.4 asks of single-key
+    shortcuts. The polite status announces the suggestion count, or that
+    searching is throttled or unavailable.
 
     The design system's Input (sunken fill, a "/" key hint at the end) and
     the DropdownMenu panel and item parts for the popover. Product rows show
@@ -19,7 +23,10 @@
 
     @since      1.0.0
 --}}
-@php( $ecommerceOptionCount = count( $products ) + count( $categories ) + ( null === $allUrl ? 0 : 1 ) )
+{{-- Only rows with a link render as options. --}}
+@php( $ecommerceSuggestionCount = count( array_filter( [ ...$products, ...$categories ], static fn ( array $row ): bool => null !== ( $row['url'] ?? null ) ) ) )
+@php( $ecommerceOptionCount = $ecommerceSuggestionCount + ( null === $allUrl ? 0 : 1 ) )
+@php( $ecommerceShortcut = $shortcut ?? true )
 @php( $ecommerceOptionIndex = 0 )
 {{-- Each part is escaped; only the <mark> around a match is markup. --}}
 @php( $ecommerceMarked = static fn ( array $parts ): string => implode( '', array_map( static fn ( array $part ): string => $part['match'] ? '<mark class="ec-search__match">' . e( $part['text'] ) . '</mark>' : e( $part['text'] ), $parts ) ) )
@@ -73,7 +80,7 @@
 
             const target = event.target;
 
-            if ( target instanceof Element && target.closest( 'input, textarea, select, [contenteditable]:not([contenteditable=false])' ) ) {
+            if ( target instanceof Element && target.closest( 'input, textarea, select, iframe, [contenteditable]:not([contenteditable=false]), [role=textbox], [role=searchbox], [role=combobox], [role=listbox], [role=grid], [role=menu], [role=slider], [role=spinbutton]' ) ) {
                 return;
             }
 
@@ -87,7 +94,7 @@
     }"
     x-on:click.outside="close()"
     x-on:focusout="$el.contains( $event.relatedTarget ) || close()"
-    x-on:keydown.window="shortcut( $event )"
+    @if ( $ecommerceShortcut ) x-on:keydown.window="shortcut( $event )" @endif
     data-header-search
 >
     <form method="GET" @if ( null !== $searchUrl ) action="{{ $searchUrl }}" @endif role="search" x-on:submit="choose( $event )" data-header-search-form>
@@ -101,7 +108,7 @@
             wire:model.live.debounce.300ms="q"
             autocomplete="off"
             enterkeyhint="search"
-            aria-keyshortcuts="/"
+            :aria-keyshortcuts="$ecommerceShortcut ? '/' : null"
             role="combobox"
             aria-autocomplete="list"
             aria-controls="{{ $listboxId }}"
@@ -116,13 +123,19 @@
             class="ec-search__field"
             error-field="q"
         >
-            <x-slot:iconEnd><x-artisanpack-kbd size="sm" class="ec-search__hint">/</x-artisanpack-kbd></x-slot:iconEnd>
+            @if ( $ecommerceShortcut )
+                <x-slot:iconEnd><x-artisanpack-kbd size="sm" class="ec-search__hint">/</x-artisanpack-kbd></x-slot:iconEnd>
+            @endif
         </x-artisanpack-input>
     </form>
 
     <p class="apui-sr-only" role="status" aria-live="polite" aria-atomic="true" data-header-search-status>
         @if ( 'results' === $state )
-            {{ trans_choice( ':count suggestion|:count suggestions', count( $products ) + count( $categories ), [ 'count' => count( $products ) + count( $categories ) ] ) }}
+            {{ trans_choice( ':count suggestion|:count suggestions', $ecommerceSuggestionCount, [ 'count' => $ecommerceSuggestionCount ] ) }}
+        @elseif ( 'throttled' === $state )
+            {{ __( 'Too many searches. Press Enter to see all results.' ) }}
+        @elseif ( 'failed' === $state )
+            {{ __( 'Suggestions aren\'t available right now. Press Enter to search.' ) }}
         @endif
     </p>
 

@@ -31,7 +31,7 @@
             <h1 class="ec-cart__title">{{ __( 'Your cart' ) }}</h1>
 
             @if ( [] !== $lines )
-                <p class="ec-cart__count" data-cart-item-count>{{ trans_choice( ':count item|:count items', count( $lines ), [ 'count' => count( $lines ) ] ) }}</p>
+                <p class="ec-cart__count" data-cart-item-count>{{ trans_choice( ':count item|:count items', $count, [ 'count' => $count ] ) }}</p>
             @endif
         </div>
     @endif
@@ -50,6 +50,7 @@
             :title="__( 'Your cart is empty' )"
             :description="__( 'Find something you like and add it to your cart.' )"
             card
+            live
             data-cart-empty
         >
             @if ( null !== $catalogUrl )
@@ -136,7 +137,7 @@
                                             size="sm"
                                             :min="1"
                                             :max="\ArtisanPackUI\Ecommerce\Services\StorefrontCartService::MAX_LINE_QUANTITY"
-                                            wire:model.live.debounce.500ms="{{ $ecommerceField }}"
+                                            wire:model.live.change="{{ $ecommerceField }}"
                                             :error="$errors->first( $ecommerceField )"
                                         />
 
@@ -181,6 +182,23 @@
                             />
                             <x-artisanpack-button variant="outline" color="neutral" type="submit" wire:loading.attr="disabled" wire:target="applyCoupon" data-cart-coupon-apply>{{ __( 'Apply' ) }}</x-artisanpack-button>
                         </form>
+
+                        {{-- After a removal the chip (and its button, which had focus) is gone: hand focus to the coupon field, once per removal, only when focus was lost. --}}
+                        @if ( $couponChanges > 0 )
+                            <span
+                                hidden
+                                wire:key="cart-coupon-focus-{{ $couponChanges }}"
+                                x-data
+                                x-init="setTimeout( () => {
+                                    if ( document.activeElement && document.activeElement !== document.body ) {
+                                        return;
+                                    }
+
+                                    document.getElementById( 'ec-cart-coupon' )?.focus();
+                                } )"
+                                data-cart-coupon-focus
+                            ></span>
+                        @endif
 
                         @if ( null !== $coupon )
                             <p class="ec-chip" data-variant="coupon">
@@ -245,24 +263,26 @@
 
                             <x-artisanpack-button variant="outline" color="neutral" type="submit" wire:loading.attr="disabled" wire:target="estimateShipping" data-cart-estimate-submit>{{ __( 'Get shipping rates' ) }}</x-artisanpack-button>
 
-                            @if ( null !== $rates )
+                            @if ( null !== $rates && [] !== $rates )
+                                {{-- The group shows a rate error itself, tied to the radios (aria-invalid, aria-describedby). --}}
+                                <x-artisanpack-radio-group
+                                    id="ec-cart-estimate-rate"
+                                    :label="__( 'Shipping option' )"
+                                    variant="cards"
+                                    :options="collect( $rates )->map( fn ( array $rate ): array => [ 'value' => $rate['id'], 'label' => $rate['label'], 'meta' => MoneyFormatter::format( $rate['amount'], $rate['currency'] ) ] )->all()"
+                                    wire:model.live="selectedRate"
+                                    error-field="selectedRate"
+                                    data-cart-estimate-rates
+                                />
+                            @else
                                 @if ( [] === $rates )
                                     <p class="ec-cart-estimate__none" data-cart-estimate-none>{{ __( 'No shipping options for this address.' ) }}</p>
-                                @else
-                                    <x-artisanpack-radio-group
-                                        id="ec-cart-estimate-rate"
-                                        :label="__( 'Shipping option' )"
-                                        variant="cards"
-                                        :options="collect( $rates )->map( fn ( array $rate ): array => [ 'value' => $rate['id'], 'label' => $rate['label'], 'meta' => MoneyFormatter::format( $rate['amount'], $rate['currency'] ) ] )->all()"
-                                        wire:model.live="selectedRate"
-                                        data-cart-estimate-rates
-                                    />
                                 @endif
-                            @endif
 
-                            @error( 'selectedRate' )
-                                <p class="ec-cart-estimate__error" data-cart-estimate-error>{{ $message }}</p>
-                            @enderror
+                                @error( 'selectedRate' )
+                                    <p class="ec-cart-estimate__error" role="alert" data-cart-estimate-error>{{ $message }}</p>
+                                @enderror
+                            @endif
                         </form>
                     </details>
                 @endif

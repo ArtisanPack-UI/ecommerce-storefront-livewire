@@ -14,6 +14,10 @@
     `livewire.checkout.steps`; a satellite's step is its own Livewire
     component.
 
+    A payment the gateway confirmed that can't place the order (made for
+    an earlier total) shows a warning above the steps: the shopper is told
+    to contact the store, never to pay again.
+
     After an order is placed but its payment isn't finished, the payment
     for that order is shown instead (partials.placement, #142), with
     "Finish paying for order …" as the title in place of "Checkout".
@@ -27,13 +31,23 @@
     <p class="apui-sr-only" role="status" aria-live="polite" aria-atomic="true" data-checkout-announcement>{{ $announcement }}</p>
 
     @if ( null !== $placedOrder )
-        <x-artisanpack-ec-empty-state
-            icon="circle-check"
-            :title="__( 'Thank you for your order' )"
-            :description="__( 'Your order :number is placed. We\'ve emailed you a confirmation.', [ 'number' => $placedOrder ] )"
-            card
+        {{-- The "Place order" button is gone: focus moves to the page's heading. --}}
+        <div
+            class="ec-checkout__placed"
             data-checkout-placed
-        />
+            x-init="$nextTick( () => { const heading = $el.querySelector( 'h1, h2' ); if ( heading ) { heading.setAttribute( 'tabindex', '-1' ); heading.focus(); } } )"
+        >
+            @if ( $showTitle )
+                <h1 class="ec-checkout__title">{{ __( 'Checkout' ) }}</h1>
+            @endif
+
+            <x-artisanpack-ec-empty-state
+                icon="circle-check"
+                :title="__( 'Thank you for your order' )"
+                :description="__( 'Your order :number is placed. We\'ve emailed you a confirmation.', [ 'number' => $placedOrder ] )"
+                card
+            />
+        </div>
     @elseif ( null !== $unavailable )
         @if ( $showTitle )
             <h1 class="ec-checkout__title">{{ __( 'Checkout' ) }}</h1>
@@ -106,6 +120,16 @@
                     </x-artisanpack-alert>
                 @endif
 
+                @if ( null !== $strandedPayment )
+                    <x-artisanpack-alert
+                        color="warning"
+                        icon="circle-alert"
+                        :title="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\StrandedPayments::title()"
+                        :description="\ArtisanPackUI\EcommerceStorefrontLivewire\Support\StrandedPayments::message()"
+                        data-checkout-payment-stranded
+                    />
+                @endif
+
                 @include( 'ecommerce-storefront::livewire.checkout.partials.error-summary' )
 
                 <ol role="list" class="ec-checkout__steps" aria-label="{{ __( 'Checkout steps' ) }}" data-checkout-steps>
@@ -120,7 +144,6 @@
                             class="ec-checkout-step"
                             data-state="{{ $ecommerceStepState }}"
                             @if ( $checkoutStep['current'] ) aria-current="step" @endif
-                            @if ( ! $checkoutStep['reachable'] ) aria-disabled="true" @endif
                             data-checkout-step="{{ $checkoutStep['key'] }}"
                             data-checkout-step-state="{{ $ecommerceStepState }}"
                         >
@@ -142,6 +165,8 @@
                                     <span>{{ $checkoutStep['label'] }}</span>
                                     @if ( $ecommerceStepDone )
                                         <span class="apui-sr-only">{{ __( '(completed)' ) }}</span>
+                                    @elseif ( ! $checkoutStep['reachable'] )
+                                        <span class="apui-sr-only" data-checkout-step-unavailable>{{ __( '(not available yet)' ) }}</span>
                                     @endif
                                 </h2>
 

@@ -62,7 +62,7 @@
                     <p>{{ __( 'Loading…' ) }}</p>
                 </div>
             @elseif ( [] === $lines )
-                <x-artisanpack-ec-empty-state icon="shopping-bag" :title="__( 'Your cart is empty' )" size="sm" :heading-level="3" class="ec-cart-drawer__empty" data-cart-empty>
+                <x-artisanpack-ec-empty-state icon="shopping-bag" :title="__( 'Your cart is empty' )" size="sm" :heading-level="3" class="ec-cart-drawer__empty" live data-cart-empty>
                     @if ( null !== $catalogUrl )
                         <x-artisanpack-button variant="outline" color="neutral" size="sm" :href="$catalogUrl">{{ __( 'Continue shopping' ) }}</x-artisanpack-button>
                     @endif
@@ -124,7 +124,7 @@
                                                 size="xs"
                                                 :min="1"
                                                 :max="\ArtisanPackUI\Ecommerce\Services\StorefrontCartService::MAX_LINE_QUANTITY"
-                                                wire:model.live.debounce.500ms="{{ $ecommerceField }}"
+                                                wire:model.live.change="{{ $ecommerceField }}"
                                                 :error="$errors->first( $ecommerceField )"
                                             />
                                         @endif

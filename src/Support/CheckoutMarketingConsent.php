@@ -33,14 +33,21 @@ use Throwable;
  * - on the order, as the audit trail:
  *   `orders.meta.marketing_consent = [ 'given' => true, 'at' => ISO 8601,
  *   'source' => 'storefront-checkout' ]`, plus `customer_id` (the customer
- *   whose flag was set) and `customer_created` (true when the guest's
- *   customer record was created for it);
+ *   whose flag was set), `customer_created` (true when the guest's
+ *   customer record was created for it), and `applied` (since 2.0.0:
+ *   whether the customer's flag was set);
  * - on the customer, as `accepts_marketing` (engine
  *   `CustomerService::updateProfile()`, which records when consent was
  *   given): the order's customer, or — for a guest — the customer for the
  *   order's email (`findOrCreateForEmail()`). A guest checkout never
  *   changes the preferences of a customer linked to a user account: that
- *   shopper manages them signed in.
+ *   shopper manages them signed in. Nor does it opt in a customer record
+ *   that already existed (from earlier guest orders) and hasn't opted in:
+ *   the email isn't verified, and that customer may have opted out. The
+ *   consent is kept on the order with `applied` false, and
+ *   `ap.ecommerceStorefrontLivewire.checkout.marketingConsentPending`
+ *   fires with the order and the customer, so the host can ask that
+ *   address to confirm (double opt-in).
  *
  * Unticked, nothing is written. A failure is reported and never holds up
  * the order.
@@ -81,6 +88,7 @@ final class CheckoutMarketingConsent
      * Records the consent given on `$cart` for the order it became.
      *
      * @since 1.0.0
+     * @since 2.0.0 Leaves an existing guest customer's flag alone and fires `marketingConsentPending`.
      *
      * @param  Order  $order  The order placed.
      * @param  Cart   $cart   The cart it was placed from.
@@ -103,7 +111,12 @@ final class CheckoutMarketingConsent
 
             [ $customer, $created ] = self::customer( $order );
 
-            if ( null !== $customer ) {
+            // A guest's tick can't opt in a customer record that already
+            // existed: the email isn't verified, and that customer may have
+            // opted out. The host is asked to confirm it instead.
+            $pending = null !== $customer && ! $created && null === $order->customer_id && true !== (bool) $customer->accepts_marketing;
+
+            if ( null !== $customer && ! $pending ) {
                 app( CustomerService::class )->updateProfile( $customer, [ 'accepts_marketing' => true ] );
             }
 
@@ -113,10 +126,15 @@ final class CheckoutMarketingConsent
                 'source'           => 'storefront-checkout',
                 'customer_id'      => $customer?->id,
                 'customer_created' => $created,
+                'applied'          => null !== $customer && ! $pending,
             ];
 
             $order->meta = $meta;
             $order->save();
+
+            if ( $pending ) {
+                doAction( 'ap.ecommerceStorefrontLivewire.checkout.marketingConsentPending', $order, $customer );
+            }
         } catch ( Throwable $exception ) {
             report( $exception );
         }

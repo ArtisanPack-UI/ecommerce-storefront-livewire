@@ -35,6 +35,22 @@
         }
     }
 
+    /*
+     * The sticky header would cover a control the browser scrolls into view
+     * at the top edge (Shift+Tab up a long page, a fragment or error-summary
+     * link). Scroll padding keeps it below the header (WCAG 2.4.11). The
+     * actions can wrap below 768px, so the bar may grow there.
+     */
+    html:has(> body.ec-storefront .apui-navbar[data-sticky]) {
+        scroll-padding-block-start: calc(var(--apui-navbar-height) + 16px);
+    }
+
+    @media (max-width: 767.98px) {
+        html:has(> body.ec-storefront .apui-navbar[data-sticky]) {
+            scroll-padding-block-start: calc(var(--apui-navbar-height) + 32px);
+        }
+    }
+
     /* "Skip to content": hidden until focused, then above the sticky header. */
     .ec-skip-link:not(:focus) {
         position: absolute;
@@ -452,7 +468,8 @@
         border-color: var(--apui-border-strong);
     }
 
-    .ec-product-card:focus-within {
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-product-card:has(.ec-product-card__name a:focus-visible) {
         outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
@@ -725,15 +742,30 @@
         opacity: 0;
     }
 
+    /*
+     * The selected value: a 2px primary border (the 1px border plus an inset
+     * ring, so nothing shifts) on the soft fill. The primary colour keeps
+     * 3:1 against the surface and the unselected border in both themes, and
+     * the thicker edge tells it apart without relying on colour (WCAG
+     * 1.4.11, 1.4.1).
+     */
     .ec-swatch:has(.ec-swatch__input:checked) {
-        border-color: var(--apui-selected-border);
+        border-color: var(--apui-color-primary);
         background: var(--apui-selected-bg);
         color: var(--apui-color-primary-soft-foreground);
+        box-shadow: inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary);
     }
 
     .ec-swatch:has(.ec-swatch__input:focus-visible) {
         outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
+    }
+
+    .ec-swatch:has(.ec-swatch__input:checked):has(.ec-swatch__input:focus-visible) {
+        box-shadow:
+            inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary),
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
             0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
     }
@@ -1126,6 +1158,31 @@
         padding-block-start: 8px;
     }
 
+    /* Below 1024px: who's signed in and "Sign out", above the tabs. */
+    .ec-account__bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        min-inline-size: 0;
+        margin-block-end: -12px;
+    }
+
+    .ec-account__bar-who {
+        margin: 0;
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-account__bar-signout {
+        margin: 0;
+        margin-inline-start: auto;
+    }
+
     /* Below 1024px: a row of tabs that scrolls sideways, never the page. */
     .ec-account__tabs {
         min-inline-size: 0;
@@ -1186,7 +1243,8 @@
             display: block;
         }
 
-        .ec-account__tabs {
+        .ec-account__tabs,
+        .ec-account__bar {
             display: none;
         }
     }
@@ -2882,20 +2940,21 @@
         gap: 8px;
     }
 
-    [dir="rtl"] .ec-related__control svg {
-        transform: scaleX(-1);
-    }
-
+    /*
+     * The scroller clips its overflow on both axes, so its padding leaves
+     * room for a card's 4px focus ring; the negative margin keeps the cards
+     * on the column edges.
+     */
     .ec-related__list {
         display: flex;
         gap: 16px;
-        margin: 0;
-        padding: 0 0 8px;
+        margin: 0 -4px;
+        padding: 4px 4px 8px;
         list-style: none;
         overflow-x: auto;
         overscroll-behavior-x: contain;
         scroll-snap-type: x mandatory;
-        scroll-padding-inline: 0;
+        scroll-padding-inline: 4px;
     }
 
     .ec-related__item {
@@ -2917,6 +2976,7 @@
         .ec-related__list {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin: 0;
             padding: 0;
             overflow: visible;
             scroll-snap-type: none;
@@ -3017,7 +3077,8 @@
         border-color: var(--apui-border-strong);
     }
 
-    .ec-recent__card:focus-within {
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-recent__card:has(.ec-recent__name a:focus-visible) {
         outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
@@ -3465,7 +3526,8 @@
         border-color: var(--apui-border-strong);
     }
 
-    .ec-category-tile:focus-within {
+    /* Keyboard focus on the stretched name link rings the whole card; the card's other controls keep their own ring. */
+    .ec-category-tile:has(.ec-category-tile__name a:focus-visible) {
         outline: var(--apui-focus-ring-width) solid transparent;
         box-shadow:
             0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
@@ -3888,10 +3950,13 @@
         font: inherit;
         font-size: var(--apui-type-body-sm-font-size);
         line-height: var(--apui-type-body-sm-line-height);
+        text-align: start;
         text-decoration: none;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
         cursor: pointer;
         outline: none;
+        min-inline-size: 0;
+        max-inline-size: 100%;
     }
 
     .ec-chip:focus-visible {
@@ -3926,10 +3991,19 @@
         background: var(--apui-state-hover);
     }
 
+    /* The current choice: a 2px primary border, as on a selected swatch. */
     .ec-chip[data-variant="select"][aria-current] {
-        border-color: var(--apui-color-primary-border);
+        border-color: var(--apui-color-primary);
         background: var(--apui-color-primary-soft);
         color: var(--apui-color-primary-soft-foreground);
+        box-shadow: inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary);
+    }
+
+    .ec-chip[data-variant="select"][aria-current]:focus-visible {
+        box-shadow:
+            inset 0 0 0 calc(var(--apui-selected-indicator-width) - var(--apui-border-width)) var(--apui-color-primary),
+            0 0 0 var(--apui-focus-ring-offset) var(--apui-focus-ring-offset-color),
+            0 0 0 calc(var(--apui-focus-ring-offset) + var(--apui-focus-ring-width)) var(--apui-focus-ring-color);
     }
 
     @media (forced-colors: active) {

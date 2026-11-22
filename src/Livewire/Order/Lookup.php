@@ -177,6 +177,7 @@ class Lookup extends Component
         $loginRoute = (string) config( 'artisanpack.ecommerce-storefront-livewire.auth.login_route', 'login' );
 
         return view( 'ecommerce-storefront::livewire.order.lookup', [
+            'fieldIds' => $this->fieldIds(),
             'loginUrl' => null === auth()->user() && '' !== $loginRoute && Route::has( $loginRoute ) ? route( $loginRoute ) : null,
         ] );
     }
@@ -222,5 +223,24 @@ class Lookup extends Component
         $minutes = (int) ceil( $seconds / 60 );
 
         return trans_choice( 'Too many attempts. Try again in :minutes minute.|Too many attempts. Try again in :minutes minutes.', $minutes, [ 'minutes' => $minutes ] );
+    }
+
+    /**
+     * The form's field ids, by error key: prefixed and unique to this
+     * component instance, so they can't collide with the host page's own
+     * fields (or a second copy of this form), and never dotted.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    protected function fieldIds(): array
+    {
+        $base = 'ec-order-lookup-' . preg_replace( '/[^A-Za-z0-9_-]+/', '', (string) $this->getId() ) . '-';
+
+        return [
+            'email'       => $base . 'email',
+            'orderNumber' => $base . 'number',
+        ];
     }
 }

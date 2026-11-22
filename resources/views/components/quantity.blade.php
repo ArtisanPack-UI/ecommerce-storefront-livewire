@@ -3,7 +3,8 @@
 
     A design-system Input whose box holds the minus button, the number and
     the plus button (ghost, icon-only), with the Input's own label (visible
-    or hidden) and field error. `size` follows the context: `lg` on the
+    or hidden; a hidden one names `itemName`, "Quantity, Oxbow mug", so each
+    cart line's field is told apart) and field error. `size` follows the context: `lg` on the
     product page, `md` by default, `sm` in the cart and `xs` in the drawer.
 
     The buttons step the native input and fire its input and change events,
@@ -19,13 +20,14 @@
 --}}
 @php
     $ecommerceDisabled    = (bool) $attributes->get( 'disabled' );
+    $ecommerceRequired    = (bool) $attributes->get( 'required' );
     $ecommerceButtonSize  = in_array( $size, [ 'sm', 'xs' ], true ) ? 'xs' : 'sm';
     $ecommerceInputSize   = match ( $size ) {
         'lg'       => 'lg',
         'sm', 'xs' => 'sm',
         default    => 'md',
     };
-    $ecommerceRootAttributes = $attributes->whereDoesntStartWith( [ 'wire:model', 'disabled', 'placeholder' ] );
+    $ecommerceRootAttributes = $attributes->whereDoesntStartWith( [ 'wire:model', 'disabled', 'required', 'placeholder' ] );
     $ecommerceModel          = $attributes->whereStartsWith( 'wire:model' )->first();
 @endphp
 <div
@@ -63,9 +65,10 @@
         :id="$id"
         type="number"
         :size="$ecommerceInputSize"
-        :label="$label ?? __( 'Quantity' )"
+        :label="$label ?? ( null === $itemName ? __( 'Quantity' ) : __( 'Quantity, :product', [ 'product' => $itemName ] ) )"
         :error="$error"
         :disabled="$ecommerceDisabled"
+        :required="$ecommerceRequired"
         :classes="null === $label ? [ 'label' => 'apui-sr-only' ] : []"
         x-ref="input"
         inputmode="numeric"

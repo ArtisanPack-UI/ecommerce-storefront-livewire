@@ -45,7 +45,7 @@ it( 'opens the cart drawer from the header button and returns focus to it', func
     visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->keys( '[data-header-action="cart"]', 'Enter' )
         ->assertScript( focusIsIn( '#ecommerce-cart-drawer-content' ) )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Drawer mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Drawer mug' )
         ->keys( '#ecommerce-cart-drawer-close-trigger', 'Enter' )
         ->assertScript( 'document.activeElement?.dataset.headerAction', 'cart' );
 } );
@@ -157,7 +157,7 @@ it( 'keeps focus in the drawer when a line is removed, then on the restored line
 
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => $product->slug ] ) )
         ->keys( '[data-add-to-cart]', 'Enter' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Removable mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Removable mug' )
         ->keys( '#ecommerce-cart-drawer-panel [data-cart-line-remove]', 'Enter' )
         ->assertPresent( '#ecommerce-cart-drawer-panel [data-cart-undo-button]' )
         ->assertScript( 'document.activeElement?.hasAttribute( "data-cart-undo-button" ) && document.activeElement.closest( "#ecommerce-cart-drawer-panel" ) !== null' )

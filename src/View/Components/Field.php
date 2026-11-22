@@ -111,7 +111,8 @@ class Field extends Component
     /**
      * The label the library control prints: the label, then a muted
      * "(optional)" when the field is marked optional. A checkbox's label is
-     * its whole sentence, so it is never marked.
+     * its whole sentence, so it is never marked optional; a required one
+     * gets the asterisk the library's checkbox doesn't draw itself.
      *
      * @since 2.0.0
      *
@@ -119,6 +120,10 @@ class Field extends Component
      */
     public function labelContent(): Htmlable|string|null
     {
+        if ( 'checkbox' === $this->control && null !== $this->label && '' !== $this->label && $this->isRequired() ) {
+            return new HtmlString( e( $this->label ) . '<span data-scope="checkbox" data-part="required" aria-hidden="true">*</span>' );
+        }
+
         if ( null === $this->label || '' === $this->label || ! $this->optional || 'checkbox' === $this->control ) {
             return $this->label;
         }
@@ -182,5 +187,19 @@ class Field extends Component
     public function render(): View
     {
         return view( 'ecommerce-storefront::components.field' );
+    }
+
+    /**
+     * Whether the `required` attribute is set (and not false).
+     *
+     * @since 2.0.0
+     *
+     * @return bool
+     */
+    protected function isRequired(): bool
+    {
+        $required = $this->attributes->get( 'required' );
+
+        return null !== $required && false !== $required;
     }
 }

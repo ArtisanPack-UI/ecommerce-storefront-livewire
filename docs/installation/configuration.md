@@ -65,6 +65,12 @@ The host owns sign-in, registration, sign-out, and the profile and password scre
 | `catalog.filter_attributes` | `null` | The attribute keys shoppers can filter by, for example `[ 'colour', 'size' ]`. `null` offers every attribute. |
 | `catalog.description` | `null` | The line under the catalog page's "All products" title. `null` leaves it out. **Since:** 2.0.0 |
 
+## Search
+
+| Key | Default | What it controls |
+| --- | --- | --- |
+| `search.keyboard_shortcut` | `true` | Pressing "/" moves focus to the header search box, unless focus is in a text field, a select, an editable region, or another widget (a combobox, listbox, grid, menu, slider, or spin button) or a modal is open. Set it to `false` to remove the shortcut, its `aria-keyshortcuts` attribute, and the "/" hint. WCAG 2.1.4 (Character Key Shortcuts) needs a single-key shortcut to be something a site can turn off; this is that switch. **Since:** 2.0.0 |
+
 ## Reviews
 
 | Key | Default | What it controls |

@@ -24,6 +24,7 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\RateLimitsStoref
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SendsToasts;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\SummarizesErrors;
 use ArtisanPackUI\EcommerceStorefrontLivewire\View\Components\AddressForm;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
@@ -400,6 +401,7 @@ class Addresses extends Component
         $editingAddress = null === $this->editingId ? null : collect( $addresses )->firstWhere( 'id', $this->editingId );
 
         return view( 'ecommerce-storefront::livewire.account.addresses', [
+            'fieldIds'          => $this->fieldIds(),
             'addresses'         => $addresses,
             'failed'            => $failed,
             'isDefaultShipping' => true === ( $editingAddress['default_shipping'] ?? false ),
@@ -451,7 +453,9 @@ class Addresses extends Component
 
     /**
      * The shopper's customer record; with `$create`, one is made (or
-     * linked) when they have none.
+     * linked) when they have none, unless their email isn't verified yet
+     * (a `MustVerifyEmail` user), so nobody can hold a record under an
+     * address they haven't proved is theirs.
      *
      * @since 1.0.0
      *
@@ -465,6 +469,12 @@ class Addresses extends Component
 
         if ( null === $user ) {
             return null;
+        }
+
+        // An unverified email may belong to someone else: don't make a
+        // customer record under it (the engine never moves one to a new email).
+        if ( $user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail() ) {
+            $create = false;
         }
 
         return $create ? app( CustomerService::class )->customerForUser( $user, true ) : Customer::forUser( $user );
@@ -592,5 +602,23 @@ class Addresses extends Component
         if ( [] !== $general ) {
             $this->toastError( __( 'We couldn\'t save the address' ), implode( ' ', $general ) );
         }
+    }
+
+    /**
+     * The form's field ids, by error key: prefixed and unique to this
+     * component instance, so they can't collide with the host page's own
+     * fields (or a second copy of this form), and never dotted.
+     *
+     * @since 2.0.0
+     *
+     * @return array<string, string>
+     */
+    protected function fieldIds(): array
+    {
+        $base = 'ec-account-address-' . preg_replace( '/[^A-Za-z0-9_-]+/', '', (string) $this->getId() ) . '-';
+
+        return [
+            'form.label' => $base . 'label',
+        ];
     }
 }

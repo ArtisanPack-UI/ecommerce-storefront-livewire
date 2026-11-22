@@ -21,18 +21,18 @@
         <x-artisanpack-card class="ec-order-card ec-profile__card" role="region" aria-labelledby="ec-account-profile-details">
             <h2 id="ec-account-profile-details" class="ec-order-card__title">{{ __( 'Your details' ) }}</h2>
 
-            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-profile' ] )
+            @include( 'ecommerce-storefront::partials.error-summary', [ 'summaryId' => 'ec-account-profile', 'summaryFieldIds' => $fieldIds ] )
 
             <div class="ec-profile__fields">
-                <x-artisanpack-ec-field id="profile.first_name" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
-                <x-artisanpack-ec-field id="profile.last_name" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
+                <x-artisanpack-ec-field :id="$fieldIds['profile.first_name']" :label="__( 'First name' )" autocomplete="given-name" wire:model="profile.first_name" />
+                <x-artisanpack-ec-field :id="$fieldIds['profile.last_name']" :label="__( 'Last name' )" autocomplete="family-name" wire:model="profile.last_name" />
 
                 <div class="ec-profile__phone">
-                    <x-artisanpack-ec-field id="profile.phone" type="tel" optional :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
+                    <x-artisanpack-ec-field :id="$fieldIds['profile.phone']" type="tel" optional :label="__( 'Phone' )" autocomplete="tel" wire:model="profile.phone" />
                 </div>
             </div>
 
-            <x-artisanpack-checkbox id="profile.accepts_marketing" :label="__( 'Email me news and offers' )" :description="__( 'You can change your mind at any time.' )" wire:model="profile.accepts_marketing" data-account-profile-marketing />
+            <x-artisanpack-checkbox :id="$fieldIds['profile.accepts_marketing']" :label="__( 'Email me news and offers' )" :description="__( 'You can change your mind at any time.' )" wire:model="profile.accepts_marketing" data-account-profile-marketing />
 
             <x-slot:footer>
                 <div class="ec-profile__footer">

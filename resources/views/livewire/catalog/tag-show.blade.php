@@ -20,7 +20,8 @@
         <div class="ec-category-hero__body">
             <p class="ec-category-hero__eyebrow">{{ __( 'Tag' ) }}</p>
 
-            <h1 class="ec-category-hero__title">{{ $tag->name }}</h1>
+            @php( $heading = 'h2' === ( $heading ?? null ) ? 'h2' : 'h1' )
+            <{{ $heading }} class="ec-category-hero__title">{{ $tag->name }}</{{ $heading }}>
         </div>
     </div>
 

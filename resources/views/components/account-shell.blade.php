@@ -4,8 +4,9 @@
     Design-system parts with the layout in resources/css/storefront.css
     (ec-account): from 1024px a 232px sidebar (Avatar, name and email, the
     account Menu, a Divider and a ghost "Sign out" Button) beside the
-    content, 32px apart; below 1024px the sidebar hides and the same entries
-    show as a row of tabs that scrolls sideways. Both are
+    content, 32px apart; below 1024px the sidebar hides, a bar says who is
+    signed in with a small "Sign out" Button, and the same entries show as
+    a row of tabs that scrolls sideways. Both navigations are
     `<nav aria-label="Account">`; only one shows at a time. The current page
     carries `aria-current="page"`. The content starts with a PageHeader
     holding the page's one h1; without a title the content brings its own.
@@ -57,6 +58,22 @@
             </form>
         @endif
     </div>
+
+    {{-- Below 1024px the sidebar hides, so who's signed in and "Sign out" show here. --}}
+    @if ( null !== $ecommerceAccountShopper || null !== $ecommerceSignOutUrl )
+        <div class="ec-account__bar" data-account-bar>
+            @if ( null !== $ecommerceAccountShopper )
+                <p class="ec-account__bar-who" data-account-bar-identity>{{ __( 'Signed in as :name', [ 'name' => $ecommerceAccountShopper['name'] ] ) }}</p>
+            @endif
+
+            @if ( null !== $ecommerceSignOutUrl )
+                <form method="POST" action="{{ $ecommerceSignOutUrl }}" class="ec-account__bar-signout" data-account-bar-sign-out>
+                    @csrf
+                    <x-artisanpack-button type="submit" variant="ghost" color="neutral" size="sm" leading-icon="log-out">{{ __( 'Sign out' ) }}</x-artisanpack-button>
+                </form>
+            @endif
+        </div>
+    @endif
 
     <nav aria-label="{{ __( 'Account' ) }}" class="ec-account__tabs" data-account-tabs>
         <ul>

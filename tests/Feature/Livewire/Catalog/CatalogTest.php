@@ -165,6 +165,9 @@ it( 'normalises malformed query-string values instead of failing (Livewire 3)', 
 } );
 
 it( 'reads numeric query-string values given as strings', function (): void {
+    makeProduct( 400 );
+    makeProduct( 900 );
+
     Livewire::withQueryParams( [ 'per_page' => '12', 'price_min' => '500', 'rating' => '3', 'in_stock' => '1' ] )
         ->test( Index::class )
         ->assertSet( 'perPage', 12 )

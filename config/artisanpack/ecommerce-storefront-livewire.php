@@ -111,6 +111,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Search
+    |--------------------------------------------------------------------------
+    |
+    | `keyboard_shortcut` lets shoppers press "/" to jump to the header
+    | search box (only when focus isn't in a text field or another
+    | widget). It is a single-character shortcut, so WCAG 2.1.4 requires a
+    | way to turn it off: set it to false to drop the shortcut, its
+    | `aria-keyshortcuts` and the "/" hint.
+    |
+    */
+    'search' => [
+        'keyboard_shortcut' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Reviews
     |--------------------------------------------------------------------------
     |

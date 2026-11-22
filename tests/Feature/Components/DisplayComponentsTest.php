@@ -234,12 +234,21 @@ describe( 'address', function (): void {
 } );
 
 describe( 'empty state and skeleton', function (): void {
-    it( 'announces the empty state as a status with its actions', function (): void {
-        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later."><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' )
+    it( 'is not a live region by default, so a static empty state is not announced', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="x" />' )
+            ->assertDontSee( 'role="status"', false )
+            ->assertSee( 'x' );
+    } );
+
+    it( 'announces the empty state as a status with its actions when it is live', function (): void {
+        $this->blade( '<x-artisanpack-ec-empty-state title="Nothing here" description="Try again later." :live="true"><a href="/shop">Shop</a></x-artisanpack-ec-empty-state>' )
             ->assertSee( 'role="status"', false )
             ->assertSee( 'Nothing here' )
             ->assertSee( 'Try again later.' )
             ->assertSee( 'href="/shop"', false );
+
+        $this->blade( '<x-artisanpack-ec-empty-state title="Your cart is empty" card live />' )
+            ->assertSeeInOrder( [ 'data-empty-state-card', 'role="status"' ], false );
     } );
 
     it( 'draws the design-system empty state with an h2 title and the inbox icon by default (#84)', function (): void {

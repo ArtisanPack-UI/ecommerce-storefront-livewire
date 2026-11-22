@@ -59,7 +59,7 @@ it( 'adds to the cart from the catalog', function (): void {
 
     visit( route( 'artisanpack.ecommerce.storefront.catalog' ) )
         ->click( '[data-quick-add="' . $product->id . '"]' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Catalog mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Catalog mug' )
         ->assertSeeIn( '[data-header-action="cart"]', '1' )
         ->assertNoJavaScriptErrors();
 } );
@@ -70,7 +70,7 @@ it( 'adds a quantity to the cart from the product page', function (): void {
     visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'product-page-mug' ] ) )
         ->type( '[data-quantity] input', '3' )
         ->click( '[data-add-to-cart]' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Product page mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Product page mug' )
         ->assertSeeIn( '#ecommerce-cart-drawer-content [data-cart-subtotal]', '$72.00' )
         ->assertNoJavaScriptErrors();
 } );
@@ -120,7 +120,7 @@ it( 'updates the cart and applies a coupon', function (): void {
 
     $page = visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'coupon-mug' ] ) )
         ->click( '[data-add-to-cart]' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Coupon mug' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Coupon mug' )
         ->navigate( route( 'artisanpack.ecommerce.storefront.cart' ) )
         ->click( '[data-ecommerce-cart] [aria-label="Increase quantity, Coupon mug"]' )
         ->assertSeeIn( '[data-ecommerce-cart] [data-cart-line-total]', '$40.00' )
@@ -171,7 +171,7 @@ it( 'checks out signed in on the single-page layout', function (): void {
 
     $page = visit( route( 'artisanpack.ecommerce.storefront.product', [ 'product' => 'member-blanket' ] ) )
         ->click( '[data-add-to-cart]' )
-        ->assertSeeIn( '#ecommerce-cart-drawer-panel', 'Member blanket' )
+        ->assertSeeIn( '#ecommerce-cart-drawer-panel a', 'Member blanket' )
         ->navigate( route( 'artisanpack.ecommerce.storefront.checkout' ) )
         ->assertNotPresent( '[data-checkout-progress]' )
         ->assertPresent( '[data-checkout-step="review"]' );
@@ -196,8 +196,8 @@ it( 'finds a guest order with the email and order number', function (): void {
     placedOrder( [ 'order_number' => 'LOOKUP42', 'email' => 'finder@example.test' ], null, [ makeProduct( 2000, [ 'name' => 'Lookup kettle' ] ) ] );
 
     visit( route( 'artisanpack.ecommerce.storefront.lookup' ) )
-        ->type( Locators::field( 'email' ), 'finder@example.test' )
-        ->type( Locators::field( 'orderNumber' ), 'LOOKUP42' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-email' ), 'finder@example.test' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-number' ), 'LOOKUP42' )
         ->click( '[data-order-lookup-form] button[type="submit"]' )
         ->assertPathBeginsWith( '/shop/order/' )
         ->assertSee( 'LOOKUP42' )
@@ -209,8 +209,8 @@ it( 'tells a shopper when no order matches, without saying which part was wrong'
     placedOrder( [ 'order_number' => 'LOOKUP43', 'email' => 'finder@example.test' ] );
 
     visit( route( 'artisanpack.ecommerce.storefront.lookup' ) )
-        ->type( Locators::field( 'email' ), 'someone-else@example.test' )
-        ->type( Locators::field( 'orderNumber' ), 'LOOKUP43' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-email' ), 'someone-else@example.test' )
+        ->type( '[data-order-lookup-form] ' . Locators::field( '-number' ), 'LOOKUP43' )
         ->click( '[data-order-lookup-form] button[type="submit"]' )
         ->assertPresent( '[data-order-lookup-failure]' )
         ->assertPathIs( '/shop/order-lookup' );

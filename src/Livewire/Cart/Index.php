@@ -38,7 +38,7 @@ use Throwable;
  * The cart page (spec §7.3, S14), on the engine's `StorefrontCartService`:
  *
  * - **Lines** — image, name, options, unit price, a quantity stepper
- *   (debounced `updateItem()`), line total, and "Remove" with an "Undo"
+ *   (`updateItem()` on change), line total, and "Remove" with an "Undo"
  *   notice ({@see ManagesCartLines}).
  * - **Coupon** — `applyCoupon()` / `removeCoupon()`, with the engine's
  *   message under the field; attempts count against
@@ -161,6 +161,18 @@ class Index extends Component
     public string $selectedRate = '';
 
     /**
+     * Counts coupon removals, to key the focus hand-off that runs after
+     * each: the chip's remove button is gone, so focus moves to the coupon
+     * field.
+     *
+     * @since 2.0.0
+     *
+     * @var int
+     */
+    #[Locked]
+    public int $couponChanges = 0;
+
+    /**
      * Picks up the quantities and the destination of a rate chosen
      * earlier.
      *
@@ -203,6 +215,10 @@ class Index extends Component
         }
 
         $this->syncQuantities();
+
+        if ( $this->reconcileShippingEstimate() ) {
+            $this->announcement = $this->estimateChangedNote();
+        }
     }
 
     /**
@@ -255,7 +271,7 @@ class Index extends Component
 
         $this->couponCode = '';
         $this->cartChanged( $cart );
-        $this->announceTotal( __( 'Coupon applied.' ) );
+        $this->announceTotal( $this->withEstimateNote( __( 'Coupon applied.' ), $this->reconcileShippingEstimate() ) );
     }
 
     /**
@@ -289,8 +305,9 @@ class Index extends Component
             return;
         }
 
+        $this->couponChanges++;
         $this->cartChanged( $cart );
-        $this->announceTotal( __( 'Coupon removed.' ) );
+        $this->announceTotal( $this->withEstimateNote( __( 'Coupon removed.' ), $this->reconcileShippingEstimate() ) );
     }
 
     /**
@@ -385,6 +402,7 @@ class Index extends Component
         } catch ( CartOperationException $exception ) {
             $this->selectedRate = '';
             $this->addError( 'selectedRate', $exception->getMessage() );
+            $this->announcement = $exception->getMessage();
 
             return;
         }
@@ -412,6 +430,7 @@ class Index extends Component
         return view( 'ecommerce-storefront::livewire.cart.index', [
             'cart'             => $cart,
             'lines'            => $lines,
+            'count'            => (int) array_sum( array_column( $lines, 'quantity' ) ),
             'totals'           => null === $cart || [] === $lines ? null : $this->totals( $cart ),
             'coupon'           => null === $cart ? null : $this->appliedCoupon( $cart ),
             'hasUnsellable'    => [] !== array_filter( $lines, static fn ( array $line ): bool => null !== $line['unsellable'] ),
@@ -479,7 +498,66 @@ class Index extends Component
      */
     protected function linesChanged(): void
     {
-        $this->announceTotal( '' === $this->announcement ? __( 'Cart updated.' ) : $this->announcement );
+        $cleared = $this->reconcileShippingEstimate();
+
+        $this->announceTotal( $this->withEstimateNote( '' === $this->announcement ? __( 'Cart updated.' ) : $this->announcement, $cleared ) );
+    }
+
+    /**
+     * Brings the estimate in line with the cart after a change. The engine
+     * drops the chosen rate when the change moved its price; the quoted
+     * rates on screen are then out of date too, so both are cleared and
+     * the shopper asks again. A rate the engine kept stays selected.
+     *
+     * @since 2.0.0
+     *
+     * @return bool Whether a selected rate or quotes were cleared.
+     */
+    protected function reconcileShippingEstimate(): bool
+    {
+        $rate = $this->chosenRate( $this->cart() );
+
+        if ( null === $rate ) {
+            if ( '' === $this->selectedRate ) {
+                return false;
+            }
+
+            $this->selectedRate = '';
+            $this->rates        = null;
+
+            return true;
+        }
+
+        $this->selectedRate = (string) ( $rate['id'] ?? '' );
+
+        return false;
+    }
+
+    /**
+     * `$message`, followed by the "estimate changed" note when `$cleared`.
+     *
+     * @since 2.0.0
+     *
+     * @param  string  $message  What changed.
+     * @param  bool    $cleared  Whether the shipping estimate was cleared.
+     *
+     * @return string
+     */
+    protected function withEstimateNote( string $message, bool $cleared ): string
+    {
+        return $cleared ? $message . ' ' . $this->estimateChangedNote() : $message;
+    }
+
+    /**
+     * The note saying the shipping estimate was cleared.
+     *
+     * @since 2.0.0
+     *
+     * @return string
+     */
+    protected function estimateChangedNote(): string
+    {
+        return __( 'Your shipping estimate changed. Get shipping rates again.' );
     }
 
     /**

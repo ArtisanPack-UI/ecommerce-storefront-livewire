@@ -13,6 +13,12 @@
     for the cards and the results are aria-busy. With no products: the
     no-match card (with "Clear filters") or the empty catalog.
 
+    Removing a chip or using a "Clear all" takes its own control out of
+    the page, so the focus sentinel (keyed on `filterChanges`) moves focus
+    on, but only if it fell to the page: to the chip now at the removed
+    chip's place (else the one before it), to "Show N products" in the
+    drawer, else to the results count.
+
     The search page (Search\Index) reuses it, passing `$resultsLabel` (the
     live results count), `$emptyState` (icon, title, description, and
     tips, shown in a card) and `$browseUrl` ("Browse all products" when
@@ -28,7 +34,7 @@
     $ecommerceActiveCount = count( $activeFilters );
     $ecommerceLoadTargets = 'q, sort, perPage, gotoPage, nextPage, previousPage, setPage, categoryFilter, tagFilter, attributeFilters, priceMin, priceMax, inStock, onSale, minRating, extraFilters, removeFilter, clearFilters, $refresh';
 @endphp
-<section class="ec-catalog" data-ecommerce-catalog @if ( null !== $heading ) aria-labelledby="ecommerce-catalog-heading" @else aria-label="{{ __( 'Products' ) }}" @endif>
+<section class="ec-catalog" x-data="{ focusAfter: null }" data-ecommerce-catalog @if ( null !== $heading ) aria-labelledby="ecommerce-catalog-heading" @else aria-label="{{ __( 'Products' ) }}" @endif>
     @if ( null !== $heading )
         <h2 id="ecommerce-catalog-heading" class="ec-catalog__title">{{ $heading }}</h2>
     @endif
@@ -41,7 +47,7 @@
                     <h2 id="ecommerce-catalog-filters-heading" class="ec-catalog__sidebar-title">{{ __( 'Filters' ) }}</h2>
 
                     @if ( 0 !== $ecommerceActiveCount )
-                        <x-artisanpack-link wire:click="clearFilters" data-sidebar-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-link>
+                        <x-artisanpack-link wire:click="clearFilters" x-on:click="focusAfter = 'count'" data-sidebar-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-link>
                     @endif
                 </div>
 
@@ -52,7 +58,7 @@
         <div class="ec-catalog__main">
             <div class="ec-catalog__toolbar">
                 {{-- Announced politely whenever filtering, sorting, or paging changes the results. --}}
-                <p class="ec-catalog__count" role="status" aria-live="polite" aria-atomic="true" data-results-count>
+                <p class="ec-catalog__count" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" data-results-count>
                     {{ $resultsLabel ?? trans_choice( ':count product|:count products', $products->total(), [ 'count' => $products->total() ] ) }}
                 </p>
 
@@ -106,6 +112,7 @@
                             data-variant="filter"
                             aria-label="{{ __( 'Remove filter: :filter', [ 'filter' => $filter['label'] ] ) }}"
                             wire:click="removeFilter( {{ \Illuminate\Support\Js::from( $filter['group'] ) }}, {{ \Illuminate\Support\Js::from( $filter['value'] ) }} )"
+                            x-on:click="focusAfter = {{ $loop->index }}"
                             wire:key="active-filter-{{ $filter['group'] }}-{{ $filter['value'] }}"
                             data-active-filter="{{ $filter['group'] }}"
                         >
@@ -114,7 +121,7 @@
                         </button>
                     @endforeach
 
-                    <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="clearFilters" data-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-button>
+                    <x-artisanpack-button variant="ghost" color="neutral" size="sm" wire:click="clearFilters" x-on:click="focusAfter = 'count'" data-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-button>
                 </div>
             @endif
 
@@ -131,7 +138,7 @@
                         @endif
 
                         @if ( $filtered )
-                            <x-artisanpack-button color="primary" wire:click="clearFilters">{{ __( 'Clear filters' ) }}</x-artisanpack-button>
+                            <x-artisanpack-button color="primary" wire:click="clearFilters" x-on:click="focusAfter = 'count'">{{ __( 'Clear filters' ) }}</x-artisanpack-button>
                         @endif
 
                         @if ( in_array( $emptyState['key'], [ 'no-results', 'unavailable' ], true ) && null !== ( $browseUrl ?? null ) )
@@ -146,7 +153,7 @@
                         card
                         data-empty-reason="no-match"
                     >
-                        <x-artisanpack-button color="primary" wire:click="clearFilters" data-empty-clear-filters>{{ __( 'Clear filters' ) }}</x-artisanpack-button>
+                        <x-artisanpack-button color="primary" wire:click="clearFilters" x-on:click="focusAfter = 'count'" data-empty-clear-filters>{{ __( 'Clear filters' ) }}</x-artisanpack-button>
                     </x-artisanpack-ec-empty-state>
                 @else
                     <x-artisanpack-ec-empty-state
@@ -222,7 +229,7 @@
 
             <x-slot:footer>
                 @if ( 0 !== $ecommerceActiveCount )
-                    <x-artisanpack-button variant="ghost" color="neutral" wire:click="clearFilters">{{ __( 'Clear all' ) }}</x-artisanpack-button>
+                    <x-artisanpack-button variant="ghost" color="neutral" wire:click="clearFilters" x-on:click="focusAfter = 'apply'" data-drawer-clear-filters>{{ __( 'Clear all' ) }}</x-artisanpack-button>
                 @endif
 
                 <x-artisanpack-button
@@ -231,5 +238,34 @@
                     data-filters-apply>{{ trans_choice( 'Show :count product|Show :count products', $products->total(), [ 'count' => $products->total() ] ) }}</x-artisanpack-button>
             </x-slot:footer>
         </x-artisanpack-drawer>
+    @endif
+
+    @if ( $filterChanges > 0 )
+        <span
+            hidden
+            wire:key="catalog-focus-{{ $filterChanges }}"
+            x-init="setTimeout( () => {
+                const target = focusAfter;
+
+                focusAfter = null;
+
+                if ( document.activeElement && document.activeElement !== document.body ) {
+                    return;
+                }
+
+                const root  = $el.closest( '[data-ecommerce-catalog]' );
+                const chips = Array.from( root.querySelectorAll( '[data-active-filter]' ) );
+                let next    = null;
+
+                if ( 'apply' === target ) {
+                    next = root.querySelector( '[data-filters-apply]' );
+                } else if ( Number.isInteger( target ) && 0 !== chips.length ) {
+                    next = chips[ Math.min( target, chips.length - 1 ) ];
+                }
+
+                ( next ?? root.querySelector( '[data-results-count]' ) )?.focus();
+            } )"
+            data-catalog-focus-after-change
+        ></span>
     @endif
 </section>

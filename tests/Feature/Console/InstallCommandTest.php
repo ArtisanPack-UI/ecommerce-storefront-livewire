@@ -9,9 +9,42 @@ use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
+
+/**
+ * Points config_path() and the config publish destination at a per-test temp
+ * directory, so publishing never touches the shared testbench skeleton that
+ * parallel workers load their configuration from.
+ */
+beforeEach( function (): void {
+    $this->sharedConfigPath   = config_path();
+    $this->isolatedConfigPath = sys_get_temp_dir() . '/apsf-config-' . getmypid() . '-' . uniqid();
+    $this->originalPublishes  = [ ServiceProvider::$publishes, ServiceProvider::$publishGroups ];
+
+    File::ensureDirectoryExists( $this->isolatedConfigPath );
+    $this->app->useConfigPath( $this->isolatedConfigPath );
+
+    $remap = function ( array $paths ): array {
+        $remapped = [];
+
+        foreach ( $paths as $from => $to ) {
+            $remapped[ $from ] = str_starts_with( (string) $to, $this->sharedConfigPath )
+                ? $this->isolatedConfigPath . substr( (string) $to, strlen( $this->sharedConfigPath ) )
+                : $to;
+        }
+
+        return $remapped;
+    };
+
+    ServiceProvider::$publishes     = array_map( $remap, ServiceProvider::$publishes );
+    ServiceProvider::$publishGroups = array_map( $remap, ServiceProvider::$publishGroups );
+} );
 
 afterEach( function (): void {
-    File::delete( config_path( InstallCommand::CONFIG_FILE ) );
+    [ ServiceProvider::$publishes, ServiceProvider::$publishGroups ] = $this->originalPublishes;
+
+    $this->app->useConfigPath( $this->sharedConfigPath );
+    File::deleteDirectory( $this->isolatedConfigPath );
 } );
 
 /**

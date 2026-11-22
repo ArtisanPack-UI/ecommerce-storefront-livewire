@@ -69,6 +69,17 @@ it( 'renders the description through kses', function (): void {
         ->assertDontSeeHtml( '<script>' );
 } );
 
+it( 'strips custom elements, Alpine directives and classes from the description', function (): void {
+    $this->clothing->update( [ 'description' => '<my-el x-data x-init="alert(1)">hi</my-el><p class="fixed inset-0" @click="alert(2)">x</p>' ] );
+
+    Livewire::test( CategoryShow::class, [ 'category' => $this->clothing->fresh() ] )
+        ->assertSeeHtml( '<p>x</p>' )
+        ->assertDontSeeHtml( 'x-init="alert(1)"' )
+        ->assertDontSeeHtml( '<my-el' )
+        ->assertDontSeeHtml( 'class="fixed' )
+        ->assertDontSeeHtml( 'alert(2)' );
+} );
+
 it( 'leaves out empty parts', function (): void {
     Livewire::test( CategoryShow::class, [ 'category' => $this->linen->fresh() ] )
         ->assertDontSeeHtml( 'data-subcategories' )

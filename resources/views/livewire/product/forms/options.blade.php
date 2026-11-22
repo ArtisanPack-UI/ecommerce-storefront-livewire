@@ -88,6 +88,7 @@
                         :label="$field['label']"
                         :min="0"
                         :item-name="$field['label']"
+                        :required="$field['required']"
                         wire:model="{{ $ecommerceModel }}"
                         :error="$errors->first( $ecommerceModel )"
                     />
@@ -184,7 +185,7 @@
                     @break
 
                 @case( 'checkbox' )
-                    <x-artisanpack-ec-field control="checkbox" :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :error-field="$ecommerceModel" />
+                    <x-artisanpack-ec-field control="checkbox" :id="$field['id']" :label="$field['label']" :hint="$field['help']" wire:model="{{ $ecommerceModel }}" :required="$field['required']" :error-field="$ecommerceModel" />
                     @break
 
                 @default

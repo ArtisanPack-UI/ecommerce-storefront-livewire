@@ -163,20 +163,76 @@ it( 'sends the file and spends a download through the owner route', function ():
         ->and( $download->download_count )->toBe( 1 );
 } );
 
-it( 'refuses an unsigned or expired download link without spending a download', function ( string $kind ): void {
+it( 'refuses an unsigned or expired stream link without spending a download', function (): void {
     [ , $customer ] = shopper();
-    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ], [ 'is_streaming_only' => 'stream' === $kind ] );
+    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ], [ 'is_streaming_only' => true ] );
 
-    $this->get( route( 'artisanpack.ecommerce.account.downloads.' . $kind, [ 'download' => $download->id ] ) )->assertForbidden();
+    $this->get( route( 'artisanpack.ecommerce.account.downloads.stream', [ 'download' => $download->id ] ) )->assertForbidden();
 
-    $signed = signedDownloadUrl( $kind, $download );
-    $this->travel( ( 'stream' === $kind ? Downloads::STREAM_LINK_MINUTES : Downloads::DOWNLOAD_LINK_MINUTES ) + 1 )->minutes();
+    $signed = signedDownloadUrl( 'stream', $download );
+    $this->travel( Downloads::STREAM_LINK_MINUTES + 1 )->minutes();
 
     $this->get( $signed )->assertForbidden();
 
     expect( $download->refresh()->downloads_remaining )->toBe( 2 )
         ->and( $download->download_count )->toBe( 0 );
-} )->with( [ 'file', 'stream' ] );
+} );
+
+it( 'sends an unsigned or expired file link back to the downloads page with a toast, without spending a download', function (): void {
+    [ , $customer ] = shopper();
+    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ] );
+
+    $this->get( route( 'artisanpack.ecommerce.account.downloads.file', [ 'download' => $download->id ] ) )
+        ->assertRedirect( route( 'artisanpack.ecommerce.account.downloads' ) )
+        ->assertHeader( 'Cache-Control', 'no-store, private' );
+
+    session()->forget( ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload::SESSION_KEY );
+
+    $signed = signedDownloadUrl( 'file', $download );
+    $this->travel( Downloads::DOWNLOAD_LINK_MINUTES + 1 )->minutes();
+
+    $this->get( $signed )
+        ->assertRedirect( route( 'artisanpack.ecommerce.account.downloads' ) )
+        ->assertSessionHas( ArtisanPackUI\EcommerceStorefrontLivewire\Support\ToastPayload::SESSION_KEY, fn ( array $payload ): bool => 'This download link has expired' === ( $payload['toast']['title'] ?? null ) );
+
+    expect( $download->refresh()->downloads_remaining )->toBe( 2 )
+        ->and( $download->download_count )->toBe( 0 );
+} );
+
+it( 'downloads through a freshly signed link from a page left open past the link\'s lifetime', function (): void {
+    [ , $customer ] = shopper();
+    $download       = ownedDownload( $customer, [ 'downloads_remaining' => 2 ] );
+
+    $component = Livewire::test( Downloads::class )
+        ->assertSeeHtml( 'wire:click.prevent="download( ' . $download->id . ' )"' );
+
+    $this->travel( Downloads::DOWNLOAD_LINK_MINUTES + 1 )->minutes();
+
+    $component->call( 'download', $download->id );
+
+    $url = $component->effects['redirect'] ?? '';
+
+    expect( $url )->toContain( '/downloads/' . $download->id . '?' )->toContain( 'signature=' );
+
+    $response = $this->get( $url )->assertOk();
+
+    expect( $response->streamedContent() )->toBe( 'PDF bytes' )
+        ->and( $download->refresh()->downloads_remaining )->toBe( 1 );
+} );
+
+it( 'won\'t sign a link for another customer\'s download, or an unavailable one', function (): void {
+    [ , $customer ] = shopper();
+    $stranger       = ownedDownload( Customer::factory()->create() );
+    $expired        = ownedDownload( $customer, [ 'expires_at' => now()->subDay() ] );
+
+    Livewire::test( Downloads::class )
+        ->call( 'download', $stranger->id )
+        ->assertNotFound();
+
+    $component = Livewire::test( Downloads::class )->call( 'download', $expired->id )->assertNoRedirect();
+
+    expect( json_encode( $component->effects['xjs'] ?? [] ) )->toContain( 'This download has expired.' );
+} );
 
 it( 'downloads through the signed link the downloads page renders', function (): void {
     [ , $customer ] = shopper();
