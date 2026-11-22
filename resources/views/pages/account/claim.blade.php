@@ -12,10 +12,10 @@
     @include( 'ecommerce-storefront::partials.seo' )
 @endpush
 
-@section( 'title', $ecommerceSeo->title( __( 'Claim an order' ) ) )
+@section( 'title', $ecommerceSeo->title( __( 'Claim orders' ) ) )
 
 @section( 'content' )
-    <x-artisanpack-ec-account-shell :title="__( 'Claim an order' )">
+    <x-artisanpack-ec-account-shell :title="__( 'Claim orders' )">
         <livewire:artisanpack-ecommerce-storefront-account-claim />
     </x-artisanpack-ec-account-shell>
 @endsection

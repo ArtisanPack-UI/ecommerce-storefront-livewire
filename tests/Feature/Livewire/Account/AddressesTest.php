@@ -56,10 +56,10 @@ it( 'names each address in its buttons, so they differ for screen readers', func
 
     $html = Livewire::test( Addresses::class )->html();
 
-    expect( $html )->toContain( 'Edit<span class="sr-only">: Home, 9 Ship Lane' )
-        ->toContain( 'Edit<span class="sr-only">: 4 Bill Road' )
-        ->toContain( 'Delete<span class="sr-only">: Home, 9 Ship Lane' )
-        ->toContain( 'Use for shipping<span class="sr-only">: 4 Bill Road' );
+    expect( $html )->toContain( 'Edit<span class="apui-sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Edit<span class="apui-sr-only">: 4 Bill Road' )
+        ->toContain( 'Delete<span class="apui-sr-only">: Home, 9 Ship Lane' )
+        ->toContain( 'Use for shipping<span class="apui-sr-only">: 4 Bill Road' );
 } );
 
 it( 'shows an empty state when the shopper has no addresses, even without a customer record', function (): void {

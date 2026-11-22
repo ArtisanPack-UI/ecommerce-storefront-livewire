@@ -29,6 +29,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Throwable;
 
@@ -39,7 +40,8 @@ use Throwable;
  * §7.5, S30). They give one order's number and shipping postcode; the
  * engine's `CustomerClaimService` checks them against an unclaimed guest
  * order under the account's email and, when they match, claims every guest
- * order under that email. The shopper then lands on their order history.
+ * order under that email. A success Alert then says which order (or how
+ * many) joined the account, with a link to the order history.
  *
  * The account's email must be verified (`OrderAccess::canClaim()`): a
  * claim takes over every guest order under that email. By default
@@ -90,6 +92,18 @@ class Claim extends Component
     public ?string $failure = null;
 
     /**
+     * What the last claim added: how many orders, and the number the
+     * shopper entered (the engine matches it exactly). Shown as the
+     * success Alert above the form.
+     *
+     * @since 2.0.0
+     *
+     * @var array{count: int, number: string}|null
+     */
+    #[Locked]
+    public ?array $claimed = null;
+
+    /**
      * Claims the shopper's guest orders.
      *
      * @since 1.0.0
@@ -101,6 +115,7 @@ class Claim extends Component
         $this->newErrorSummary();
         $this->resetErrorBag();
         $this->failure = null;
+        $this->claimed = null;
 
         $this->orderNumber = trim( $this->orderNumber );
         $this->postalCode  = trim( $this->postalCode );
@@ -177,11 +192,7 @@ class Claim extends Component
 
         $count = $outcome instanceof Collection ? $outcome->count() : 0;
 
-        $this->flashToastSuccess( trans_choice( ':count order added to your account|:count orders added to your account', $count, [ 'count' => $count ] ) );
-
-        $this->redirect(
-            Route::has( 'artisanpack.ecommerce.account.orders.index' ) ? route( 'artisanpack.ecommerce.account.orders.index' ) : url( '/' ),
-        );
+        $this->claimed = [ 'count' => $count, 'number' => $this->orderNumber ];
     }
 
     /**
@@ -193,7 +204,9 @@ class Claim extends Component
      */
     public function render(): View
     {
-        return view( 'ecommerce-storefront::livewire.account.claim' );
+        return view( 'ecommerce-storefront::livewire.account.claim', [
+            'ordersUrl' => Route::has( 'artisanpack.ecommerce.account.orders.index' ) ? route( 'artisanpack.ecommerce.account.orders.index' ) : null,
+        ] );
     }
 
     /**

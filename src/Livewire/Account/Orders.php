@@ -19,6 +19,7 @@ use ArtisanPackUI\Ecommerce\Services\CustomerOrderHistory;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Livewire\Concerns\DescribesOrder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Route;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -69,6 +70,17 @@ class Orders extends Component
      */
     #[Url( as: 'status', history: true, except: '' )]
     public mixed $status = '';
+
+    /**
+     * Whether "Orders" is the page's h1 (the order history page passes
+     * it), beside the filter; embedded elsewhere, the host brings its own.
+     *
+     * @since 2.0.0
+     *
+     * @var bool
+     */
+    #[Locked]
+    public bool $showTitle = false;
 
     /**
      * Ignores an unknown status from the query string.
@@ -127,10 +139,10 @@ class Orders extends Component
             'filters'    => $this->filters(),
             'headers'    => [
                 [ 'key' => 'number', 'label' => __( 'Order' ) ],
-                [ 'key' => 'date', 'label' => __( 'Date' ) ],
+                [ 'key' => 'date', 'label' => __( 'Placed' ) ],
                 [ 'key' => 'status', 'label' => __( 'Status' ) ],
                 [ 'key' => 'items', 'label' => __( 'Items' ) ],
-                [ 'key' => 'total', 'label' => __( 'Total' ), 'class' => 'text-end' ],
+                [ 'key' => 'total', 'label' => __( 'Total' ), 'numeric' => true ],
             ],
             'catalogUrl' => Route::has( 'artisanpack.ecommerce.storefront.catalog' ) ? route( 'artisanpack.ecommerce.storefront.catalog' ) : null,
         ] );

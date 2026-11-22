@@ -5708,4 +5708,420 @@
         flex-wrap: wrap;
         gap: 8px;
     }
+
+    /*
+     * Account page titles (#147–#151): the h1 a component brings when its
+     * row also holds an action, sized like the account shell's title.
+     */
+    .ec-orders__title,
+    .ec-addresses__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-heading-xl-font-size);
+        font-weight: var(--apui-type-heading-xl-font-weight);
+        line-height: var(--apui-type-heading-xl-line-height);
+        letter-spacing: var(--apui-type-heading-xl-letter-spacing);
+        overflow-wrap: anywhere;
+    }
+
+    /* The lead under the shell's title sits 8px below it, not the shell's 24px. */
+    .ec-downloads__lead,
+    .ec-claim__lead {
+        margin: 0;
+        max-inline-size: 40rem;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-md-font-size);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-account__title + .ec-downloads > .ec-downloads__lead:first-child,
+    .ec-account__title + .ec-claim > .ec-claim__lead:first-child {
+        margin-block-start: -16px;
+    }
+
+    /*
+     * Order history (#147): the title with the "Show" filter at the end; a
+     * Table from 768px, a List in a Card below it.
+     */
+    .ec-orders {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-orders__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-orders__head--untitled {
+        justify-content: flex-end;
+    }
+
+    .ec-orders__filter.apui-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-orders__filter [data-scope="select"][data-part="label"] {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        white-space: nowrap;
+    }
+
+    .ec-orders__number {
+        font-family: var(--apui-font-family-mono);
+        font-size: var(--apui-type-code-md-font-size);
+        white-space: nowrap;
+    }
+
+    .ec-orders__table [data-scope="table"][data-part="cell"] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .ec-orders__table {
+        display: none;
+    }
+
+    .ec-orders__compact {
+        display: grid;
+        gap: 16px;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-orders__table {
+            display: block;
+        }
+
+        .ec-orders__compact {
+            display: none;
+        }
+    }
+
+    .ec-orders__row.apui-list-item {
+        align-items: center;
+        padding-block: 12px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    /* The date, items and total wrap rather than clip beside the status Badge. */
+    .ec-orders__row [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-orders__row-link {
+        color: inherit;
+        font-weight: var(--apui-font-weight-medium);
+        text-decoration: none;
+    }
+
+    .ec-orders__row-link:hover {
+        text-decoration: underline;
+    }
+
+    .ec-orders__row-link:focus-visible {
+        outline: var(--apui-focus-ring-width) solid var(--apui-focus-ring-color);
+        outline-offset: var(--apui-focus-ring-offset);
+        border-radius: var(--apui-radius-xs);
+    }
+
+    /*
+     * Address book (#148): the title with "Add an address" at the end (it
+     * drops under the title below 640px), then Cards two across from 768px,
+     * each as tall as its row, their actions in the ruled footer with
+     * "Delete" at the end.
+     */
+    .ec-addresses {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-addresses__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px 16px;
+    }
+
+    .ec-addresses__head:not(:has(.ec-addresses__title)) {
+        justify-content: flex-end;
+    }
+
+    .ec-addresses__list {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    @media (min-width: 48rem) {
+        .ec-addresses__list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-addresses__item {
+        display: grid;
+        min-inline-size: 0;
+    }
+
+    .ec-address-book-card [data-scope="card"][data-part="body"] {
+        display: grid;
+        align-content: start;
+        gap: 16px;
+    }
+
+    .ec-address-book-card__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ec-address-book-card__title {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-address-book-card__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        inline-size: 100%;
+    }
+
+    .ec-address-book-card__delete {
+        margin-inline-start: auto;
+    }
+
+    .ec-addresses__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-addresses__flags {
+        display: grid;
+        gap: 12px;
+    }
+
+    .ec-addresses__flag-note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Downloads (#149): the Files Card's rows run edge to edge under its
+     * title; the Licence keys Card lists each key's name and state Badge
+     * over the Clipboard field.
+     */
+    .ec-downloads {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-downloads__card-title {
+        padding: var(--apui-card-padding) var(--apui-card-padding) 8px;
+    }
+
+    .ec-downloads__file.apui-list-item {
+        align-items: center;
+        padding-block: 14px;
+        padding-inline: var(--apui-card-padding);
+    }
+
+    /* The product, version, allowance, expiry and order wrap rather than clip. */
+    .ec-downloads__file [data-scope="list-item"][data-part="description"] {
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__name {
+        color: var(--apui-text-default);
+        font-weight: var(--apui-font-weight-medium);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__pagination {
+        padding: 12px var(--apui-card-padding);
+        border-block-start: var(--apui-border-width) solid var(--apui-border-muted);
+    }
+
+    .ec-downloads__licences {
+        display: grid;
+        gap: 20px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .ec-downloads__licence {
+        display: grid;
+        gap: 8px;
+        min-inline-size: 0;
+    }
+
+    .ec-downloads__licence-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 4px 12px;
+    }
+
+    .ec-downloads__licence-name {
+        margin: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-downloads__licence-name--inactive {
+        color: var(--apui-text-muted);
+        font-weight: var(--apui-font-weight-regular);
+    }
+
+    .ec-downloads__licence-note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    /*
+     * Profile (#150): three Cards; the names side by side from 640px, the
+     * phone at half width, and each form's button in the ruled footer.
+     */
+    .ec-profile {
+        display: grid;
+        gap: 20px;
+        min-inline-size: 0;
+    }
+
+    .ec-profile__card [data-scope="card"][data-part="body"] {
+        gap: 16px;
+    }
+
+    .ec-profile__intro {
+        display: grid;
+        gap: 4px;
+    }
+
+    .ec-profile__lead {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-profile__fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-profile__fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-profile__phone {
+        min-inline-size: 0;
+    }
+
+    .ec-profile__links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .ec-profile__channel {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .ec-profile__legend {
+        margin-block-end: 4px;
+        padding: 0;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-label-md-font-size);
+        font-weight: var(--apui-font-weight-semibold);
+        line-height: var(--apui-type-label-md-line-height);
+    }
+
+    .ec-profile__footer {
+        display: flex;
+        justify-content: flex-end;
+        inline-size: 100%;
+    }
+
+    /*
+     * Claim guest orders (#151): the lead, the success or failure Alert,
+     * then the form in a Card at most 560px wide, the two fields side by
+     * side from 640px.
+     */
+    .ec-claim {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    /* The live regions stay in the tree (so a change is announced), but add no gap while empty. */
+    .ec-claim__region:not(:has(*)) {
+        margin-block-start: -16px;
+    }
+
+    .ec-claim__card {
+        inline-size: 100%;
+        max-inline-size: 35rem;
+    }
+
+    .ec-claim__form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .ec-claim__fields {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    @media (min-width: 40rem) {
+        .ec-claim__fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    .ec-claim__number input {
+        font-family: var(--apui-font-family-mono);
+    }
 }

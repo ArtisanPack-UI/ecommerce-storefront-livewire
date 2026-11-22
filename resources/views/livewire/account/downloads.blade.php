@@ -1,21 +1,31 @@
 {{--
-    Downloads and licence keys. See Livewire\Account\Downloads.
+    Downloads and licence keys (#149). See Livewire\Account\Downloads.
 
-    The copy button uses the browser's clipboard (livewire-ui-components has
-    no clipboard component); a polite live region announces the copy.
+    The lead line, then two Cards. Files: a divided List, each row a file
+    (or play, for a stream) icon tile, the file's name, then its product
+    (when the name isn't the product's), version, downloads left, expiry
+    and order (or why it can't be downloaded), with
+    an outline "Download" or "Play" (opens in a new tab) at the end, or an
+    "Expired" / "No downloads left" Badge. Licence keys: each key's product
+    and tier with a state Badge ("Valid until …", "Active", "Expired",
+    "Revoked"), then the key in the design-system Clipboard field with its
+    "Copy" button, and the activations; a revoked or expired key says so
+    instead. No files and no keys is the EmptyState in a Card.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<div class="flex flex-col gap-8" data-account-downloads>
+<div class="ec-downloads" data-account-downloads>
+    <p class="ec-downloads__lead">{{ __( 'Files and licence keys from your orders.' ) }}</p>
+
     @if ( $failed )
-        <x-artisanpack-alert color="warning" icon="o-exclamation-triangle" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
+        <x-artisanpack-alert color="warning" icon="circle-alert" :title="__( 'Your downloads couldn\'t be loaded' )" :description="__( 'Try again in a moment.' )" data-account-downloads-failed />
     @endif
 
     @if ( ! $failed && ( null === $downloads || 0 === $downloads->total() ) && ( null === $licences || 0 === $licences->total() ) )
-        <x-artisanpack-ec-empty-state icon="o-arrow-down-tray" :title="__( 'No downloads yet' )" :description="__( 'Files and licence keys from your orders will appear here.' )" data-account-no-downloads>
+        <x-artisanpack-ec-empty-state card icon="download" :title="__( 'No downloads yet' )" :description="__( 'Files and licence keys from your orders will appear here.' )" data-account-no-downloads>
             @if ( null !== $catalogUrl )
                 <x-artisanpack-button :href="$catalogUrl" color="primary">{{ __( 'Start shopping' ) }}</x-artisanpack-button>
             @endif
@@ -23,98 +33,124 @@
     @endif
 
     @if ( null !== $downloads && $downloads->total() > 0 )
-        <section class="flex flex-col gap-3" aria-labelledby="ec-account-files" data-account-files>
-            <h2 id="ec-account-files" class="text-xl font-bold">{{ __( 'Files' ) }}</h2>
+        <x-artisanpack-card class="ec-order-card ec-order-card--flush" role="region" aria-labelledby="ec-account-files" data-account-files>
+            <h2 id="ec-account-files" class="ec-order-card__title ec-downloads__card-title">{{ __( 'Files' ) }}</h2>
 
-            <ul class="flex flex-col divide-y divide-base-content/10 rounded-box border border-base-content/10">
+            <x-artisanpack-list variant="divided" class="ec-downloads__files">
                 @foreach ( $downloads as $row )
-                    <li class="flex flex-wrap items-center justify-between gap-4 p-4" wire:key="account-download-{{ $row['id'] }}" data-account-download="{{ $row['id'] }}" data-state="{{ $row['state'] }}">
-                        <div class="flex flex-col gap-1">
-                            <span class="font-semibold">{{ $row['product'] }}</span>
-                            <span class="text-sm">
-                                {{ $row['file'] }}
-                                @if ( null !== $row['version'] )
-                                    &middot; {{ __( 'Version :version', [ 'version' => $row['version'] ] ) }}
-                                @endif
-                            </span>
+                    {{-- Two products can ship files with the same name, so the product goes along with it. --}}
+                    @php
+                        $ecommerceDownloadProduct = $row['product'] !== $row['file'] ? $row['product'] : null;
+                        $ecommerceDownloadName    = null === $ecommerceDownloadProduct ? $row['file'] : $row['file'] . ' (' . $ecommerceDownloadProduct . ')';
+                    @endphp
+                    <x-artisanpack-list-item class="ec-downloads__file" wire:key="account-download-{{ $row['id'] }}" data-account-download="{{ $row['id'] }}" data-state="{{ $row['state'] }}">
+                        <x-slot:leading>
+                            <x-artisanpack-icon :name="$row['streaming'] ? 'play' : 'file-text'" variant="tile" color="neutral" />
+                        </x-slot:leading>
 
+                        <x-slot:title>
+                            <span class="ec-downloads__name">{{ $row['file'] }}</span>
+                        </x-slot:title>
+
+                        <x-slot:description>
+                            @if ( null !== $ecommerceDownloadProduct )
+                                <span data-account-download-product>{{ $ecommerceDownloadProduct }}</span><span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>
+                            @endif
                             @if ( 'expired' === $row['state'] )
-                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-download-reason="expired">
-                                    {{ null === $row['expires'] ? __( 'This download has expired.' ) : __( 'This download expired on :date.', [ 'date' => $row['expires'] ] ) }}
-                                </p>
+                                <span data-account-download-reason="expired">{{ null === $row['expires'] ? __( 'This download has expired.' ) : __( 'This download expired on :date.', [ 'date' => $row['expires'] ] ) }}</span>
                             @elseif ( 'exhausted' === $row['state'] )
-                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-download-reason="exhausted">{{ __( 'You\'ve used all the downloads for this file.' ) }}</p>
+                                <span data-account-download-reason="exhausted">{{ __( 'You\'ve used all the downloads for this file.' ) }}</span>
                             @else
-                                <p class="text-sm text-base-content/70">
-                                    {{ null === $row['remaining'] ? __( 'Unlimited downloads' ) : trans_choice( ':count download left|:count downloads left', $row['remaining'], [ 'count' => $row['remaining'] ] ) }}
-                                    @if ( null !== $row['expires'] )
-                                        &middot; {{ __( 'Available until :date', [ 'date' => $row['expires'] ] ) }}
-                                    @endif
-                                </p>
+                                @php
+                                    $ecommerceDownloadFacts = array_filter( [
+                                        $row['streaming'] ? __( 'Streaming' ) : null,
+                                        ! $row['streaming'] && null !== $row['version'] ? __( 'Version :version', [ 'version' => $row['version'] ] ) : null,
+                                        $row['streaming'] ? null : ( null === $row['remaining'] ? __( 'Unlimited downloads' ) : trans_choice( ':count download left|:count downloads left', $row['remaining'], [ 'count' => $row['remaining'] ] ) ),
+                                        null !== $row['expires'] ? __( 'Available until :date', [ 'date' => $row['expires'] ] ) : null,
+                                        null !== $row['order'] ? __( 'Order :number', [ 'number' => $row['order'] ] ) : null,
+                                    ] );
+                                @endphp
+                                @foreach ( $ecommerceDownloadFacts as $ecommerceDownloadFact )
+                                    @unless ( $loop->first )<span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>@endunless{{ $ecommerceDownloadFact }}
+                                @endforeach
                             @endif
-                        </div>
+                        </x-slot:description>
 
-                        @if ( null !== $row['url'] )
-                            @if ( $row['streaming'] )
-                                <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-play" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $row['file'] ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
-                            @else
-                                <x-artisanpack-button size="sm" leading-icon="o-arrow-down-tray" :href="$row['url']" color="primary" :aria-label="__( 'Download :file', [ 'file' => $row['file'] ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
+                        <x-slot:trailing>
+                            @if ( null !== $row['url'] )
+                                @if ( $row['streaming'] )
+                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="external-link" :href="$row['url']" target="_blank" rel="noopener" :aria-label="__( 'Play :file (opens in a new tab)', [ 'file' => $ecommerceDownloadName ] )" data-account-download-play>{{ __( 'Play' ) }}</x-artisanpack-button>
+                                @else
+                                    <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="download" :href="$row['url']" :aria-label="__( 'Download :file', [ 'file' => $ecommerceDownloadName ] )" data-account-download-button>{{ __( 'Download' ) }}</x-artisanpack-button>
+                                @endif
+                            @elseif ( 'expired' === $row['state'] )
+                                <x-artisanpack-badge color="neutral" size="sm" data-account-download-badge="expired">{{ __( 'Expired' ) }}</x-artisanpack-badge>
+                            @elseif ( 'exhausted' === $row['state'] )
+                                <x-artisanpack-badge color="neutral" size="sm" data-account-download-badge="exhausted">{{ __( 'No downloads left' ) }}</x-artisanpack-badge>
                             @endif
-                        @endif
-                    </li>
+                        </x-slot:trailing>
+                    </x-artisanpack-list-item>
                 @endforeach
-            </ul>
+            </x-artisanpack-list>
 
-            <x-artisanpack-pagination :rows="$downloads" data-account-downloads-pagination />
-        </section>
+            @if ( $downloads->hasPages() )
+                <div class="ec-downloads__pagination">
+                    <x-artisanpack-pagination :rows="$downloads" data-account-downloads-pagination />
+                </div>
+            @endif
+        </x-artisanpack-card>
     @endif
 
     @if ( null !== $licences && $licences->total() > 0 )
-        <section class="flex flex-col gap-3" aria-labelledby="ec-account-licences" data-account-licences>
-            <h2 id="ec-account-licences" class="text-xl font-bold">{{ __( 'Licence keys' ) }}</h2>
+        <x-artisanpack-card class="ec-order-card" role="region" aria-labelledby="ec-account-licences" data-account-licences>
+            <h2 id="ec-account-licences" class="ec-order-card__title">{{ __( 'Licence keys' ) }}</h2>
 
-            <ul class="flex flex-col divide-y divide-base-content/10 rounded-box border border-base-content/10">
+            <ul class="ec-downloads__licences">
                 @foreach ( $licences as $row )
-                    <li
-                        class="flex flex-wrap items-center justify-between gap-4 p-4"
-                        wire:key="account-licence-{{ $row['id'] }}"
-                        x-data="{ copied: false, copy() { navigator.clipboard.writeText( @js( $row['key'] ) ).then( () => { this.copied = true; setTimeout( () => this.copied = false, 2000 ) } ) } }"
-                        data-account-licence="{{ $row['id'] }}"
-                        data-state="{{ $row['state'] }}"
-                    >
-                        <div class="flex flex-col gap-1">
-                            <span class="font-semibold">{{ $row['product'] }}</span>
-                            <code class="break-all font-mono text-sm" data-account-licence-key>{{ $row['key'] }}</code>
-                            <p class="text-sm text-base-content/70">
+                    <li class="ec-downloads__licence" wire:key="account-licence-{{ $row['id'] }}" data-account-licence="{{ $row['id'] }}" data-state="{{ $row['state'] }}">
+                        <div class="ec-downloads__licence-head">
+                            <h3 id="ec-account-licence-{{ $row['id'] }}" @class( [ 'ec-downloads__licence-name', 'ec-downloads__licence-name--inactive' => 'active' !== $row['state'] ] )>
+                                {{ $row['product'] }}@if ( null !== $row['variant'] )<span aria-hidden="true"> &middot; </span><span class="apui-sr-only">, </span>{{ $row['variant'] }}@endif
+                            </h3>
+
+                            @if ( 'revoked' === $row['state'] )
+                                <x-artisanpack-badge color="error" size="sm" data-account-licence-badge="revoked">{{ __( 'Revoked' ) }}</x-artisanpack-badge>
+                            @elseif ( 'expired' === $row['state'] )
+                                <x-artisanpack-badge color="neutral" size="sm" data-account-licence-badge="expired">{{ __( 'Expired' ) }}</x-artisanpack-badge>
+                            @else
+                                <x-artisanpack-badge color="success" size="sm" data-account-licence-badge="active">{{ null === $row['expires'] ? __( 'Active' ) : __( 'Valid until :date', [ 'date' => $row['expires'] ] ) }}</x-artisanpack-badge>
+                            @endif
+                        </div>
+
+                        @if ( 'revoked' === $row['state'] )
+                            <p class="ec-downloads__licence-note" data-account-licence-reason="revoked">{{ __( 'This licence key has been revoked.' ) }}</p>
+                        @elseif ( 'expired' === $row['state'] )
+                            <p class="ec-downloads__licence-note" data-account-licence-reason="expired">
+                                {{ null === $row['expires'] ? __( 'This licence key has expired.' ) : __( 'This licence key expired on :date.', [ 'date' => $row['expires'] ] ) }}
+                            </p>
+                        @else
+                            {{-- The group names the Copy button after its licence. --}}
+                            <div role="group" aria-labelledby="ec-account-licence-{{ $row['id'] }}">
+                                <x-artisanpack-clipboard variant="field" size="md" :value="$row['key']" class="ec-downloads__key" data-account-licence-key data-account-licence-copy />
+                            </div>
+                        @endif
+
+                        @if ( 'revoked' !== $row['state'] )
+                            <p class="ec-downloads__licence-note" data-account-licence-activations>
                                 @if ( null === $row['limit'] )
                                     {{ trans_choice( ':count activation|:count activations', $row['activations'], [ 'count' => $row['activations'] ] ) }}
                                 @else
                                     {{ trans_choice( ':count of :limit activation used|:count of :limit activations used', $row['limit'], [ 'count' => $row['activations'], 'limit' => $row['limit'] ] ) }}
                                 @endif
-
-                                @if ( 'active' === $row['state'] && null !== $row['expires'] )
-                                    &middot; {{ __( 'Valid until :date', [ 'date' => $row['expires'] ] ) }}
-                                @endif
                             </p>
-
-                            @if ( 'revoked' === $row['state'] )
-                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-licence-reason="revoked">{{ __( 'This licence key has been revoked.' ) }}</p>
-                            @elseif ( 'expired' === $row['state'] )
-                                <p class="text-sm text-[color-mix(in_oklab,var(--color-error)_55%,var(--color-base-content))]" data-account-licence-reason="expired">
-                                    {{ null === $row['expires'] ? __( 'This licence key has expired.' ) : __( 'This licence key expired on :date.', [ 'date' => $row['expires'] ] ) }}
-                                </p>
-                            @endif
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <x-artisanpack-button variant="outline" color="neutral" size="sm" leading-icon="o-clipboard-document" @click="copy()" :aria-label="__( 'Copy the licence key for :product', [ 'product' => $row['product'] ] )" data-account-licence-copy>{{ __( 'Copy' ) }}</x-artisanpack-button>
-                            <span class="text-sm font-semibold" role="status" aria-live="polite" x-text="copied ? @js( __( 'Copied' ) ) : ''"></span>
-                        </div>
+                        @endif
                     </li>
                 @endforeach
             </ul>
 
-            <x-artisanpack-pagination :rows="$licences" data-account-licences-pagination />
-        </section>
+            @if ( $licences->hasPages() )
+                <x-artisanpack-pagination :rows="$licences" data-account-licences-pagination />
+            @endif
+        </x-artisanpack-card>
     @endif
 </div>

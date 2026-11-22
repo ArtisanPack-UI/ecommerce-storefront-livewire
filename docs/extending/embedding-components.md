@@ -64,9 +64,9 @@ The purchase forms (`…-product-form-simple`, `-variable`, `-grouped`, `-bundle
 | `artisanpack-ecommerce-storefront-order-confirmation` | `order` (order id), `token` (signed order-view token, for guests), `show-title` (optional; "Thank you for your order" as an h1 instead of an h2) | The confirmation page. 404 unless the signed-in shopper owns the order or the token is valid for it. |
 | `artisanpack-ecommerce-storefront-order-lookup` | `show-title` (optional; the "Find your order" heading) | Guest order lookup |
 | `artisanpack-ecommerce-storefront-account-dashboard` | `show-title` (optional; the greeting as an h1) | Account overview |
-| `artisanpack-ecommerce-storefront-account-orders` | none | Order history |
+| `artisanpack-ecommerce-storefront-account-orders` | `show-title` (optional; "Orders" as an h1, beside the filter) | Order history |
 | `artisanpack-ecommerce-storefront-account-order` | `order` (order id), `token` (optional; shows the order read-only to a guest), `show-title` (optional; "Order {number}" as an h1) | One order |
-| `artisanpack-ecommerce-storefront-account-addresses` | none | Address book |
+| `artisanpack-ecommerce-storefront-account-addresses` | `show-title` (optional; "Saved addresses" as an h1, beside "Add an address") | Address book |
 | `artisanpack-ecommerce-storefront-account-downloads` | none | Downloads and licence keys |
 | `artisanpack-ecommerce-storefront-account-profile` | none | Profile and preferences |
 | `artisanpack-ecommerce-storefront-account-claim` | none | Claim a guest order |
