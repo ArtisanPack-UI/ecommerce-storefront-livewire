@@ -90,6 +90,7 @@ The six strings the 1.x checkout step views use are still in every catalogue, so
 | `catalog.description` | `null` | The line under the catalog page's title |
 | `cart.free_shipping_threshold` | `null` | The amount the cart drawer's free-shipping meter counts toward |
 | `product.variation_select_after` | `8` | How many values a variation attribute can have before it's drawn as a select instead of swatches |
+| `search.keyboard_shortcut` | `true` | Whether "/" jumps to the header search. Set it to `false` to turn the shortcut off |
 
 ### Changes in behavior
 
@@ -99,6 +100,10 @@ The six strings the 1.x checkout step views use are still in every catalogue, so
 - **Account navigation.** The account sidebar has a "Sign out" button that posts to `auth.logout_route`. It's hidden when the route doesn't exist.
 - **Checkout.** Steps still to come are shown, muted, in the multi-step layout too, and the checkout page uses the slim secure header with no store navigation or footer.
 - **Page titles.** The address book's heading is now "Saved addresses" and the claim page's is "Claim orders".
+- **Descriptions.** Product and category descriptions drop `class` and `style` attributes, custom elements, form controls, and Alpine or Livewire attributes. Style descriptions through your theme's typography instead of classes in the content.
+- **Customer records.** For a user model that implements `MustVerifyEmail`, the profile and address pages only create the engine customer record once the email is verified. Claiming guest orders also needs the record's email to match the user's current, verified email.
+- **Marketing consent.** A guest checkout no longer opts in an existing customer record that hadn't opted in. The order's `meta.marketing_consent` gains `applied`, and the `ap.ecommerceStorefrontLivewire.checkout.marketingConsentPending` action fires so you can send a double opt-in email.
+- **Stranded payments.** When a payment is confirmed for an earlier cart total, the checkout no longer asks the shopper to pay again. It tells them to contact you and fires `ap.ecommerceStorefrontLivewire.checkout.paymentMismatch`. Hook it to alert staff.
 - **Embedded components.** The cart, checkout, search, order, and account components take an optional `show-title` property that renders the page's h1. It's off by default, as before. See [Embedding Components](extending/embedding-components.md).
 
 ### Toasts
