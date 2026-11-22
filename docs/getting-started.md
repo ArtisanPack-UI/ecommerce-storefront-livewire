@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+menu_order: 10
 ---
 
 # Getting Started
@@ -19,15 +20,33 @@ The service provider is auto-discovered. The install command:
 - prints the Tailwind `@source` lines and the layout snippets;
 - warns when your `login` or `register` route is missing, when no payment gateway is registered or configured, and when `artisanpack-ui/visual-editor` is installed but storefront templates are off.
 
-Nothing it checks stops the install. See [Installation](Installation).
+Nothing it checks stops the install. See [Installation](installation.md).
 
-## 2. Add the storefront to Tailwind
+## 2. Set up the front end
 
-The package ships no CSS or JavaScript build. Add the printed lines to your Tailwind entry (for example `resources/css/app.css`), next to the component library's views:
+The package ships no CSS or JavaScript build. Your application's Vite build loads the ArtisanPack UI design system and scans the storefront's views. Install the design system:
+
+```bash
+npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
+```
+
+Add it and the printed `@source` lines to your main stylesheet (for example `resources/css/app.css`). The `@layer` line comes first:
 
 ```css
+@layer theme, base, apui, components, utilities;
+@import 'tailwindcss';
+@import '@artisanpack-ui/css';
+
 @source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/resources/views/**/*.blade.php";
 @source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/src/**/*.php";
+```
+
+Register the behavior engine in `resources/js/app.js`:
+
+```js
+import apuiBehavior from '@artisanpack-ui/behavior/alpine';
+
+document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );
 ```
 
 Then build:
@@ -36,7 +55,7 @@ Then build:
 npm run build
 ```
 
-See [Front-End Setup](Installation-Front-End) for the full entry, including daisyUI.
+See [Front-End Setup](installation/front-end.md) for the full setup, including the component library's `@source` lines and a Content Security Policy.
 
 ## 3. Pick a layout
 
@@ -46,7 +65,7 @@ Out of the box, pages use the package's own layout (`ecommerce-storefront::layou
 @include( 'ecommerce-storefront::partials.global' )
 ```
 
-See [Layouts](Installation-Layouts), including the one-line wrapper for `<x-app-layout>`-style component layouts.
+See [Layouts](installation/layouts.md), including the one-line wrapper for `<x-app-layout>`-style component layouts.
 
 ## 4. Seed a demo store (optional)
 
@@ -70,12 +89,12 @@ Do not run it against a live store.
 
 Open `/shop`. The prefix is `storefront.route_prefix` in the config. From there you can browse the catalog, open a product, add it to the cart, and check out. Signed-in customers find their orders, addresses, and downloads under `/account`.
 
-To take payments, enable a gateway in the engine (for Stripe: `ECOMMERCE_STRIPE_ENABLED`, `ECOMMERCE_STRIPE_SECRET_KEY`, `ECOMMERCE_STRIPE_PUBLISHABLE_KEY`). See [Payment Drivers](Checkout-Payment-Drivers).
+To take payments, enable a gateway in the engine (for Stripe: `ECOMMERCE_STRIPE_ENABLED`, `ECOMMERCE_STRIPE_SECRET_KEY`, `ECOMMERCE_STRIPE_PUBLISHABLE_KEY`). See [Payment Drivers](checkout/payment-drivers.md).
 
 ## Next steps
 
-- [Configuration](Installation-Configuration) — every config key and store setting
-- [Layouts](Installation-Layouts) — use your own layout
-- [Screens](Usage-Screens) — what each page does
-- [Checkout](Checkout) — layouts, guest checkout, and payment
-- [Extending](Extending) — hooks, embedding components, and Blade components
+- [Configuration](installation/configuration.md): every config key and store setting.
+- [Layouts](installation/layouts.md): use your own layout.
+- [Screens](usage/screens.md): what each page does.
+- [Checkout](checkout.md) — layouts, guest checkout, and payment
+- [Extending](extending.md) — hooks, embedding components, and Blade components

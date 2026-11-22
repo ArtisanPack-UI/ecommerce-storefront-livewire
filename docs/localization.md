@@ -1,5 +1,6 @@
 ---
 title: Localization
+menu_order: 60
 ---
 
 # Localization

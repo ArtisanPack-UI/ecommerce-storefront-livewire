@@ -1,10 +1,11 @@
 ---
 title: Templates and Patterns
+menu_order: 20
 ---
 
 # Templates and Patterns
 
-With templates on, the storefront's product, catalog, category, tag, cart, checkout, and search pages render through visual-editor templates, so a store owner can design them in the site editor. The storefront also offers three block patterns. Both are built from the commerce [Blocks](Visual-Editor-Blocks).
+With templates on, the storefront's product, catalog, category, tag, cart, checkout, and search pages render through visual-editor templates, so a store owner can design them in the site editor. The storefront also offers three block patterns. Both are built from the commerce [Blocks](blocks.md).
 
 ## Turning templates on
 
@@ -21,7 +22,7 @@ Templates are off by default, so installing visual-editor doesn't change an exis
 A page renders through a template only when all of these hold:
 
 - `visual_editor.templates` is `true`;
-- the blocks are available (see [Visual Editor](Visual-Editor));
+- the blocks are available (see [Visual Editor](../visual-editor.md));
 - `cms-framework`'s site editor is installed (`ArtisanPackUI\CMSFramework\Modules\SiteEditor\Resolution\TemplateResolver` exists);
 - the `ve-template` Blade component is registered.
 
@@ -104,4 +105,4 @@ addFilter( 'ap.ecommerceStorefrontLivewire.patterns', function ( array $patterns
 } );
 ```
 
-See [Hooks Reference](Extending-Hooks-Reference).
+See [Hooks](../reference/hooks.md).

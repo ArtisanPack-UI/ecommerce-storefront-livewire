@@ -1,5 +1,6 @@
 ---
 title: Account Creation at Checkout
+menu_order: 30
 ---
 
 # Account Creation at Checkout
@@ -47,7 +48,7 @@ The checkout email isn't verified, so an account created at checkout never takes
 
 When there is no customer, the user is still created and signed in, but the order stays a guest order. The engine links the existing customer once the user verifies their email.
 
-There is one exception. When the shopper ticked marketing consent and had no customer record, recording that consent creates one for the order's email (see [Guest Checkout](Checkout-Guest-Checkout#email-capture)). That record holds nothing else, so the default action links it to the new user.
+There is one exception. When the shopper ticked marketing consent and had no customer record, recording that consent creates one for the order's email (see [Guest Checkout](guest-checkout.md#email-capture)). That record holds nothing else, so the default action links it to the new user.
 
 ## The contract
 

@@ -1,8 +1,10 @@
 ---
-title: Hooks Reference
+title: Hooks
+menu_order: 10
+redirect_from: extending/hooks-reference
 ---
 
-# Hooks Reference
+# Hooks
 
 Every seam a satellite or host can use to change the storefront without publishing views. Filters and actions use the `artisanpack-ui/hooks` helpers; registries are singletons resolved from the container. Register everything from a service provider's `boot()`.
 
@@ -114,8 +116,8 @@ A listener that already followed its own change can ignore an `ecommerce-cart-up
 | Hook | Type | When it runs | Arguments | Return |
 | --- | --- | --- | --- | --- |
 | `ap.ecommerceStorefrontLivewire.header.actions` | filter | Rendering the package layout's header | `array $actions` (key => view name or `Htmlable`) | Header actions (`currency`, `account`, `cart` by default). |
-| `ap.ecommerceStorefrontLivewire.layout.navigation` | filter | Rendering the package layout's header | `array $links` (each `label`, `url`, `current`) | The store navigation ("Shop all" and the top-level categories). See [Layouts](Installation-Layouts#store-navigation). |
-| `ap.ecommerceStorefrontLivewire.layout.footerLinks` | filter | Rendering the package layout's footer | `array $columns` (key => `title`, `links`) | The footer's link columns (`shop`, `help`, `account`). See [Layouts](Installation-Layouts#store-navigation). |
+| `ap.ecommerceStorefrontLivewire.layout.navigation` | filter | Rendering the package layout's header | `array $links` (each `label`, `url`, `current`) | The store navigation ("Shop all" and the top-level categories). See [Layouts](../installation/layouts.md#store-navigation). |
+| `ap.ecommerceStorefrontLivewire.layout.footerLinks` | filter | Rendering the package layout's footer | `array $columns` (key => `title`, `links`) | The footer's link columns (`shop`, `help`, `account`). See [Layouts](../installation/layouts.md#store-navigation). |
 | `ap.ecommerceStorefrontLivewire.layout.viteEntries` | filter | Loading the package layout's assets | `array $entries` | Vite entry paths. |
 
 ## Search engines

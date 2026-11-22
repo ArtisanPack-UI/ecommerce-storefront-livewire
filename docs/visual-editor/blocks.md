@@ -1,10 +1,11 @@
 ---
 title: Blocks
+menu_order: 10
 ---
 
 # Blocks
 
-The storefront registers twelve blocks with visual-editor, named `artisanpack-commerce/{slug}`. Each block renders the same Livewire component or Blade component the storefront pages use, so a block and a page look and behave the same. See [Visual Editor](Visual-Editor) for when they are registered.
+The storefront registers twelve blocks with visual-editor, named `artisanpack-commerce/{slug}`. Each block renders the same Livewire component or Blade component the storefront pages use, so a block and a page look and behave the same. See [Visual Editor](../visual-editor.md) for when they are registered.
 
 ## How every block behaves
 
@@ -96,7 +97,7 @@ The products the shopper looked at last. Renders `artisanpack-ecommerce-storefro
 
 Each product is a compact row (a thumbnail, the name and the price). With no history the block renders nothing, and it adds nothing around the section but the commerce block wrapper, so block spacing comes from the editor.
 
-This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks Reference](Extending-Hooks-Reference).
+This block is registered only when the `artisanpack-ui/ecommerce-recently-viewed` satellite is registered and active with the engine. The storefront keeps no history itself; the satellite supplies the product ids through the `ap.ecommerceStorefrontLivewire.recentlyViewed.productIds` filter. See [Hooks](../reference/hooks.md).
 
 ### Product Catalog (`artisanpack-commerce/product-catalog`)
 
@@ -173,7 +174,7 @@ The checkout. Renders `artisanpack-ecommerce-storefront-checkout`.
 | --- | --- | --- | --- |
 | `layout` | string | `store` | `store` (the store's checkout layout setting), `multi_step`, or `single_page` |
 
-In an editor preview it shows the checkout steps in the chosen layout, without a cart: multi-step shows the Steps with the first one current over that step's Card; single page shows one Card per step, the first open and the rest muted. See [Checkout Layouts](Checkout-Layouts).
+In an editor preview it shows the checkout steps in the chosen layout, without a cart: multi-step shows the Steps with the first one current over that step's Card; single page shows one Card per step, the first open and the rest muted. See [Checkout Layouts](../checkout/layouts.md).
 
 ## Removing or adding blocks
 

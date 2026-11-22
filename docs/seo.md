@@ -1,12 +1,13 @@
 ---
 title: SEO
+menu_order: 65
 ---
 
 # SEO
 
 Every storefront page describes itself for search engines: a title, a description, a canonical URL, robots rules, Open Graph tags, and structured data (JSON-LD). The page controller fills a request-scoped `ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo`, and each page pushes `ecommerce-storefront::partials.seo` onto the layout's `head` stack.
 
-If you use your own layout, add `@stack( 'head' )` inside its `<head>`, or the tags are not printed. See [Layouts](Installation-Layouts).
+If you use your own layout, add `@stack( 'head' )` inside its `<head>`, or the tags are not printed. See [Layouts](installation/layouts.md).
 
 ## Titles and descriptions
 
@@ -79,11 +80,11 @@ addFilter( 'ap.ecommerceStorefrontLivewire.seo.meta', function ( array $meta, ?s
 } );
 ```
 
-See [Hooks Reference](Extending-Hooks-Reference).
+See [Hooks](reference/hooks.md).
 
 ## On your own routes
 
-If you turn the storefront routes off and embed the components (see [Embedding Components](Extending-Embedding-Components)), describe the page yourself before rendering it, and include the partial in your `<head>`:
+If you turn the storefront routes off and embed the components (see [Embedding Components](extending/embedding-components.md)), describe the page yourself before rendering it, and include the partial in your `<head>`:
 
 ```php
 use ArtisanPackUI\EcommerceStorefrontLivewire\Support\StorefrontSeo;

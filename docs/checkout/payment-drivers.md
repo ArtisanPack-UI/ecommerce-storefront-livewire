@@ -1,5 +1,6 @@
 ---
 title: Payment Drivers
+menu_order: 40
 ---
 
 # Payment Drivers
@@ -289,7 +290,7 @@ The package's own browser suite never talks to Stripe: `tests/BrowserTestCase.ph
    stripe listen --forward-to https://your-store.test/ecommerce/webhooks/stripe
    ```
 
-   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. The checkout doesn't wait for webhooks, but they matter when the shopper closes the tab after paying: the reconciler places the order from the cart. When the webhook places the order before the checkout does, the checkout picks up that order and still sends the shopper to the confirmation (see [Checkout](Checkout#when-the-providers-webhook-places-the-order-first)).
+   Put the `whsec_…` secret it prints in `ECOMMERCE_STRIPE_WEBHOOK_SECRET`. A verified webhook with a payment outcome queues the engine's payment reconciliation, so run a queue worker. The checkout doesn't wait for webhooks, but they matter when the shopper closes the tab after paying: the reconciler places the order from the cart. When the webhook places the order before the checkout does, the checkout picks up that order and still sends the shopper to the confirmation (see [Checkout](../checkout.md#when-the-providers-webhook-places-the-order-first)).
 
 4. **Check out** at `/shop/checkout` and pay with a test card. Use any future expiry date and any CVC.
 

@@ -1,5 +1,6 @@
 ---
-title: Visual Editor Overview
+title: Visual Editor
+menu_order: 45
 ---
 
 # Visual Editor
@@ -8,8 +9,8 @@ When `artisanpack-ui/visual-editor` is installed, the storefront adds commerce b
 
 ## In this section
 
-- [Blocks](Visual-Editor-Blocks) - Every commerce block, its attributes, and how it finds its product
-- [Templates and Patterns](Visual-Editor-Templates) - The default storefront templates, how a page picks one, and the block patterns
+- [Blocks](visual-editor/blocks.md) - Every commerce block, its attributes, and how it finds its product
+- [Templates and Patterns](visual-editor/templates.md) - The default storefront templates, how a page picks one, and the block patterns
 
 ## When blocks are registered
 
@@ -43,4 +44,4 @@ Every block is named `artisanpack-commerce/{slug}`, for example `artisanpack-com
 
 ## Templates are opt-in
 
-`visual_editor.templates` is `false` by default, so installing the editor does not change an existing store's pages. `php artisan ecommerce-storefront:install` warns when visual-editor is installed and templates are off. See [Templates and Patterns](Visual-Editor-Templates).
+`visual_editor.templates` is `false` by default, so installing the editor does not change an existing store's pages. `php artisan ecommerce-storefront:install` warns when visual-editor is installed and templates are off. See [Templates and Patterns](visual-editor/templates.md).
