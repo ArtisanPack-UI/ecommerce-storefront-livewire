@@ -379,11 +379,40 @@ it( 'sends the shopper back to payment when the payment no longer matches', func
         $this->gateway->sessions['fake_ps_other'] = $this->gateway->sessions['fake_ps_1'];
     } );
 
-    payAtCheckout( $component, $this->gateway )->assertHasErrors();
+    payAtCheckout( $component, $this->gateway );
+
+    // Engine 1.4+ keeps a history of a cart's payment sessions and holds an
+    // order for a confirmed payment on a replaced session; that order goes to
+    // its confirmation and is never asked to be paid again.
+    if ( class_exists( ArtisanPackUI\Ecommerce\Services\StrandedPaymentService::class ) ) {
+        $order = Order::query()->sole();
+
+        $component->assertHasNoErrors()
+            ->assertDontSeeHtml( 'data-checkout-placement' )
+            ->assertSet( 'placement', null );
+
+        expect( $order->meta[ CheckoutPlacement::PAYMENT_MISMATCH_META_KEY ] ?? null )->toBeArray()
+            ->and( placedRedirect( $component ) )->toStartWith( route( 'artisanpack.ecommerce.storefront.confirmation', [ 'order' => $order->id ] ) )
+            ->and( session( ToastPayload::SESSION_KEY )['toast']['description'] ?? null )->toBe( 'We\'re reviewing your order and will email you shortly.' );
+
+        return;
+    }
+
+    $component->assertHasErrors();
 
     expect( Order::query()->count() )->toBe( 0 )
         ->and( $component->get( 'step' ) )->toBe( 'payment' )
         ->and( $component->get( 'confirmedPayment' ) )->toBeNull();
+} );
+
+it( 'treats an order the engine held for a stranded payment as held', function (): void {
+    $order = Order::factory()->create( [
+        'payment_status' => 'pending',
+        'meta'           => [ CheckoutPlacement::PAYMENT_MISMATCH_META_KEY => [ 'reason' => 'superseded', 'reference' => 'fake_ps_1' ] ],
+    ] );
+
+    expect( CheckoutPlacement::isHeld( $order ) )->toBeTrue()
+        ->and( CheckoutPlacement::isHeld( Order::factory()->create( [ 'payment_status' => 'pending' ] ) ) )->toBeFalse();
 } );
 
 it( 'shows a generic message when placing the order fails unexpectedly', function (): void {

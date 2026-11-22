@@ -61,7 +61,7 @@ product options and "Notify me".
   - Unbounded price and attribute filters on the catalog and search pages could flood the cache and multiply queries.
   - Profile saves and the checkout contact and review steps weren't rate-limited, and the review step revealed whether an email had an account.
 - **Checkout and payments:**
-  - A payment confirmed for an earlier cart total, or for a payment session the cart had since replaced, told the shopper to pay again and could charge them twice with no order. The checkout now records it, tells the shopper not to pay again, and won't set up another payment. Stripe checks the form is still current before charging.
+  - A payment confirmed for an earlier cart total, or for a payment session the cart had since replaced, told the shopper to pay again and could charge them twice with no order. The checkout now records it, tells the shopper not to pay again, and won't set up another payment. Stripe checks the form is still current before charging. With engine 1.4+, an order the engine holds for a stranded payment (`meta.payment_mismatch`) goes to its confirmation like a fraud-review hold, never to payment again.
   - Browser back and forward could open steps the shopper hadn't reached, or reopen forms after payment.
   - Stripe's "Pay now" re-enabled while the order was being placed.
   - Changing the email after review skipped the account check, so the requested account silently failed.
