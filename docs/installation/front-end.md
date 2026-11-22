@@ -33,7 +33,7 @@ npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
 
 ## 3. Add the stylesheet lines
 
-Add these to your main stylesheet, for example `resources/css/app.css`. `php artisan ecommerce-storefront:install` prints the storefront's two `@source` lines:
+Add these to your main stylesheet, for example `resources/css/app.css`. `php artisan ecommerce-storefront:install` prints all of them except Tailwind's own `@import 'tailwindcss'`:
 
 ```css
 @layer theme, base, apui, components, utilities;

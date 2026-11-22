@@ -17,20 +17,20 @@ php artisan ecommerce-storefront:install
 The service provider is auto-discovered. The install command:
 
 - publishes `config/artisanpack/ecommerce-storefront-livewire.php`;
-- prints the Tailwind `@source` lines and the layout snippets;
+- prints the front-end setup (the design system's npm packages, stylesheet lines, and behavior engine) and the layout snippets;
 - warns when your `login` or `register` route is missing, when no payment gateway is registered or configured, and when `artisanpack-ui/visual-editor` is installed but storefront templates are off.
 
 Nothing it checks stops the install. See [Installation](installation.md).
 
 ## 2. Set up the front end
 
-The package ships no CSS or JavaScript build. Your application's Vite build loads the ArtisanPack UI design system and scans the storefront's views. Install the design system:
+The package ships no CSS or JavaScript build. Your application's Vite build loads the ArtisanPack UI design system and scans the storefront's views. The install command prints each of these steps. Install the design system:
 
 ```bash
 npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1
 ```
 
-Add it and the printed `@source` lines to your main stylesheet (for example `resources/css/app.css`). The `@layer` line comes first:
+Add it and the storefront's `@source` lines to your main stylesheet (for example `resources/css/app.css`). The `@layer` line comes first:
 
 ```css
 @layer theme, base, apui, components, utilities;

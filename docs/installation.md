@@ -31,8 +31,8 @@ php artisan ecommerce-storefront:install
 It:
 
 1. Publishes the config to `config/artisanpack/ecommerce-storefront-livewire.php`. If that file already exists it asks before overwriting it; `--force` overwrites without asking.
-2. Prints the Tailwind `@source` lines to add to your main stylesheet. The design system's lines and npm packages are in [Front-End Setup](installation/front-end.md).
-3. Prints the line your own layout needs (`@include( 'ecommerce-storefront::partials.global' )`), the `@stack( 'head' )` reminder, and the wrapper view for component layouts. See [Layouts](installation/layouts.md).
+2. Prints the front-end setup: the design system's npm packages, the stylesheet lines (the `@layer` line, the design system's `@import`, and the storefront's and component library's `@source` lines), the behavior engine's lines for `resources/js/app.js`, and a reminder to remove daisyUI. Each step is explained in [Front-End Setup](installation/front-end.md).
+3. Prints the line your own layout needs (`@include( 'ecommerce-storefront::partials.global' )`), the `@stack( 'head' )` and `@apuiThemeScript` reminders, and the wrapper view for component layouts. See [Layouts](installation/layouts.md).
 4. Checks that the routes named in `auth.login_route` and `auth.register_route` exist. The host owns sign-in and registration; the storefront only links to them.
 5. Checks that a payment gateway is registered and configured. The engine's Stripe gateway counts as configured once both `artisanpack.ecommerce.gateways.stripe.secret_key` and `publishable_key` are set; other gateways count once registered.
 6. When `artisanpack-ui/visual-editor` is installed, says whether storefront pages render through its templates (`visual_editor.templates`).

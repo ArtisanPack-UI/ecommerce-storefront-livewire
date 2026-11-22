@@ -36,6 +36,19 @@ use Illuminate\Support\Facades\Route;
 class InstallCommand extends Command
 {
     /**
+     * The design-system stylesheet lines a host adds to its main stylesheet.
+     * The `@layer` line comes first in the file, above Tailwind's import.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const STYLESHEET_IMPORTS = [
+        '@layer theme, base, apui, components, utilities;',
+        "@import '@artisanpack-ui/css';",
+    ];
+
+    /**
      * The Tailwind `@source` lines a host adds to its main stylesheet.
      *
      * @since 1.0.0
@@ -46,6 +59,62 @@ class InstallCommand extends Command
         '@source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/resources/views/**/*.blade.php";',
         '@source "../../vendor/artisanpack-ui/ecommerce-storefront-livewire/src/**/*.php";',
     ];
+
+    /**
+     * The component library's Tailwind `@source` lines, for hosts that don't
+     * list them already.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const COMPONENT_LIBRARY_SOURCES = [
+        '@source "../../vendor/artisanpack-ui/livewire-ui-components/resources/views/**/*.php";',
+        '@source "../../vendor/artisanpack-ui/livewire-ui-components/src/**/*.php";',
+    ];
+
+    /**
+     * The npm packages the storefront depends on: the design system's CSS and
+     * the behavior engine behind its drawers, dialogs, and toasts.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const NPM_PACKAGES = [ '@artisanpack-ui/css@^1', '@artisanpack-ui/behavior@^1' ];
+
+    /**
+     * The lines that register the design system's behavior engine, for
+     * `resources/js/app.js`. Livewire starts Alpine, so the engine registers
+     * on `alpine:init`.
+     *
+     * @since 2.0.0
+     *
+     * @var array<int, string>
+     */
+    public const JS_GLOBALS = [
+        "import apuiBehavior from '@artisanpack-ui/behavior/alpine';",
+        "document.addEventListener( 'alpine:init', () => window.Alpine.plugin( apuiBehavior ) );",
+    ];
+
+    /**
+     * The full front-end setup guide.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const FRONT_END_DOCS = 'https://github.com/ArtisanPack-UI/ecommerce-storefront-livewire/blob/main/docs/installation/front-end.md';
+
+    /**
+     * The directive a host's own layout adds to its `<head>` so the shopper's
+     * theme applies before the page paints.
+     *
+     * @since 2.0.0
+     *
+     * @var string
+     */
+    public const THEME_SCRIPT = '@apuiThemeScript';
 
     /**
      * The include a host's own layout needs (cart drawer, toasts, merge prompt).
@@ -140,7 +209,8 @@ class InstallCommand extends Command
     }
 
     /**
-     * Prints the Tailwind source lines.
+     * Prints the design-system setup: the npm packages, the stylesheet lines,
+     * the behavior engine, and the daisyUI reminder.
      *
      * @since 1.0.0
      *
@@ -149,11 +219,37 @@ class InstallCommand extends Command
     protected function printFrontEnd(): void
     {
         $this->newLine();
+        $this->components->info( __( 'Install the front-end dependencies:' ) );
+        $this->line( '    npm install ' . implode( ' ', self::NPM_PACKAGES ) );
+
+        $this->newLine();
         $this->components->info( __( 'Add these lines to your main stylesheet (e.g. resources/css/app.css):' ) );
+
+        foreach ( self::STYLESHEET_IMPORTS as $line ) {
+            $this->line( '    ' . $line );
+        }
 
         foreach ( self::TAILWIND_SOURCES as $source ) {
             $this->line( '    ' . $source );
         }
+
+        $this->components->info( __( 'Keep the @layer line first in the file, above @import \'tailwindcss\'.' ) );
+        $this->components->info( __( 'And the component library\'s views, if your stylesheet doesn\'t list them already:' ) );
+
+        foreach ( self::COMPONENT_LIBRARY_SOURCES as $source ) {
+            $this->line( '    ' . $source );
+        }
+
+        $this->newLine();
+        $this->components->info( __( 'Add these lines to your main script (e.g. resources/js/app.js):' ) );
+
+        foreach ( self::JS_GLOBALS as $line ) {
+            $this->line( '    ' . $line );
+        }
+
+        $this->newLine();
+        $this->components->warn( __( 'Remove daisyUI: the storefront renders on the ArtisanPack UI design system.' ) );
+        $this->components->info( __( 'Full front-end setup: :url', [ 'url' => self::FRONT_END_DOCS ] ) );
     }
 
     /**
@@ -169,6 +265,7 @@ class InstallCommand extends Command
         $this->components->info( __( 'Storefront pages use the package layout. To use your own, set storefront.layout in the config to a layout that yields "title" and "content" and includes:' ) );
         $this->line( '    ' . self::LAYOUT_INCLUDE );
         $this->components->info( __( 'Add @stack( \'head\' ) inside its <head> for page descriptions, canonical URLs, and structured data.' ) );
+        $this->components->info( __( 'Add :directive inside its <head>, before your Vite entries, so the shopper\'s light or dark theme applies before the page paints.', [ 'directive' => self::THEME_SCRIPT ] ) );
 
         $this->newLine();
         $this->components->info( __( 'If your layout is a Blade component, point storefront.layout at a view containing just:' ) );
