@@ -65,11 +65,13 @@ class Field extends Component
      * @param  string|null                    $hint              Help text shown under the control.
      * @param  string|null                    $errorField        The error bag key (defaults to the `wire:model` property).
      * @param  array<int, array<string, mixed>>  $options        Select options.
-     * @param  string|null                    $placeholder       The select's empty option.
+     * @param  string|null                    $placeholder       The select's empty option, or the input's or textarea's placeholder (since 2.0.0).
      * @param  string|null                    $placeholderValue  Unused since 2.0.0: the library's empty option always has an empty value.
      * @param  string                         $optionValue       The option key holding the value.
      * @param  string                         $optionLabel       The option key holding the label.
      * @param  bool                           $optional          Mark the label "(optional)". Since 2.0.0.
+     * @param  int|null                       $maxLength         The textarea's character limit, shown as a count. Since 2.0.0.
+     * @param  string|null                    $leadingIcon       An icon at the start of an input or password. Since 2.0.0.
      *
      * @throws InvalidArgumentException When `control` is not one of {@see self::CONTROLS}.
      */
@@ -85,6 +87,8 @@ class Field extends Component
         public string $optionValue = 'id',
         public string $optionLabel = 'name',
         public bool $optional = false,
+        public ?int $maxLength = null,
+        public ?string $leadingIcon = null,
     ) {
         if ( ! in_array( $control, self::CONTROLS, true ) ) {
             throw new InvalidArgumentException( sprintf( 'Unknown field control "%s".', $control ) );

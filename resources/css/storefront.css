@@ -4798,8 +4798,221 @@
         }
     }
 
+    /*
+     * The step forms (#137–#141): fields 16px apart (24px between the
+     * address and review steps' groups), then a "Continue" at least 200px
+     * wide.
+     */
+    .ec-checkout-form,
+    .ec-checkout-form__group {
+        display: grid;
+        gap: 16px;
+        min-inline-size: 0;
+    }
+
+    .ec-checkout-form--loose {
+        gap: 24px;
+    }
+
+    .ec-checkout-form__note {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-form__error {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin: 0;
+        color: var(--apui-color-error-text);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-form__error > svg {
+        flex: none;
+        inline-size: 14px;
+        block-size: 14px;
+        margin-block-start: 3px;
+    }
+
+    .ec-checkout-form__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .ec-checkout-form__submit {
+        min-inline-size: min(200px, 100%);
+    }
+
+    /*
+     * A prompt on the sunken surface (#137, #140): the contact step's
+     * sign-in line with its icon and an outline button, or — stacked —
+     * the review step's account checkbox with the password under it. The
+     * transparent border shows in forced colors, where the surface doesn't.
+     */
+    .ec-checkout-callout {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        padding: 12px 16px;
+        border: var(--apui-border-width) solid transparent;
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-sunken);
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-checkout-callout__icon {
+        flex: none;
+        inline-size: 16px;
+        block-size: 16px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-checkout-callout__text {
+        flex: 1 1 12rem;
+        margin: 0;
+    }
+
+    .ec-checkout-callout--stacked {
+        display: grid;
+        gap: 16px;
+        padding: 16px;
+    }
+
+    /* Under the checkbox's text: past the 18px box and its 10px gap. */
+    .ec-checkout-callout__nested {
+        padding-inline-start: 28px;
+    }
+
+    /* The shipping step's "Shipping to …" line, with "Change address" at the end. */
+    .ec-checkout-ship-to {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 16px;
+    }
+
+    .ec-checkout-ship-to__text {
+        margin: 0;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        line-height: var(--apui-type-body-sm-line-height);
+        overflow-wrap: anywhere;
+    }
+
+    .ec-checkout-ship-to__address {
+        color: var(--apui-text-default);
+    }
+
+    /*
+     * Radio cards one per row (saved addresses, shipping rates); priced
+     * ones put the price at the end of the first line.
+     */
+    .ec-checkout-choices.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="items"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-checkout-choices--priced.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="item"] {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .ec-checkout-choices--priced.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="item-meta"] {
+        grid-column: 3;
+        grid-row: 1;
+        margin-block-start: 0;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    /*
+     * The payment step's gateways (#141): radio cards on the RadioGroup
+     * contract, where the card is the wrapper (so it can hold the driver
+     * when chosen) and the radio's label is its header.
+     */
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] [data-scope="radio-group"][data-part="items"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ec-payment-method {
+        min-inline-size: 0;
+        border: var(--apui-border-width) solid var(--apui-border-default);
+        border-radius: var(--apui-radius-md);
+        background: var(--apui-surface-default);
+    }
+
+    /* Cards with a radio follow it (so a click shows at once); the lone card, the server. */
+    .ec-payment-method:has([data-part="control"]:checked),
+    .ec-payment-method[data-selected]:not(:has([data-part="control"])) {
+        border-color: var(--apui-selected-border);
+        background: var(--apui-selected-bg);
+        box-shadow: inset 0 0 0 1px var(--apui-selected-border);
+    }
+
+    .ec-payment-methods[data-invalid] .ec-payment-method {
+        border-color: var(--apui-color-error-border);
+    }
+
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] .ec-payment-method__header[data-scope="radio-group"][data-part="item"],
+    .ec-payment-methods.apui-radio-group[data-variant="cards"] .ec-payment-method__header[data-scope="radio-group"][data-part="item"]:has([data-part="control"]:checked) {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        box-sizing: border-box;
+        inline-size: 100%;
+        padding-block: 12px;
+        padding-inline: 14px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    /* One gateway: no radio, so the text starts the row. */
+    div.ec-payment-method__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        row-gap: 2px;
+        column-gap: 10px;
+        padding-block: 12px;
+        padding-inline: 14px;
+        color: var(--apui-text-default);
+        font-size: var(--apui-type-body-md-font-size);
+        font-weight: var(--apui-font-weight-medium);
+        line-height: var(--apui-type-body-md-line-height);
+    }
+
+    .ec-payment-method__description {
+        grid-column: 1;
+        color: var(--apui-text-muted);
+        font-size: var(--apui-type-body-sm-font-size);
+        font-weight: var(--apui-font-weight-regular);
+        line-height: var(--apui-type-body-sm-line-height);
+    }
+
+    .ec-payment-method__icon {
+        grid-column: -2;
+        grid-row: 1;
+        inline-size: 18px;
+        block-size: 18px;
+        color: var(--apui-text-muted);
+    }
+
+    .ec-payment-method__panel {
+        padding-block: 0 14px;
+        padding-inline: 14px;
+    }
+
     @media (forced-colors: active) {
-        .ec-checkout-step[data-state="current"] {
+        .ec-checkout-step[data-state="current"],
+        .ec-payment-method:has([data-part="control"]:checked),
+        .ec-payment-method[data-selected]:not(:has([data-part="control"])) {
             border-color: Highlight;
         }
     }

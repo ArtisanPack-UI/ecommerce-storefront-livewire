@@ -1183,12 +1183,13 @@ class Index extends Component
      */
     public function render(): View
     {
-        $cart   = null === $this->unavailable && null === $this->placement && null === $this->placedOrder ? $this->cart() : null;
-        $ready  = null !== $cart && ! $this->signInRequired;
-        $ships  = $ready && $this->requiresShipping( $cart );
-        $steps  = $ready ? $this->steps( $cart ) : [];
-        $policy = $this->checkout()->guestCheckout();
-        $listed = $this->describeSteps( $steps, $cart );
+        $cart     = null === $this->unavailable && null === $this->placement && null === $this->placedOrder ? $this->cart() : null;
+        $ready    = null !== $cart && ! $this->signInRequired;
+        $ships    = $ready && $this->requiresShipping( $cart );
+        $steps    = $ready ? $this->steps( $cart ) : [];
+        $policy   = $this->checkout()->guestCheckout();
+        $listed   = $this->describeSteps( $steps, $cart );
+        $gateways = $ready && 'payment' === $this->step ? $this->gatewayOptions( $cart ) : [];
 
         $this->progress = max( 1, (int) ( collect( $listed )->firstWhere( 'current', true )['number'] ?? 1 ) );
 
@@ -1210,10 +1211,12 @@ class Index extends Component
             'registerUrl'      => $this->authUrl( 'register_route' ),
             'cartUrl'          => Route::has( 'artisanpack.ecommerce.storefront.cart' ) ? route( 'artisanpack.ecommerce.storefront.cart' ) : null,
             'savedAddresses'   => $ready ? $this->savedAddresses( $cart ) : [],
-            'gateways'         => $ready && 'payment' === $this->step ? $this->gatewayOptions( $cart ) : [],
+            'gateways'         => $gateways,
+            'paymentMethods'   => $this->paymentMethods( $gateways ),
             'paymentRequired'  => null !== $cart && (int) $cart->total_amount > 0,
             'chosenRate'       => $this->chosenRate( $cart ),
             'gatewayLabel'     => $this->gatewayLabel( $cart ),
+            'reviewSummary'    => null === $cart ? null : $this->reviewSummary( $cart ),
             'regions'          => [ 'shipping' => AddressFormats::regions( $this->shipping['country_code'] ?? null ), 'billing' => AddressFormats::regions( $this->billing['country_code'] ?? null ) ],
             'errorLabels'      => $this->errorLabels(),
         ] );
@@ -2776,6 +2779,58 @@ class Index extends Component
         }
 
         return $options;
+    }
+
+    /**
+     * The gateways as the payment step's cards, key => name, description
+     * and icon. The description and icon come from the
+     * `ap.ecommerceStorefrontLivewire.checkout.paymentMethod` filter, which
+     * gets `[ 'description' => null, 'icon' => null ]`, the gateway's key
+     * and its name; either left empty isn't shown.
+     *
+     * @since 2.0.0
+     *
+     * @param  array<string, string>  $gateways  The gateways, key => name.
+     *
+     * @return array<string, array{label: string, description: string|null, icon: string|null}>
+     */
+    protected function paymentMethods( array $gateways ): array
+    {
+        $methods = [];
+
+        foreach ( $gateways as $key => $label ) {
+            $details = (array) applyFilters( 'ap.ecommerceStorefrontLivewire.checkout.paymentMethod', [ 'description' => null, 'icon' => null ], (string) $key, $label );
+
+            $methods[ $key ] = [
+                'label'       => $label,
+                'description' => is_string( $details['description'] ?? null ) && '' !== trim( $details['description'] ) ? trim( $details['description'] ) : null,
+                'icon'        => is_string( $details['icon'] ?? null ) && '' !== trim( $details['icon'] ) ? trim( $details['icon'] ) : null,
+            ];
+        }
+
+        return $methods;
+    }
+
+    /**
+     * What the finished review step shows under its title: whether the
+     * terms were accepted, an account will be created, and a note was
+     * left. Never the password. Null before the cart is reviewed.
+     *
+     * @since 2.0.0
+     *
+     * @param  Cart  $cart  The cart.
+     *
+     * @return array{terms: bool, account: bool, note: bool}|null
+     */
+    protected function reviewSummary( Cart $cart ): ?array
+    {
+        $review = $this->reviewed( $cart );
+
+        return null === $review ? null : [
+            'terms'   => true === $review['terms'],
+            'account' => true === $review['account'],
+            'note'    => '' !== trim( $review['note'] ),
+        ];
     }
 
     /**

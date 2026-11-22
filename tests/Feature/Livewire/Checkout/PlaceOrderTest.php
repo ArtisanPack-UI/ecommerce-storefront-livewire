@@ -53,18 +53,19 @@ beforeEach( function (): void {
     } );
 } );
 
-it( 'shows the lines, addresses, shipping, totals, note, and "Continue to payment" on review', function (): void {
+it( 'shows the note and "Continue to payment" on review, with the lines, addresses, shipping and totals around it', function (): void {
     checkoutAtReview( $this->gateway )
         ->assertSeeHtml( 'data-checkout-review-form' )
-        ->assertSeeHtml( 'data-checkout-review-lines' )
         ->assertSee( 'Mug' )
+        ->assertSeeHtml( 'data-checkout-step-summary="address"' )
         ->assertSee( '1 Main Street' )
+        ->assertSeeHtml( 'data-checkout-step-summary="shipping"' )
         ->assertSee( 'Standard' )
         ->assertSeeHtml( 'data-cart-tax' )
         ->assertSeeHtml( 'data-checkout-order-note' )
         ->assertSeeHtml( 'data-checkout-review-submit' )
         ->assertSee( 'Continue to payment' )
-        ->assertSee( 'You\'ll pay $25.00.' )
+        ->assertDontSeeHtml( 'data-checkout-review-lines' )
         ->assertDontSeeHtml( 'data-checkout-place-order' )
         ->assertDontSeeHtml( 'data-checkout-terms' );
 

@@ -140,7 +140,7 @@ it( 'links a field to its error and hint, so a screen reader reads both', functi
                 const input = document.querySelector( '[data-field="email"] input' );
                 const [ hint, error ] = input.getAttribute( 'aria-describedby' ).split( ' ' ).map( ( id ) => document.getElementById( id )?.textContent.trim() );
 
-                return error?.length > 0 && document.querySelector( '[data-checkout-errors] a[href="#email"]' ).textContent.includes( error ) && hint === "We'll send your order confirmation here.";
+                return error?.length > 0 && document.querySelector( '[data-checkout-errors] a[href="#email"]' ).textContent.includes( error ) && hint === "We'll send your receipt and shipping updates here.";
             } )()
             JS );
 } );

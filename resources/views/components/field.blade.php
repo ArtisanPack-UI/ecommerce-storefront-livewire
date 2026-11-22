@@ -31,7 +31,7 @@
             @break
 
         @case( 'textarea' )
-            <x-artisanpack-textarea :id="$id" :hint="$ecommerceFieldHint" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+            <x-artisanpack-textarea :id="$id" :hint="$ecommerceFieldHint" :placeholder="$placeholder" :max-length="$maxLength" :error-field="$ecommerceFieldKey" {{ $attributes }}>
                 @if ( null !== $ecommerceFieldLabel )
                     <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
                 @endif
@@ -39,7 +39,7 @@
             @break
 
         @case( 'password' )
-            <x-artisanpack-password :id="$id" :hint="$ecommerceFieldHint" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+            <x-artisanpack-password :id="$id" :hint="$ecommerceFieldHint" :leading-icon="$leadingIcon" :error-field="$ecommerceFieldKey" {{ $attributes }}>
                 @if ( null !== $ecommerceFieldLabel )
                     <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
                 @endif
@@ -55,7 +55,7 @@
             @break
 
         @default
-            <x-artisanpack-input :id="$id" :hint="$ecommerceFieldHint" :error-field="$ecommerceFieldKey" {{ $attributes }}>
+            <x-artisanpack-input :id="$id" :hint="$ecommerceFieldHint" :placeholder="$placeholder" :leading-icon="$leadingIcon" :error-field="$ecommerceFieldKey" {{ $attributes }}>
                 @if ( null !== $ecommerceFieldLabel )
                     <x-slot:label>{{ $ecommerceFieldLabel }}</x-slot:label>
                 @endif

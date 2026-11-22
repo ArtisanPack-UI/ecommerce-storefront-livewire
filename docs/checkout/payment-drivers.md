@@ -6,6 +6,22 @@ title: Payment Drivers
 
 Payment gateways live in the engine. The storefront doesn't know any gateway: it asks the gateway how its payment step should be rendered, and hands that to a **payment driver**, a Livewire component that draws the payment UI and reports the outcome back to the checkout.
 
+## The gateway cards
+
+The payment step lists the available gateways as radio cards under "Payment method". The chosen card opens to hold its driver, so the shopper pays inside the card they picked, and "Your order is placed as soon as your payment is confirmed." follows the cards. With a single gateway it is chosen for the shopper, and its card ("Pay with {gateway}") has no radio.
+
+A card shows the gateway's name. Give it a line under the name and an icon with the `ap.ecommerceStorefrontLivewire.checkout.paymentMethod` filter:
+
+```php
+addFilter( 'ap.ecommerceStorefrontLivewire.checkout.paymentMethod', function ( array $details, string $key, string $label ): array {
+    return match ( $key ) {
+        'paypal' => [ 'description' => __( 'You\'ll continue to PayPal to pay, then come back here.' ), 'icon' => 'external-link' ],
+        'stripe' => [ 'description' => null, 'icon' => 'credit-card' ],
+        default  => $details,
+    };
+} );
+```
+
 ## How a gateway describes its payment step
 
 A gateway whose payment step runs in the browser implements the engine's `Contracts\RendersClientPayment`:
