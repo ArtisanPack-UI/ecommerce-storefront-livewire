@@ -1,7 +1,8 @@
 {{--
     What a finished checkout step chose (#136), under its title: the email,
     the ship-to and bill-to addresses side by side (from 640px), the
-    shipping option and its price, or the payment.
+    shipping option and its price, what the review settled (#140: terms
+    accepted, an account to create, a note), or the payment.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
@@ -44,6 +45,17 @@
                 @endif
             </p>
         @endif
+        @break
+
+    @case ( 'review' )
+        @php
+            $ecommerceReviewParts = array_values( array_filter( [
+                ( $reviewSummary['terms'] ?? false ) ? __( 'Terms accepted' ) : null,
+                ( $reviewSummary['account'] ?? false ) ? __( 'Account will be created' ) : null,
+                ( $reviewSummary['note'] ?? false ) ? __( 'Note added' ) : null,
+            ] ) );
+        @endphp
+        <p class="ec-step-summary__text">{{ [] === $ecommerceReviewParts ? __( 'Done' ) : implode( ' · ', $ecommerceReviewParts ) }}</p>
         @break
 
     @case ( 'payment' )

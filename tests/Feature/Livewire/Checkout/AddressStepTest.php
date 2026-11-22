@@ -51,7 +51,7 @@ it( 'shows the shipping address form with country and region lists and autofill 
     checkoutAtAddress()
         ->assertSeeHtml( 'data-checkout-address-form' )
         ->assertSeeHtml( 'data-address-form="shipping"' )
-        ->assertSee( 'Shipping address' )
+        ->assertSee( 'Ship to' )
         ->assertSee( 'United States' )
         ->assertSee( 'Illinois' )
         ->assertSee( 'ZIP code' )

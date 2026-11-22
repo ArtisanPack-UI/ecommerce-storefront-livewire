@@ -1,94 +1,40 @@
 {{--
-    Checkout step: review, before payment. What the shopper is buying and
-    where it goes, an optional note, the terms checkbox (when a terms page
-    is set), the optional account for guests, and "Continue to payment".
-    Confirming the payment on the next step places the order with what was
-    reviewed here.
+    Checkout step: review (#140), before payment. The steps above it
+    already show the contact, addresses and shipping, and the order summary
+    the lines and totals, so it holds what's left to settle: the optional
+    order note (with a character count), "Create an account with this
+    email" for guests when the store offers it (on the sunken surface, the
+    password under it once checked), the terms checkbox with its link (when
+    a terms page is set), and "Continue to payment". Confirming the payment
+    on the next step places the order with what was entered here.
 
     @package    ArtisanPack_UI
     @subpackage EcommerceStorefrontLivewire
 
     @since      1.0.0
 --}}
-<form wire:submit="saveReview" novalidate class="flex flex-col gap-6" data-checkout-review-form>
-    <dl class="grid gap-4 text-sm sm:grid-cols-2" data-checkout-review>
-        <div>
-            <dt class="font-semibold">{{ __( 'Contact' ) }}</dt>
-            <dd>{{ $cart->email }}</dd>
-        </div>
-
-        @if ( $ships && is_array( $cart->shipping_address ) )
-            <div>
-                <dt class="font-semibold">{{ __( 'Ship to' ) }}</dt>
-                <dd><x-artisanpack-ec-address :address="$cart->shipping_address" /></dd>
-            </div>
-        @endif
-
-        <div>
-            <dt class="font-semibold">{{ __( 'Bill to' ) }}</dt>
-            <dd>
-                @if ( is_array( $cart->billing_address ) )
-                    <x-artisanpack-ec-address :address="$cart->billing_address" />
-                @elseif ( is_array( $cart->shipping_address ) )
-                    {{ __( 'Same as shipping' ) }}
-                @endif
-            </dd>
-        </div>
-
-        @if ( $ships && null !== $chosenRate )
-            <div>
-                <dt class="font-semibold">{{ __( 'Shipping' ) }}</dt>
-                <dd>{{ $chosenRate['label'] ?? '' }}</dd>
-            </div>
-        @endif
-    </dl>
-
-    <section class="flex flex-col gap-3" aria-labelledby="ec-checkout-review-items" data-checkout-review-lines>
-        <h3 id="ec-checkout-review-items" class="font-semibold">{{ __( 'Items' ) }}</h3>
-
-        <ul class="flex flex-col gap-2 text-sm">
-            @foreach ( $lines as $line )
-                <li class="flex items-start justify-between gap-4" wire:key="checkout-review-line-{{ $line['id'] }}">
-                    <span>
-                        {{ $line['name'] }} <span class="text-base-content/70">&times; {{ $line['quantity'] }}</span>
-                        @foreach ( $line['options'] as $option )
-                            <span class="block text-base-content/70">{{ $option }}</span>
-                        @endforeach
-                    </span>
-
-                    @if ( $line['free'] )
-                        <span>{{ __( 'Free' ) }}</span>
-                    @else
-                        <x-artisanpack-ec-money :amount="$line['total']" :currency="$line['currency']" />
-                    @endif
-                </li>
-            @endforeach
-        </ul>
-
-        @if ( null !== $totals )
-            @include( 'ecommerce-storefront::partials.order-totals', [ 'totals' => $totals ] )
-        @endif
-    </section>
-
+<form wire:submit="saveReview" novalidate class="ec-checkout-form ec-checkout-form--loose" data-checkout-review-form>
     <div data-field="orderNote">
         <x-artisanpack-ec-field
             control="textarea"
             id="ec-checkout-order-note"
-            :label="__( 'Order note (optional)' )"
+            :label="__( 'Order note' )"
+            optional
+            :placeholder="__( 'Anything the store should know about your order' )"
             :hint="__( 'Anything the store should know about your order. Up to :max characters.', [ 'max' => $noteMaxLength ] )"
             rows="3"
-            maxlength="{{ $noteMaxLength }}"
+            :max-length="$noteMaxLength"
             wire:model="orderNote"
             data-checkout-order-note
         />
     </div>
 
     @if ( $offersAccount )
-        <div class="flex flex-col gap-3" data-checkout-account>
+        <div class="ec-checkout-callout ec-checkout-callout--stacked" data-checkout-account>
             <x-artisanpack-checkbox :label="__( 'Create an account with this email' )" :description="__( 'Track this order and check out faster next time.' )" wire:model.live="createAccount" data-checkout-create-account />
 
             @if ( $createAccount )
-                <div data-field="password">
+                <div class="ec-checkout-callout__nested" data-field="password">
                     <x-artisanpack-ec-field control="password" id="ec-checkout-password" :label="__( 'Password' )" autocomplete="new-password" wire:model="password" data-checkout-password />
                 </div>
             @endif
@@ -96,26 +42,23 @@
     @endif
 
     @if ( null !== $termsUrl )
-        <div class="flex flex-col gap-1" data-field="acceptTerms">
-            <x-artisanpack-ec-field control="checkbox" id="ec-checkout-terms" :label="__( 'I accept the terms and conditions' )" wire:model="acceptTerms" data-checkout-terms />
-            <a href="{{ $termsUrl }}" class="link text-sm" target="_blank" rel="noopener" data-checkout-terms-link>
-                {{ __( 'Read the terms and conditions' ) }}<span class="sr-only"> {{ __( '(opens in a new tab)' ) }}</span>
-            </a>
+        @php
+            [ $ecommerceTermsBefore, $ecommerceTermsAfter ] = explode( ':terms', __( 'I accept the :terms' ), 2 ) + [ 1 => '' ];
+        @endphp
+        <div data-field="acceptTerms">
+            <x-artisanpack-checkbox id="ec-checkout-terms" error-field="acceptTerms" wire:model="acceptTerms" data-checkout-terms>
+                <x-slot:label>{{ $ecommerceTermsBefore }}<a href="{{ $termsUrl }}" class="apui-link" target="_blank" rel="noopener" data-checkout-terms-link>{{ __( 'terms and conditions' ) }}<span class="apui-sr-only"> {{ __( '(opens in a new tab)' ) }}</span></a>{{ $ecommerceTermsAfter }}</x-slot:label>
+            </x-artisanpack-checkbox>
         </div>
     @endif
 
-    <div class="flex flex-col gap-2">
+    <div class="ec-checkout-form__actions">
         <x-artisanpack-button
-            size="lg"
             type="submit"
             color="primary"
-            class="w-full sm:w-auto"
+            class="ec-checkout-form__submit"
             wire:loading.attr="disabled"
             wire:target="saveReview"
             data-checkout-review-submit>{{ __( 'Continue to payment' ) }}</x-artisanpack-button>
-
-        @if ( null !== $totals && $paymentRequired )
-            <p class="text-sm text-base-content/70">{{ __( 'You\'ll pay :total.', [ 'total' => \ArtisanPackUI\Ecommerce\Support\MoneyFormatter::format( $totals['total'], $totals['currency'] ) ] ) }}</p>
-        @endif
     </div>
 </form>

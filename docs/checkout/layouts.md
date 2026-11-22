@@ -13,6 +13,18 @@ The checkout comes in two layouts. Both use the same step partials. Each step is
 
 On the checkout page the standalone layout swaps the store header for a slim secure one (the store's name, "Secure checkout", and "Back to cart") and leaves out the store navigation and footer, so nothing leads away from the order. See [Layouts](Installation-Layouts#checkout-header). The page passes `show-title` so the component shows the "Checkout" title; the Checkout Steps block, under its template's heading, doesn't.
 
+## The steps
+
+| Step | What it holds |
+| --- | --- |
+| Contact | For a guest, "Have an account? Sign in for faster checkout." with a "Sign in" button on the sunken surface (or, when the store needs an account to pay, an info alert with "Sign in" and "Create an account"). Then the email, with a mail icon and "We'll send your receipt and shipping updates here.", and "Email me news and offers" (unchecked). |
+| Address | "Ship to" and the address form, then "Billing address is the same as shipping" (checked; unchecked, "Bill to" and a second form). A cart that doesn't ship asks for the billing address only. A signed-in shopper with saved addresses picks one from radio cards, or "Use a new address". |
+| Shipping | "Shipping to" the address on one line, with "Change address". Then the rates as radio cards, one per row: the name and delivery estimate, with the price (or "Free") at the end. The chosen rate is applied at once, so the order summary's totals follow it. |
+| Review | The optional order note with a character count, "Create an account with this email" for guests when the store offers it (see [Account Creation](Checkout-Account-Creation)), the terms checkbox, and "Continue to payment". The contact, addresses and shipping are in the finished steps above, and the lines and totals in the order summary. Once done, its summary reads, say, "Terms accepted · Account will be created". |
+| Payment | The gateways as radio cards; the chosen card opens around the gateway's payment driver (see [Payment Drivers](Checkout-Payment-Drivers#the-gateway-cards)). A free order, or one whose payment is already confirmed, is placed with "Place order" ("Place order · {total}" when something was paid). |
+
+Every "Continue" is the step's one primary button. A failed step lists its problems in the error summary above the steps, each linked to its field, and each field shows its own error.
+
 ## Choosing the layout
 
 `Support\CheckoutLayout::current()` reads the engine setting `storefront.checkout_layout`. When no value is stored, it falls back to this package's config `checkout.layout`:
@@ -39,7 +51,7 @@ See [Blocks](Visual-Editor-Blocks).
 
 ## Terms and conditions
 
-Set a terms page and the review step shows a required "I accept the terms and conditions" checkbox. It is checked when the shopper presses "Continue to payment", before they pay. Without it, the review step stays open with "Accept the terms and conditions to place your order."
+Set a terms page and the review step shows a required "I accept the terms and conditions" checkbox, with "terms and conditions" linking to the page (in a new tab). It is checked when the shopper presses "Continue to payment", before they pay. Without it, the review step stays open with "Accept the terms and conditions to place your order."
 
 The page comes from the engine setting `storefront.terms_url` ("Terms and conditions page" in the admin's Checkout settings), falling back to config `checkout.terms_url`. It must be an `http(s)` URL or a path on this site (`/terms`). Anything else, including `//host`, is ignored, and no checkbox is shown. `null` or blank shows no checkbox.
 
