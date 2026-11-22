@@ -228,3 +228,16 @@ it( 'places a free order with "Place order"', function (): void {
         ->assertSee( 'Place order' )
         ->assertDontSee( 'Place order ·' );
 } );
+
+it( 'keeps the old step views\' strings in every catalogue, for hosts that published them', function ( string $locale ): void {
+    $catalogue = json_decode( (string) file_get_contents( dirname( __DIR__, 3 ) . '/lang/' . $locale . '.json' ), true );
+
+    expect( $catalogue )->toHaveKeys( [
+        'Sign in for faster checkout',
+        'We\'ll send your order confirmation here.',
+        'Order note (optional)',
+        'I accept the terms and conditions',
+        'Read the terms and conditions',
+        'You\'ll pay :total.',
+    ] );
+} )->with( [ 'en', 'de', 'es', 'fr' ] );
