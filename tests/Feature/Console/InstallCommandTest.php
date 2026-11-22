@@ -6,6 +6,7 @@ use ArtisanPackUI\Ecommerce\Contracts\PaymentGateway;
 use ArtisanPackUI\Ecommerce\Registries\PaymentGatewayRegistry;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Blocks\StorefrontBlocks;
 use ArtisanPackUI\EcommerceStorefrontLivewire\Console\Commands\InstallCommand;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
@@ -67,14 +68,40 @@ it( 'overwrites a published config on "yes" or with --force', function ( array $
     '--force'   => [ [ '--force' => true ], false ],
 ] );
 
-it( 'prints the Tailwind source lines and the layout include', function (): void {
-    $command = $this->artisan( 'ecommerce-storefront:install' );
+it( 'prints the design-system setup', function (): void {
+    $command = $this->artisan( 'ecommerce-storefront:install' )
+        ->expectsOutputToContain( 'npm install @artisanpack-ui/css@^1 @artisanpack-ui/behavior@^1' );
 
-    foreach ( InstallCommand::TAILWIND_SOURCES as $source ) {
-        $command->expectsOutputToContain( $source );
+    foreach ( [ ...InstallCommand::STYLESHEET_IMPORTS, ...InstallCommand::TAILWIND_SOURCES, ...InstallCommand::COMPONENT_LIBRARY_SOURCES, ...InstallCommand::JS_GLOBALS, ...InstallCommand::BUILD_COMMANDS ] as $line ) {
+        $command->expectsOutputToContain( $line );
     }
 
-    $command->expectsOutputToContain( InstallCommand::LAYOUT_INCLUDE )
+    $command->expectsOutputToContain( 'Keep the @layer line first in the file' )
+        ->expectsOutputToContain( 'Then build your assets' )
+        ->expectsOutputToContain( 'Remove daisyUI' )
+        ->expectsOutputToContain( InstallCommand::FRONT_END_DOCS )
+        ->assertSuccessful();
+} );
+
+it( 'prints the @layer line before the design-system import and the sources', function (): void {
+    Artisan::call( 'ecommerce-storefront:install' );
+
+    $output = Artisan::output();
+    $layer  = strpos( $output, InstallCommand::STYLESHEET_IMPORTS[0] );
+
+    expect( $layer )->toBeInt();
+
+    foreach ( [ InstallCommand::STYLESHEET_IMPORTS[1], InstallCommand::TAILWIND_SOURCES[0], InstallCommand::COMPONENT_LIBRARY_SOURCES[0] ] as $line ) {
+        $position = strpos( $output, $line );
+
+        expect( $position )->toBeInt( $line )->toBeGreaterThan( $layer );
+    }
+} );
+
+it( 'prints the layout include, the theme script, and the component wrapper', function (): void {
+    $this->artisan( 'ecommerce-storefront:install' )
+        ->expectsOutputToContain( InstallCommand::LAYOUT_INCLUDE )
+        ->expectsOutputToContain( 'Add ' . InstallCommand::THEME_SCRIPT . ' inside its <head>' )
         ->expectsOutputToContain( 'If your layout is a Blade component' )
         ->assertSuccessful();
 } );
